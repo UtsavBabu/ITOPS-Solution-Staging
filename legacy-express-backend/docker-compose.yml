@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: itops
+      POSTGRES_PASSWORD: itops
+      POSTGRES_DB: itops_monitor
+    ports:
+      - "5432:5432"
+    volumes:
+      - itops_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  itops_postgres_data:

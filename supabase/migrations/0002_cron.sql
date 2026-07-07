@@ -1,0 +1,42 @@
+-- Enables the extensions needed to schedule run-due-checks from Postgres
+-- itself (no external scheduler needed). The actual cron.schedule() call is
+-- NOT run here — it needs your project's real function URL and service role
+-- key, which this migration can't know. Run the block at the bottom, once,
+-- in the Supabase SQL Editor after deploying the Edge Functions.
+
+create extension if not exists pg_cron with schema extensions;
+create extension if not exists pg_net with schema extensions;
+
+-- ---------------------------------------------------------------------------
+-- One-time manual setup (SQL Editor, not part of the migration — fill in
+-- your project ref and service_role key from Project Settings > API):
+-- ---------------------------------------------------------------------------
+--
+-- select vault.create_secret(
+--   'https://<project-ref>.functions.supabase.co/run-due-checks',
+--   'run_due_checks_url'
+-- );
+-- select vault.create_secret(
+--   '<your-service-role-key>',
+--   'service_role_key'
+-- );
+--
+-- select cron.schedule(
+--   'run-due-checks-every-minute',
+--   '* * * * *',  -- pg_cron's finest granularity is 1 minute: THIRTY_SECONDS
+--                  -- monitors will effectively run at most once/minute.
+--   $$
+--   select net.http_post(
+--     url     := (select decrypted_secret from vault.decrypted_secrets where name = 'run_due_checks_url'),
+--     headers := jsonb_build_object(
+--       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'),
+--       'Content-Type', 'application/json'
+--     ),
+--     body    := '{}'::jsonb
+--   );
+--   $$
+-- );
+--
+-- To inspect/undo later:
+--   select * from cron.job;
+--   select cron.unschedule('run-due-checks-every-minute');

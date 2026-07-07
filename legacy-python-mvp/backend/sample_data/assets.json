@@ -1,0 +1,16 @@
+[
+  {"id": "lb-01", "name": "Load Balancer 01", "type": "network", "depends_on": []},
+  {"id": "web-01", "name": "Web Server 01", "type": "server", "depends_on": ["lb-01", "app-checkout", "app-catalog"]},
+  {"id": "web-02", "name": "Web Server 02", "type": "server", "depends_on": ["lb-01", "app-checkout", "app-catalog"]},
+  {"id": "app-checkout", "name": "Checkout Service", "type": "application", "depends_on": ["db-orders", "db-payments", "cache-01"]},
+  {"id": "app-catalog", "name": "Catalog Service", "type": "application", "depends_on": ["db-catalog", "cache-01"]},
+  {"id": "app-notifications", "name": "Notification Service", "type": "application", "depends_on": ["db-orders", "queue-01"]},
+  {"id": "db-orders", "name": "Orders Database", "type": "database", "depends_on": ["storage-san-01"]},
+  {"id": "db-payments", "name": "Payments Database", "type": "database", "depends_on": ["storage-san-01"]},
+  {"id": "db-catalog", "name": "Catalog Database", "type": "database", "depends_on": ["storage-san-02"]},
+  {"id": "cache-01", "name": "Redis Cache", "type": "cache", "depends_on": []},
+  {"id": "queue-01", "name": "Message Queue", "type": "queue", "depends_on": []},
+  {"id": "storage-san-01", "name": "SAN Storage 01", "type": "storage", "depends_on": []},
+  {"id": "storage-san-02", "name": "SAN Storage 02", "type": "storage", "depends_on": []},
+  {"id": "auth-service", "name": "Auth Service", "type": "application", "depends_on": ["db-orders"]}
+]

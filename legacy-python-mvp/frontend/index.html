@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ITOps AI Brain</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/vis-network.min.js"></script>
+<style>
+  :root {
+    --navy: #0b2545; --blue: #1565c0; --blue-light: #e8f0fe;
+    --red: #c62828; --amber: #ef6c00; --green: #2e7d32;
+    --gray-bg: #f4f6f9; --border: #dde3ec;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: var(--gray-bg); color: #1a1a1a; }
+  header { background: var(--navy); color: white; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  header h1 { margin: 0; font-size: 19px; font-weight: 600; }
+  header p { margin: 2px 0 0; font-size: 12px; color: #b8c7dc; }
+  .btn { background: var(--blue); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn.secondary { background: transparent; border: 1px solid #4a6b93; }
+  main { max-width: 1300px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  .panel { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .panel h2 { font-size: 14px; margin: 0 0 10px; color: var(--navy); }
+  #network { height: 420px; border: 1px solid var(--border); border-radius: 8px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .card { background: var(--blue-light); border-radius: 8px; padding: 10px 12px; }
+  .card .label { font-size: 10px; text-transform: uppercase; color: #4a6b93; }
+  .card .value { font-size: 20px; font-weight: 700; color: var(--navy); }
+  .card.crit { background: #fdecea; } .card.crit .value { color: var(--red); }
+  .alert-row { border-left: 3px solid var(--amber); background: #fff8f0; padding: 8px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px; }
+  .alert-row.critical { border-color: var(--red); background: #fdecea; }
+  .alert-row .asset { font-weight: 700; color: var(--navy); }
+  .rc-row { padding: 8px 10px; margin-bottom: 6px; border-radius: 6px; background: #f6f8fb; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .rc-row.top { background: #fdecea; border: 1px solid #f3b8b3; }
+  .chat-box { display: flex; flex-direction: column; height: 340px; }
+  .chat-log { flex: 1; overflow-y: auto; font-size: 13px; padding: 8px; background: #fafbfd; border-radius: 6px; margin-bottom: 8px; }
+  .msg { margin-bottom: 10px; }
+  .msg.user { text-align: right; }
+  .msg .bubble { display: inline-block; padding: 8px 12px; border-radius: 10px; max-width: 85%; white-space: pre-wrap; }
+  .msg.user .bubble { background: var(--blue); color: white; }
+  .msg.ai .bubble { background: #eef1f7; color: #1a1a1a; }
+  .chat-input { display: flex; gap: 8px; }
+  .chat-input input { flex: 1; padding: 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .mode-tag { font-size: 10px; color: #8a97a8; margin-top: 4px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: #667; grid-column: 1 / -1; }
+  footer { text-align: center; padding: 16px; font-size: 12px; color: #8a97a8; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>ITOps AI Brain</h1><p>Knowledge graph &middot; monitoring &middot; root-cause analysis &middot; AI copilot &mdash; MVP</p></div>
+  <div><button class="btn secondary" onclick="loadSample()">Load Sample Incident</button></div>
+</header>
+<main id="app">
+  <div class="empty-state">Click "Load Sample Incident" to see the dashboard trace a real cascading failure.</div>
+</main>
+<footer>ITOps AI Brain MVP &mdash; Phase 1 prototype. Rule-based detection, explainable root-cause heuristic.</footer>
+
+<script>
+const API_BASE = "http://localhost:8000";
+let network = null;
+
+async function loadSample() {
+  document.getElementById('app').innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const res = await fetch(`${API_BASE}/api/sample`, { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    render(await res.json());
+  } catch (err) {
+    document.getElementById('app').innerHTML = `<div class="empty-state">Error: ${err.message}<br><small>Make sure the backend is running: uvicorn main:app --reload --port 8000</small></div>`;
+  }
+}
+
+function render(data) {
+  const s = data.summary;
+  document.getElementById('app').innerHTML = `
+    <div class="panel">
+      <div class="cards">
+        <div class="card"><div class="label">Assets</div><div class="value">${s.total_assets}</div></div>
+        <div class="card ${s.total_alerts ? 'crit' : ''}"><div class="label">Active Alerts</div><div class="value">${s.total_alerts}</div></div>
+        <div class="card ${s.critical_alerts ? 'crit' : ''}"><div class="label">Critical</div><div class="value">${s.critical_alerts}</div></div>
+      </div>
+      <h2>Infrastructure Dependency Graph</h2>
+      <div id="network"></div>
+    </div>
+    <div class="panel">
+      <h2>Suggested Root Cause</h2>
+      <div id="rootcause"></div>
+      <h2 style="margin-top:16px;">AI Copilot</h2>
+      <div class="chat-box">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-input">
+          <input id="chatInput" placeholder="e.g. why is checkout-service slow?" onkeydown="if(event.key==='Enter') sendChat()">
+          <button class="btn" onclick="sendChat()">Ask</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="grid-column: 1 / -1;">
+      <h2>Active Alerts</h2>
+      <div id="alerts"></div>
+    </div>
+  `;
+
+  drawGraph(data.graph, data.alerts, data.root_cause);
+  renderRootCause(data.root_cause);
+  renderAlerts(data.alerts);
+  document.getElementById('chatLog').innerHTML = `<div class="msg ai"><div class="bubble">Ask me anything about the current incident - e.g. "why is checkout-service slow" or "what depends on storage-san-01".</div></div>`;
+}
+
+function drawGraph(graphData, alerts, rootCause) {
+  const alertingIds = new Set(alerts.map(a => a.asset_id));
+  const topCauseId = rootCause.length ? rootCause[0].asset_id : null;
+  const typeColors = { server: "#1565c0", application: "#6a1b9a", database: "#0b2545", storage: "#ef6c00", cache: "#2e7d32", queue: "#00897b", network: "#546e7a", unknown: "#999" };
+
+  const nodes = new vis.DataSet(graphData.nodes.map(n => ({
+    id: n.id,
+    label: n.label,
+    color: n.id === topCauseId ? "#c62828" : (alertingIds.has(n.id) ? "#ef6c00" : typeColors[n.type] || "#999"),
+    shape: "box",
+    font: { color: "white", size: 11 },
+    borderWidth: n.id === topCauseId ? 3 : 1,
+  })));
+  const edges = new vis.DataSet(graphData.edges.map(e => ({ from: e.from, to: e.to, arrows: "to", color: "#bbb" })));
+
+  const container = document.getElementById('network');
+  network = new vis.Network(container, { nodes, edges }, {
+    layout: { hierarchical: { direction: "UD", sortMethod: "directed", levelSeparation: 80, nodeSpacing: 110 } },
+    physics: false,
+    interaction: { hover: true },
+  });
+}
+
+function renderRootCause(rootCause) {
+  const el = document.getElementById('rootcause');
+  if (!rootCause.length) { el.innerHTML = '<div style="font-size:12px;color:#667;">No alerts - nothing to trace.</div>'; return; }
+  el.innerHTML = rootCause.map((c, i) => `
+    <div class="rc-row ${i === 0 ? 'top' : ''}">
+      <span><strong>${i === 0 ? '🎯 ' : ''}${c.name}</strong> (${c.type})</span>
+      <span>explains ${c.explains_alert_count} alert(s)</span>
+    </div>`).join("");
+}
+
+function renderAlerts(alerts) {
+  const el = document.getElementById('alerts');
+  if (!alerts.length) { el.innerHTML = '<div style="font-size:12px;color:#667;">No active alerts.</div>'; return; }
+  el.innerHTML = alerts.map(a => `
+    <div class="alert-row ${a.severity}">
+      <span class="asset">${a.asset_id}</span> &mdash; ${a.message}
+    </div>`).join("");
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if (!question) return;
+  const log = document.getElementById('chatLog');
+  log.innerHTML += `<div class="msg user"><div class="bubble">${question}</div></div>`;
+  input.value = "";
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/copilot/ask`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    log.innerHTML += `<div class="msg ai"><div class="bubble">${data.answer}</div><div class="mode-tag">mode: ${data.mode}</div></div>`;
+  } catch (err) {
+    log.innerHTML += `<div class="msg ai"><div class="bubble">Error reaching copilot: ${err.message}</div></div>`;
+  }
+  log.scrollTop = log.scrollHeight;
+}
+</script>
+</body>
+</html>

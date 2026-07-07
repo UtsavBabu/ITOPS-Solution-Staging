@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  READ_ONLY
+}
+
+enum AssetType {
+  WEBSITE
+  SERVER
+  DATABASE
+  OTHER
+}
+
+enum MonitorInterval {
+  THIRTY_SECONDS
+  ONE_MINUTE
+  FIVE_MINUTES
+  FIFTEEN_MINUTES
+}
+
+enum CheckStatus {
+  UP
+  DOWN
+  ERROR
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum AlertChannelType {
+  EMAIL
+  SLACK
+  WEBHOOK
+}
+
+enum AlertEventType {
+  MONITOR_DOWN
+  MONITOR_UP
+  SSL_EXPIRING
+  SSL_EXPIRED
+}
+
+model Organization {
+  id            String         @id @default(cuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  users         User[]
+  monitors      Monitor[]
+  assets        Asset[]
+  alertChannels AlertChannel[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           UserRole     @default(ADMIN)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+}
+
+model Asset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           AssetType
+  name           String
+  identifier     String
+  owner          String?
+  tags           String[]     @default([])
+  metadata       Json?
+  monitor        Monitor?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Monitor {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assetId            String          @unique
+  asset              Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  url                String
+  name               String
+  interval           MonitorInterval @default(FIVE_MINUTES)
+  isActive           Boolean         @default(true)
+  consecutiveFails   Int             @default(0)
+  lastCheckedAt      DateTime?
+  lastStatus         CheckStatus?
+  nextCheckAt        DateTime        @default(now())
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  checkResults       CheckResult[]
+  incidents          Incident[]
+  sslInfo            SslInfo?
+  securitySnapshot   SecuritySnapshot?
+
+  @@index([organizationId])
+  @@index([nextCheckAt])
+}
+
+model CheckResult {
+  id             String      @id @default(cuid())
+  monitorId      String
+  monitor        Monitor     @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status         CheckStatus
+  statusCode     Int?
+  responseTimeMs Int?
+  errorMessage   String?
+  redirectChain  String[]    @default([])
+  checkedAt      DateTime    @default(now())
+
+  @@index([monitorId, checkedAt])
+}
+
+model SslInfo {
+  id              String   @id @default(cuid())
+  monitorId       String   @unique
+  monitor         Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  issuer          String?
+  subject         String?
+  validFrom       DateTime?
+  validTo         DateTime?
+  daysRemaining   Int?
+  protocol        String?
+  isValid         Boolean  @default(false)
+  errorMessage    String?
+  lastAlertedAt   DateTime?
+  checkedAt       DateTime @default(now())
+}
+
+model SecuritySnapshot {
+  id              String   @id @default(cuid())
+  monitorId       String   @unique
+  monitor         Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  score            Int
+  headers          Json
+  missingHeaders   String[] @default([])
+  cookieIssues     String[] @default([])
+  serverHeaderLeak String?
+  checkedAt        DateTime @default(now())
+}
+
+model Incident {
+  id          String         @id @default(cuid())
+  monitorId   String
+  monitor     Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status      IncidentStatus @default(OPEN)
+  startedAt   DateTime       @default(now())
+  resolvedAt  DateTime?
+  cause       String?
+
+  @@index([monitorId, status])
+}
+
+model AlertChannel {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           AlertChannelType
+  name           String
+  config         Json
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId])
+}
