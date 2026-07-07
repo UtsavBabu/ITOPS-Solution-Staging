@@ -4,8 +4,18 @@ import { Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { submitWaitlistSignup } from "../api/endpoints";
 import { Button } from "./Button";
+import { BrandLogo } from "./BrandLogo";
+import { Reveal } from "./Animated";
 
-const COLUMNS: Array<{ heading: string; links: Array<{ label: string; to: string }> }> = [
+interface FooterLink {
+  label: string;
+  to: string;
+  /** Plain <a> instead of router Link (real file downloads). */
+  download?: boolean;
+  badge?: string;
+}
+
+const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
   {
     heading: "Platform",
     links: [
@@ -16,13 +26,15 @@ const COLUMNS: Array<{ heading: string; links: Array<{ label: string; to: string
     ],
   },
   {
-    heading: "Solutions",
+    // Every product lives here — CyberSachet included; it's a product, not a resource.
+    heading: "Products",
     links: [
-      { label: "Website & API Monitoring", to: "/solutions/website-api-monitoring" },
-      { label: "Security Monitoring", to: "/solutions/security-monitoring" },
-      { label: "Kada Nigrani — Servers", to: "/solutions/kada-nigrani" },
+      { label: "Website & API Monitoring", to: "/solutions/website-api-monitoring", badge: "Live" },
+      { label: "Security Monitoring", to: "/solutions/security-monitoring", badge: "Live" },
+      { label: "Kada Nigrani — Servers", to: "/solutions/kada-nigrani", badge: "Live" },
       { label: "Infrastructure Monitor", to: "/solutions/infrastructure-monitor" },
       { label: "DevOps Monitor", to: "/solutions/devops-monitor" },
+      { label: "CyberSachet", to: "/cybersachet" },
     ],
   },
   {
@@ -30,21 +42,12 @@ const COLUMNS: Array<{ heading: string; links: Array<{ label: string; to: string
     links: [
       { label: "Support & FAQ", to: "/support" },
       { label: "Contact Us", to: "/company" },
-      { label: "CyberSachet", to: "/cybersachet" },
+      { label: "Compare Packages", to: "/pricing" },
+      { label: "Download Monitoring Agent", to: "/kada-nigrani-agent.sh", download: true },
     ],
   },
 ];
 
-function LogoMark({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 256 256" className={className} fill="none" aria-hidden="true">
-      <path
-        d="M 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 128 L 64 128 Z M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z M 128 64 L 128 128 L 64.5 128 L 32 95 L 0 64 L 0 0 L 64 0 Z M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 128 0 L 192 0 Z"
-        fill="#ffffff"
-      />
-    </svg>
-  );
-}
 
 function NewsletterForm() {
   const [email, setEmail] = useState("");
@@ -99,13 +102,12 @@ export function MarketingFooter() {
         <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
           {/* brand block */}
           <div>
-            <Link to="/" className="inline-flex items-center gap-2.5">
-              <LogoMark />
-              <span className="text-base font-medium tracking-tight text-white">ITOps Monitor</span>
+            <Link to="/" className="inline-flex">
+              <BrandLogo size={34} tagline />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/50">
-              One real-time platform for infrastructure, servers, websites, and security — so your team finds out
-              before your customers do.
+              The company behind ITOps Monitor, Kada Nigrani, and CyberSachet — real-time monitoring products for
+              infrastructure, servers, websites, and security.
             </p>
             <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/60">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
@@ -115,25 +117,45 @@ export function MarketingFooter() {
 
           {/* link columns */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-            {COLUMNS.map((column) => (
-              <nav key={column.heading} aria-label={column.heading}>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{column.heading}</p>
-                <ul className="mt-4 space-y-3">
-                  {column.links.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        to={link.to}
-                        className="group inline-flex items-center gap-1 text-sm text-white/60 transition-colors hover:text-white"
-                      >
-                        {link.label}
-                        <span aria-hidden className="opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-60">
-                          →
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+            {COLUMNS.map((column, ci) => (
+              <Reveal key={column.heading} delay={ci * 0.08}>
+                <nav aria-label={column.heading}>
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{column.heading}</p>
+                  <ul className="mt-4 space-y-3">
+                    {column.links.map((link) => {
+                      const inner = (
+                        <>
+                          <span className="border-b border-transparent transition-colors group-hover:border-white/30">
+                            {link.label}
+                          </span>
+                          {link.badge && (
+                            <span className="rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-emerald-300">
+                              {link.badge}
+                            </span>
+                          )}
+                          <span aria-hidden className="opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-60">
+                            {link.download ? "↓" : "→"}
+                          </span>
+                        </>
+                      );
+                      const cls = "group inline-flex items-center gap-1.5 text-sm text-white/60 transition-colors hover:text-white";
+                      return (
+                        <li key={link.label}>
+                          {link.download ? (
+                            <a href={link.to} download className={cls}>
+                              {inner}
+                            </a>
+                          ) : (
+                            <Link to={link.to} className={cls}>
+                              {inner}
+                            </Link>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -149,8 +171,19 @@ export function MarketingFooter() {
 
         {/* legal row */}
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/35 sm:flex-row sm:items-center">
-          <p>© {new Date().getFullYear()} ITOps Monitor. All rights reserved.</p>
-          <p>Built for teams who'd rather sleep than firefight.</p>
+          <p>© {new Date().getFullYear()} ITOps Solution. All rights reserved.</p>
+          <div className="flex items-center gap-5">
+            <p>Built for teams who'd rather sleep than firefight.</p>
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              aria-label="Back to top"
+              className="group grid h-9 w-9 place-items-center rounded-full border border-white/12 text-white/50 transition-all hover:-translate-y-0.5 hover:border-cyan-400/40 hover:text-cyan-300"
+            >
+              <svg className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 19V5m-6 6l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </footer>

@@ -142,12 +142,80 @@ export function LiveActivityFeed() {
   );
 }
 
-/* ───────────────────────── Technology marquee ───────────────────────── */
+/* ───────────────────────── Technology marquee (real brand logos) ───────────────────────── */
 
-const TECH = [
-  "Linux", "Windows", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "PostgreSQL",
-  "MySQL", "Redis", "Nginx", "Apache", "Prometheus", "Grafana", "Terraform", "GitHub Actions",
+import {
+  siLinux,
+  siDocker,
+  siKubernetes,
+  siGooglecloud,
+  siPostgresql,
+  siMysql,
+  siRedis,
+  siNginx,
+  siApache,
+  siPrometheus,
+  siGrafana,
+  siTerraform,
+  siGithubactions,
+} from "simple-icons";
+
+interface TechEntry {
+  name: string;
+  hex: string;
+  path: string;
+  viewBox?: string;
+}
+
+// Windows' four-pane mark, drawn as simple rects (simple-icons no longer ships
+// Microsoft/AWS marks for trademark reasons; these stand-ins are unmistakable).
+const WINDOWS_PATH = "M0 0h11v11H0zM13 0h11v11H13zM0 13h11v11H0zM13 13h11v11H13z";
+// Generic cloud glyph, tinted with each provider's brand color.
+const CLOUD_PATH =
+  "M19.4 10.1a7 7 0 0 0-13.7-1A5.5 5.5 0 0 0 6.5 20h12a4.5 4.5 0 0 0 .9-8.9zM18.5 18h-12a3.5 3.5 0 0 1-.4-7l1.5-.1.3-1.5a5 5 0 0 1 9.8.7l.2 1.6h1.6a2.5 2.5 0 0 1 0 5z";
+
+const TECH: TechEntry[] = [
+  { name: "Linux", hex: siLinux.hex, path: siLinux.path },
+  { name: "Windows", hex: "0078D4", path: WINDOWS_PATH },
+  { name: "Docker", hex: siDocker.hex, path: siDocker.path },
+  { name: "Kubernetes", hex: siKubernetes.hex, path: siKubernetes.path },
+  { name: "AWS", hex: "FF9900", path: CLOUD_PATH },
+  { name: "Azure", hex: "0078D4", path: CLOUD_PATH },
+  { name: "Google Cloud", hex: siGooglecloud.hex, path: siGooglecloud.path },
+  { name: "PostgreSQL", hex: siPostgresql.hex, path: siPostgresql.path },
+  { name: "MySQL", hex: siMysql.hex, path: siMysql.path },
+  { name: "Redis", hex: siRedis.hex, path: siRedis.path },
+  { name: "Nginx", hex: siNginx.hex, path: siNginx.path },
+  { name: "Apache", hex: siApache.hex, path: siApache.path },
+  { name: "Prometheus", hex: siPrometheus.hex, path: siPrometheus.path },
+  { name: "Grafana", hex: siGrafana.hex, path: siGrafana.path },
+  { name: "Terraform", hex: siTerraform.hex, path: siTerraform.path },
+  { name: "GitHub Actions", hex: siGithubactions.hex, path: siGithubactions.path },
 ];
+
+export function TechChip({ tech }: { tech: TechEntry }) {
+  return (
+    <span className="group/chip inline-flex items-center gap-2.5 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/60 transition-colors hover:border-white/25 hover:text-white">
+      <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 shrink-0" style={{ width: 18, height: 18 }} aria-hidden>
+        <path d={tech.path} fill={`#${tech.hex}`} className="opacity-80 transition-opacity group-hover/chip:opacity-100" />
+      </svg>
+      {tech.name}
+    </span>
+  );
+}
+
+/** Chip looked up by display name — for CMS-driven tech lists on product pages. */
+export function TechChipByName({ name }: { name: string }) {
+  const tech = TECH.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  if (!tech) {
+    return (
+      <span className="inline-flex items-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/60">
+        {name}
+      </span>
+    );
+  }
+  return <TechChip tech={tech} />;
+}
 
 export function TechMarquee() {
   const row = [...TECH, ...TECH];
@@ -155,12 +223,7 @@ export function TechMarquee() {
     <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
       <div className="flex w-max animate-marquee gap-3">
         {row.map((t, i) => (
-          <span
-            key={i}
-            className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/60"
-          >
-            {t}
-          </span>
+          <TechChip key={i} tech={t} />
         ))}
       </div>
     </div>

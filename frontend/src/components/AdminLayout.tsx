@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { GridScanBackground } from "./PageBackgrounds";
+import { BrandMark } from "./BrandLogo";
 
 const NAV_ITEMS = [
   { to: "/admin", label: "Overview", end: true },
@@ -28,10 +29,15 @@ export function AdminLayout() {
       <div className="fixed left-0 right-0 top-0 z-40 h-1 bg-amber-400" />
       <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-white/10 bg-neutral-950 pt-1">
         <div className="border-b border-white/10 p-4">
-          <span className="inline-block rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300">
-            Platform Admin
-          </span>
-          <p className="mt-1.5 truncate text-xs text-white/45">ITOps Monitor</p>
+          <div className="flex items-center gap-2.5">
+            <BrandMark size={28} />
+            <div className="min-w-0">
+              <span className="inline-block rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300">
+                Platform Admin
+              </span>
+              <p className="mt-1 truncate text-xs text-white/45">ITOps Solution</p>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map((item) => (

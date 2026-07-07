@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { CircuitTraceBackground } from "../components/PageBackgrounds";
 import { Field } from "../components/Field";
+import { BrandMark } from "../components/BrandLogo";
 import { Button } from "../components/Button";
 
 function BuildingIcon() {
@@ -97,7 +98,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="glass relative z-10 w-full max-w-sm rounded-2xl p-8">
         <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white">
-          <span aria-hidden>←</span> ITOps Monitor
+          <span aria-hidden>←</span> <BrandMark size={20} /> <span>ITOps Solution</span>
         </Link>
         <div className="mb-6">
           <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">

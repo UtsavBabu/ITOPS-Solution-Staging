@@ -105,7 +105,7 @@ export default function StatusPage() {
         )}
 
         <p className="mt-8 text-center text-xs text-white/35">
-          Last updated {new Date(data.generatedAt).toLocaleString()} · Updates automatically · Powered by ITOps Monitor
+          Last updated {new Date(data.generatedAt).toLocaleString()} · Updates automatically · Powered by ITOps Solution
         </p>
       </main>
     </div>

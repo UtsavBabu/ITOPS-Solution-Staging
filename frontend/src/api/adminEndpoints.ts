@@ -113,6 +113,20 @@ export async function adminCreateUser(input: {
   await invokeManageUsers({ action: "create", ...input });
 }
 
+// Uploads an image to the public-assets bucket (platform admins only, enforced
+// by storage RLS) and returns its permanent public URL.
+export async function uploadPublicImage(file: File, folder = "team"): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("public-assets").upload(path, file, {
+    cacheControl: "31536000",
+    contentType: file.type || "image/png",
+  });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from("public-assets").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function fetchAdminCustomers(): Promise<AdminCustomer[]> {
   const { data, error } = await supabase.rpc("admin_list_customers");
   if (error) throw new Error(error.message);

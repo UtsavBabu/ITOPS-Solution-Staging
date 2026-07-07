@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { CommandPalette } from "./components/CommandPalette";
+import { BrandLoading } from "./components/BrandLogo";
 import { Layout } from "./components/Layout";
 import { AdminLayout } from "./components/AdminLayout";
 import Landing from "./pages/Landing";
@@ -35,7 +37,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-black text-white/50">Loading…</div>;
+    return <BrandLoading />;
   }
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -47,7 +49,7 @@ function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isPlatformAdmin, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-black text-white/50">Loading…</div>;
+    return <BrandLoading />;
   }
   if (!user) {
     return <Navigate to="/admin/login" replace />;
@@ -62,7 +64,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-black text-white/50">Loading…</div>;
+    return <BrandLoading />;
   }
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -74,7 +76,7 @@ function AdminPublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, isPlatformAdmin, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-black text-white/50">Loading…</div>;
+    return <BrandLoading />;
   }
   if (user && isPlatformAdmin) {
     return <Navigate to="/admin" replace />;
@@ -84,6 +86,8 @@ function AdminPublicOnlyRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <>
+    <CommandPalette />
     <Routes>
       <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
       <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
@@ -138,5 +142,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

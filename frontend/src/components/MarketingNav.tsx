@@ -1,23 +1,13 @@
 import { Link, NavLink } from "react-router-dom";
+import { BrandLogo } from "./BrandLogo";
 
 const NAV_LINKS: Array<{ label: string; to: string }> = [
   { label: "Platform", to: "/platform" },
-  { label: "Solutions", to: "/solutions" },
+  { label: "Products", to: "/solutions" },
   { label: "Pricing", to: "/pricing" },
   { label: "Company", to: "/company" },
   { label: "Support", to: "/support" },
 ];
-
-function LogoMark({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 256 256" className={className} fill="none" aria-hidden="true">
-      <path
-        d="M 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 128 L 64 128 Z M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z M 128 64 L 128 128 L 64.5 128 L 32 95 L 0 64 L 0 0 L 64 0 Z M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 128 0 L 192 0 Z"
-        fill="#ffffff"
-      />
-    </svg>
-  );
-}
 
 export function MarketingNav() {
   return (
@@ -25,10 +15,9 @@ export function MarketingNav() {
       <div className="flex items-center gap-3">
         <Link
           to="/"
-          className="flex items-center gap-2 rounded-full bg-neutral-900/90 py-3 pl-4 pr-6 backdrop-blur"
+          className="flex items-center rounded-full border border-white/10 bg-neutral-900/90 py-2 pl-3.5 pr-5 backdrop-blur"
         >
-          <LogoMark />
-          <span className="text-sm font-normal tracking-tight text-white">ITOps Solution</span>
+          <BrandLogo size={26} />
         </Link>
 
         <div className="hidden items-center gap-1 rounded-full bg-neutral-900/90 px-3 py-2 backdrop-blur md:flex">

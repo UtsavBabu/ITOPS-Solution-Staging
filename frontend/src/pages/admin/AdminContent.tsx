@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContentItem, deleteContentItem, fetchAllContentItems, updateContentItem } from "../../api/adminEndpoints";
+import { createContentItem, deleteContentItem, fetchAllContentItems, updateContentItem, uploadPublicImage } from "../../api/adminEndpoints";
 import type { ContentItem, SolutionCapability } from "../../api/types";
 
 const PAGE_LABELS: Record<string, string> = {
@@ -105,6 +105,36 @@ function ItemEditor({ item }: { item: ContentItem }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-content"] }),
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Persist the current fields with a specific image URL (used right after an
+  // upload finishes, and by Remove — no second "Save" click needed).
+  function saveWithImage(url: string) {
+    const metadata: Record<string, unknown> = { ...item.metadata };
+    if (hasCapabilities) metadata.capabilities = capabilities;
+    if (url.trim()) metadata.imageUrl = url.trim();
+    else delete metadata.imageUrl;
+    return updateContentItem(item.id, {
+      title,
+      subtitle: subtitle || null,
+      body: body || null,
+      status: status || null,
+      href: href || null,
+      isPublished,
+      metadata,
+    });
+  }
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (file.size > 5 * 1024 * 1024) throw new Error("Image must be under 5 MB");
+      const url = await uploadPublicImage(file);
+      setImageUrl(url);
+      await saveWithImage(url);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-content"] }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteContentItem(item.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-content"] }),
@@ -166,18 +196,49 @@ function ItemEditor({ item }: { item: ContentItem }) {
       {hasImage && (
         <div className="mt-2 flex items-center gap-3 border-t border-white/10 pt-3">
           {imageUrl.trim() ? (
-            <img src={imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
+            <img src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-full border border-white/15 object-cover" />
           ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs text-white/40">
-              No pic
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-white/20 bg-white/5 text-[10px] text-white/40">
+              No photo
             </div>
           )}
           <input
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="Profile picture URL (https://…)"
-            className="flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white focus:border-white/40 focus:outline-none"
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadMutation.mutate(file);
+              e.target.value = "";
+            }}
           />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
+            className="rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 disabled:opacity-50"
+          >
+            {uploadMutation.isPending ? "Uploading…" : imageUrl ? "Change photo" : "Upload photo"}
+          </button>
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                setImageUrl("");
+                saveWithImage("");
+              }}
+              className="text-xs text-red-300 hover:underline"
+            >
+              Remove
+            </button>
+          )}
+          {uploadMutation.isSuccess && <span className="text-xs text-emerald-300">Photo saved ✓</span>}
+          {uploadMutation.isError && (
+            <span className="text-xs text-red-300">
+              {uploadMutation.error instanceof Error ? uploadMutation.error.message : "Upload failed"}
+            </span>
+          )}
         </div>
       )}
 

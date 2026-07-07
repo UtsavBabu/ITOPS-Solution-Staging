@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { RadarSweepBackground } from "../components/PageBackgrounds";
 import { Field } from "../components/Field";
+import { BrandMark } from "../components/BrandLogo";
 import { Button } from "../components/Button";
 
 function MailIcon() {
@@ -57,7 +58,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="glass relative z-10 w-full max-w-sm rounded-2xl p-8">
         <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white">
-          <span aria-hidden>←</span> ITOps Monitor
+          <span aria-hidden>←</span> <BrandMark size={20} /> <span>ITOps Solution</span>
         </Link>
         <h1 className="mb-1 text-2xl font-semibold tracking-tight text-white">Welcome back</h1>
         <p className="mb-6 text-sm text-white/50">Sign in to your operations dashboard.</p>

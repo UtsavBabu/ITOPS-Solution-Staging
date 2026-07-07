@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /monitors
+Disallow: /hosts
+Disallow: /incidents
+Disallow: /assets
+Disallow: /settings
+Disallow: /team
+
+Sitemap: /sitemap.xml

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../api/supabaseClient";
 import { RadarSweepBackground } from "../../components/PageBackgrounds";
 import { Field } from "../../components/Field";
+import { BrandMark } from "../../components/BrandLogo";
 import { Button } from "../../components/Button";
 
 export default function AdminLogin() {
@@ -49,7 +50,7 @@ export default function AdminLogin() {
       <div className="pointer-events-none absolute -left-32 top-24 h-96 w-96 rounded-full bg-amber-400/10 blur-[120px]" />
       <form onSubmit={handleSubmit} className="glass relative z-10 w-full max-w-sm rounded-2xl border-amber-400/20 p-8">
         <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white">
-          <span aria-hidden>←</span> ITOps Monitor
+          <span aria-hidden>←</span> <BrandMark size={20} /> <span>ITOps Solution</span>
         </Link>
         <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
