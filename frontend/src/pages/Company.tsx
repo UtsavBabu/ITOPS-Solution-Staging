@@ -88,6 +88,35 @@ export default function Company() {
 
         <div className="mx-auto mt-20 max-w-xl">
           <p className="text-center text-xs font-medium uppercase tracking-[0.15em] text-white/45">Get in Touch</p>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SpotlightCard tint="cyan">
+              <a href="tel:+9779803350658" className="flex items-center gap-3.5 p-5">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-400/10 text-cyan-300">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span>
+                  <span className="block text-xs uppercase tracking-wide text-white/40">Call us</span>
+                  <span className="mt-0.5 block text-sm font-medium text-white">+977 980-335-0658</span>
+                </span>
+              </a>
+            </SpotlightCard>
+            <SpotlightCard tint="emerald">
+              <div className="flex items-center gap-3.5 p-5">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M12 21s-7-5.3-7-11a7 7 0 1114 0c0 5.7-7 11-7 11z" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                </span>
+                <span>
+                  <span className="block text-xs uppercase tracking-wide text-white/40">Based in</span>
+                  <span className="mt-0.5 block text-sm font-medium text-white">Kathmandu, Nepal</span>
+                </span>
+              </div>
+            </SpotlightCard>
+          </div>
           <div className="mt-6">
             <ContactForm defaultTopic="company" />
           </div>

@@ -113,6 +113,26 @@ export function MarketingFooter() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
               Checks running 24/7
             </p>
+
+            <div className="mt-6 space-y-2.5 text-sm">
+              <a href="tel:+9779803350658" className="group flex items-center gap-2.5 text-white/60 transition-colors hover:text-white">
+                <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-cyan-300 transition-colors group-hover:border-cyan-400/40">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                +977 980-335-0658
+              </a>
+              <p className="flex items-center gap-2.5 text-white/60">
+                <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-emerald-300">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M12 21s-7-5.3-7-11a7 7 0 1114 0c0 5.7-7 11-7 11z" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                </span>
+                Kathmandu, Nepal
+              </p>
+            </div>
           </div>
 
           {/* link columns */}
@@ -171,7 +191,15 @@ export function MarketingFooter() {
 
         {/* legal row */}
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/35 sm:flex-row sm:items-center">
-          <p>© {new Date().getFullYear()} ITOps Solution. All rights reserved.</p>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <p>© {new Date().getFullYear()} ITOps Solution. All rights reserved.</p>
+            <Link to="/privacy" className="transition-colors hover:text-white/70">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="transition-colors hover:text-white/70">
+              Terms of Service
+            </Link>
+          </div>
           <div className="flex items-center gap-5">
             <p>Built for teams who'd rather sleep than firefight.</p>
             <button

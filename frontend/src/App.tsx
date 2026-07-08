@@ -1,37 +1,42 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { CommandPalette } from "./components/CommandPalette";
 import { BrandLoading } from "./components/BrandLogo";
 import { Layout } from "./components/Layout";
 import { AdminLayout } from "./components/AdminLayout";
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import Monitors from "./pages/Monitors";
-import MonitorDetail from "./pages/MonitorDetail";
-import Hosts from "./pages/Hosts";
-import Incidents from "./pages/Incidents";
-import Assets from "./pages/Assets";
-import AlertChannels from "./pages/AlertChannels";
-import Team from "./pages/Team";
-import Platform from "./pages/Platform";
-import Solutions from "./pages/Solutions";
-import SolutionDetail from "./pages/SolutionDetail";
-import Pricing from "./pages/Pricing";
-import Company from "./pages/Company";
-import Support from "./pages/Support";
-import CyberSachet from "./pages/CyberSachet";
-import StatusPage from "./pages/StatusPage";
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminOverview from "./pages/admin/AdminOverview";
-import AdminOrganizations from "./pages/admin/AdminOrganizations";
-import AdminCustomers from "./pages/admin/AdminCustomers";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminContent from "./pages/admin/AdminContent";
-import AdminVisibility from "./pages/admin/AdminVisibility";
-import AdminPlans from "./pages/admin/AdminPlans";
-import AdminLeads from "./pages/admin/AdminLeads";
+// Route-level code splitting: a first-time mobile visitor downloads only the
+// page they landed on, not the whole admin panel and customer app with it.
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Monitors = lazy(() => import("./pages/Monitors"));
+const MonitorDetail = lazy(() => import("./pages/MonitorDetail"));
+const Hosts = lazy(() => import("./pages/Hosts"));
+const Incidents = lazy(() => import("./pages/Incidents"));
+const Assets = lazy(() => import("./pages/Assets"));
+const AlertChannels = lazy(() => import("./pages/AlertChannels"));
+const Team = lazy(() => import("./pages/Team"));
+const Platform = lazy(() => import("./pages/Platform"));
+const Solutions = lazy(() => import("./pages/Solutions"));
+const SolutionDetail = lazy(() => import("./pages/SolutionDetail"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Company = lazy(() => import("./pages/Company"));
+const Support = lazy(() => import("./pages/Support"));
+const CyberSachet = lazy(() => import("./pages/CyberSachet"));
+const StatusPage = lazy(() => import("./pages/StatusPage"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
+const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminContent = lazy(() => import("./pages/admin/AdminContent"));
+const AdminVisibility = lazy(() => import("./pages/admin/AdminVisibility"));
+const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
+const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -88,6 +93,7 @@ export default function App() {
   return (
     <>
     <CommandPalette />
+    <Suspense fallback={<BrandLoading />}>
     <Routes>
       <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
       <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
@@ -140,8 +146,12 @@ export default function App() {
         <Route path="/admin/leads" element={<AdminLeads />} />
       </Route>
 
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
     </>
   );
 }
