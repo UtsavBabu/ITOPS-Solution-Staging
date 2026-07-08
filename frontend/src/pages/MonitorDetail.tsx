@@ -12,6 +12,7 @@ const CHECK_TYPE_LABELS: Record<Monitor["checkType"], string> = {
   KEYWORD: "Keyword",
   STATUS_CODE: "Status code",
   DNS: "DNS",
+  TCP: "TCP port",
 };
 
 const REALTIME_TABLES = ["monitors", "check_results", "incidents"];
@@ -26,6 +27,8 @@ function describeCheck(monitor: Monitor): string {
       return `${monitor.dnsRecordType} record must resolve${
         monitor.dnsExpectedValue ? ` and match "${monitor.dnsExpectedValue}"` : ""
       }`;
+    case "TCP":
+      return `Port ${monitor.tcpPort ?? "?"} must accept TCP connections`;
     case "HTTP":
     default:
       return "Endpoint must respond without an HTTP error";
@@ -176,7 +179,7 @@ export default function MonitorDetail() {
             </span>
           )}
         </div>
-        {monitor.checkType === "DNS" ? (
+        {monitor.checkType === "DNS" || monitor.checkType === "TCP" ? (
           <p className="text-sm text-white/50">{monitor.url}</p>
         ) : (
           <a href={monitor.url} target="_blank" rel="noreferrer" className="text-sm text-white/50 hover:underline">
@@ -259,7 +262,7 @@ export default function MonitorDetail() {
       </div>
 
       {/* SSL + Security headers */}
-      {monitor.checkType !== "DNS" && (
+      {monitor.checkType !== "DNS" && monitor.checkType !== "TCP" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
             <h2 className="mb-3 text-sm font-medium text-white">SSL Certificate</h2>

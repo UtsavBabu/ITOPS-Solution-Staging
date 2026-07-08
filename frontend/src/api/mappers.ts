@@ -73,6 +73,7 @@ export function mapMonitor(row: Row): Monitor {
     expectedStatusCode: row.expected_status_code,
     dnsRecordType: row.dns_record_type ?? "A",
     dnsExpectedValue: row.dns_expected_value,
+    tcpPort: row.tcp_port,
     lastStatus: row.last_status,
     lastCheckedAt: row.last_checked_at,
     nextCheckAt: row.next_check_at,

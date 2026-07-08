@@ -139,6 +139,7 @@ export async function createMonitor(input: CreateMonitorInput): Promise<void> {
     p_expected_status_code: input.expectedStatusCode ?? null,
     p_dns_record_type: input.dnsRecordType ?? "A",
     p_dns_expected_value: input.dnsExpectedValue ?? null,
+    p_tcp_port: input.tcpPort ?? null,
   });
   if (error) throw new Error(error.message);
 }

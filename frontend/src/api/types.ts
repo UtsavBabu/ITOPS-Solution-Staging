@@ -1,10 +1,10 @@
 export type MonitorInterval = "THIRTY_SECONDS" | "ONE_MINUTE" | "FIVE_MINUTES" | "FIFTEEN_MINUTES";
 export type CheckStatus = "UP" | "DOWN" | "ERROR";
-export type CheckType = "HTTP" | "KEYWORD" | "STATUS_CODE" | "DNS";
+export type CheckType = "HTTP" | "KEYWORD" | "STATUS_CODE" | "DNS" | "TCP";
 export type KeywordMatchMode = "CONTAINS" | "NOT_CONTAINS";
 export type DnsRecordType = "A" | "AAAA" | "CNAME" | "MX" | "TXT" | "NS";
 export type IncidentStatus = "OPEN" | "RESOLVED";
-export type AssetType = "WEBSITE" | "SERVER" | "DATABASE" | "OTHER";
+export type AssetType = "WEBSITE" | "SERVER" | "DATABASE" | "NETWORK" | "OTHER";
 export type AlertChannelType = "EMAIL" | "SLACK" | "WEBHOOK";
 export type Plan = "STARTER" | "PROFESSIONAL" | "BUSINESS" | "ENTERPRISE";
 export type WaitlistProduct = "cybersachet" | "infrastructure-monitor" | "devops-monitor" | "upgrade-request" | "newsletter";
@@ -90,6 +90,7 @@ export interface Monitor {
   expectedStatusCode?: number | null;
   dnsRecordType: DnsRecordType;
   dnsExpectedValue?: string | null;
+  tcpPort?: number | null;
   lastStatus: CheckStatus | null;
   lastCheckedAt?: string | null;
   nextCheckAt: string;
@@ -111,6 +112,7 @@ export interface CreateMonitorInput {
   expectedStatusCode?: number;
   dnsRecordType?: DnsRecordType;
   dnsExpectedValue?: string;
+  tcpPort?: number;
 }
 
 export interface StatusPageSettings {

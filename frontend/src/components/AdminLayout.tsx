@@ -3,15 +3,35 @@ import { useAuth } from "../context/AuthContext";
 import { GridScanBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
 
-const NAV_ITEMS = [
-  { to: "/admin", label: "Overview", end: true },
-  { to: "/admin/customers", label: "Customers" },
-  { to: "/admin/organizations", label: "Organizations" },
-  { to: "/admin/users", label: "Users" },
-  { to: "/admin/content", label: "Content Manager" },
-  { to: "/admin/visibility", label: "Site Visibility" },
-  { to: "/admin/plans", label: "Plan Limits" },
-  { to: "/admin/leads", label: "Leads & Messages" },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { to: "/admin", label: "Platform Overview", icon: "⬡", end: true },
+    ],
+  },
+  {
+    label: "Customers",
+    items: [
+      { to: "/admin/customers", label: "Customers", icon: "◈" },
+      { to: "/admin/organizations", label: "Organizations", icon: "▣" },
+      { to: "/admin/users", label: "All Users", icon: "◉" },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { to: "/admin/plans", label: "Plan Limits", icon: "◎" },
+      { to: "/admin/content", label: "Content Manager", icon: "◫" },
+      { to: "/admin/visibility", label: "Site Visibility", icon: "◈" },
+    ],
+  },
+  {
+    label: "CRM",
+    items: [
+      { to: "/admin/leads", label: "Leads & Messages", icon: "⚡" },
+    ],
+  },
 ];
 
 export function AdminLayout() {
@@ -35,33 +55,45 @@ export function AdminLayout() {
             <BrandMark size={28} />
             <div className="min-w-0">
               <span className="inline-block rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300">
-                Platform Admin
+                Super Admin
               </span>
               <p className="mt-1 truncate text-xs text-white/45">ITOps Solution</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 overflow-y-auto space-y-1 p-3">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive ? "bg-amber-400 text-black" : "text-white/60 hover:bg-white/5 hover:text-white"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
+
+        <nav className="flex-1 overflow-y-auto py-3">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="mb-4">
+              <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                {group.label}
+              </p>
+              <div className="space-y-0.5 px-2">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={"end" in item ? item.end : false}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        isActive ? "bg-amber-400 text-black" : "text-white/60 hover:bg-white/5 hover:text-white"
+                      }`
+                    }
+                  >
+                    <span className="text-[13px] opacity-70">{item.icon}</span>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
+
         <div className="border-t border-white/10 p-3">
-          <Link to="/dashboard" className="block rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white">
-            ← Back to your organization
+          <Link to="/dashboard" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white">
+            ← Customer Dashboard
           </Link>
-          <p className="mt-2 truncate px-3 text-xs text-white/45">{user?.email}</p>
+          <p className="mt-2 truncate px-3 text-xs text-white/40">{user?.email}</p>
           <button
             onClick={logout}
             className="mt-2 w-full rounded-lg border border-white/15 px-3 py-1.5 text-sm text-white/80 transition-colors hover:bg-white/5"
@@ -71,7 +103,7 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main content offset by sidebar width */}
+      {/* Main content */}
       <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-8">
         <Outlet />
       </main>

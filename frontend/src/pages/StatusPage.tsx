@@ -19,6 +19,7 @@ const CHECK_TYPE_LABELS: Record<string, string> = {
   KEYWORD: "Keyword",
   STATUS_CODE: "Status code",
   DNS: "DNS",
+  TCP: "TCP port",
 };
 
 export default function StatusPage() {

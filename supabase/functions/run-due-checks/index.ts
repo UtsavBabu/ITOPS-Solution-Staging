@@ -32,6 +32,7 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
     expectedStatusCode: monitor.expected_status_code,
     dnsRecordType: monitor.dns_record_type,
     dnsExpectedValue: monitor.dns_expected_value,
+    tcpPort: monitor.tcp_port,
   });
 
   await supabase.from("check_results").insert({
@@ -45,8 +46,8 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
   });
 
   // SSL + security-header analysis only make sense for HTTPS website checks,
-  // not DNS lookups.
-  const isHttpFamily = monitor.check_type !== "DNS";
+  // not DNS lookups or raw TCP connects.
+  const isHttpFamily = monitor.check_type !== "DNS" && monitor.check_type !== "TCP";
 
   if (isHttpFamily && monitor.url.startsWith("https://")) {
     const { data: existing } = await supabase

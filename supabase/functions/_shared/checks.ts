@@ -125,12 +125,13 @@ async function readBoundedBody(response: Response): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export interface MonitorCheckConfig {
-  checkType: "HTTP" | "KEYWORD" | "STATUS_CODE" | "DNS";
+  checkType: "HTTP" | "KEYWORD" | "STATUS_CODE" | "DNS" | "TCP";
   expectedKeyword?: string | null;
   keywordMatchMode?: "CONTAINS" | "NOT_CONTAINS" | null;
   expectedStatusCode?: number | null;
   dnsRecordType?: string | null;
   dnsExpectedValue?: string | null;
+  tcpPort?: number | null;
 }
 
 // Runs the right check for a monitor's configured type and returns a result
@@ -147,9 +148,50 @@ export async function runMonitorCheck(
       return runStatusCodeCheck(target, timeoutMs, config);
     case "DNS":
       return runDnsCheck(target, timeoutMs, config);
+    case "TCP":
+      return runTcpCheck(target, timeoutMs, config);
     case "HTTP":
     default:
       return runHttpCheck(target, timeoutMs);
+  }
+}
+
+// Nagios check_tcp equivalent: opens a TCP connection to host:port and
+// measures the handshake latency. Covers routers, switches, firewalls, DNS
+// servers, printers — any device with a reachable service port. (ICMP ping
+// and SNMP need raw sockets this runtime doesn't expose.)
+async function runTcpCheck(
+  target: string,
+  timeoutMs: number,
+  config: MonitorCheckConfig,
+): Promise<HttpCheckResult> {
+  const hostname = target.replace(/^[a-z]+:\/\//, "").replace(/[/:].*$/, "").trim();
+  const port = config.tcpPort ?? 0;
+  if (!hostname || port < 1 || port > 65535) {
+    return emptyResult("ERROR", 0, "TCP check misconfigured: hostname and port 1-65535 required");
+  }
+
+  const start = performance.now();
+  let timer: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Connection timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  try {
+    const conn = (await Promise.race([Deno.connect({ hostname, port }), timeout])) as Deno.TcpConn;
+    const responseTimeMs = Math.round(performance.now() - start);
+    try {
+      conn.close();
+    } catch {
+      /* already closed */
+    }
+    return emptyResult("UP", responseTimeMs);
+  } catch (err) {
+    const responseTimeMs = Math.round(performance.now() - start);
+    const message = err instanceof Error ? err.message : "Connection failed";
+    return emptyResult("DOWN", responseTimeMs, `TCP ${hostname}:${port} — ${message}`);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
