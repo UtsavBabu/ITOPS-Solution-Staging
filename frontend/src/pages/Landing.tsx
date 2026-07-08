@@ -5,7 +5,7 @@ import { MarketingNav } from "../components/MarketingNav";
 import { MarketingFooter } from "../components/MarketingFooter";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { CTALink } from "../components/Button";
-import { DashboardMockup, LiveActivityFeed, TechMarquee, StatCounter } from "../components/ProductVisuals";
+import { DashboardMockup, LiveActivityFeed, TechMarquee } from "../components/ProductVisuals";
 import { HostsVisual, IncidentVisual, SecurityVisual, ShowcaseRow, UptimeVisual, type ShowcaseItem } from "../components/FeatureShowcase";
 import { fetchContentItems } from "../api/endpoints";
 
@@ -157,95 +157,148 @@ export default function Landing() {
     <div className="bg-black text-white antialiased" style={{ fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif" }}>
       <MarketingNav />
 
-      <section className="relative overflow-hidden bg-black px-6 pb-16 pt-32 md:px-10 md:pt-40">
+      {/* ── Signature hero: the staggered wordmark, restored and elevated ── */}
+      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-black" aria-label="Secure Your Systems — ITOps Solution">
         <NetworkBackground />
         <div className="enterprise-grid pointer-events-none absolute inset-0" />
-        {/* ambient glow blobs */}
         <div className="pointer-events-none absolute -left-40 top-0 h-[520px] w-[520px] rounded-full bg-blue-500/10 blur-[120px]" />
-        <div className="pointer-events-none absolute -right-32 top-40 h-[440px] w-[440px] rounded-full bg-cyan-400/10 blur-[120px]" />
+        <div className="pointer-events-none absolute -right-32 bottom-10 h-[440px] w-[440px] rounded-full bg-cyan-400/10 blur-[120px]" />
 
-        <div className="relative z-10 mx-auto max-w-7xl">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
-            {/* left column */}
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 backdrop-blur"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
-                ITOps Solution · Enterprise Monitoring Products
-              </motion.div>
+        <div className="relative z-10 h-full w-full">
+          <motion.h1
+            className="absolute left-4 top-[15%] text-[14vw] font-semibold leading-[0.95] tracking-[-0.04em] md:left-10 md:text-[12.5vw]"
+            initial={{ y: 48, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.9, delay: 0.25, ease: EASE }}
+          >
+            Secure
+          </motion.h1>
+          <motion.h1
+            className="absolute right-4 top-[35%] text-[14vw] font-semibold leading-[0.95] tracking-[-0.04em] md:right-10 md:text-[12.5vw]"
+            initial={{ y: 48, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.9, delay: 0.42, ease: EASE }}
+          >
+            Your
+          </motion.h1>
+          <motion.h1
+            className="absolute left-[10%] top-[55%] text-[14vw] font-semibold leading-[0.95] tracking-[-0.04em] md:left-[22%] md:text-[12.5vw]"
+            initial={{ y: 48, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.9, delay: 0.58, ease: EASE }}
+          >
+            Systems<span className="text-gradient">.</span>
+          </motion.h1>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-                className="mt-6 text-[13vw] font-semibold leading-[0.98] tracking-[-0.03em] sm:text-6xl md:text-7xl"
-              >
-                Monitor <span className="text-gradient">everything</span>.
-                <br />
-                Prevent downtime.
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
-                className="mt-6 max-w-xl text-base leading-relaxed text-white/60 md:text-lg"
-              >
-                One real-time platform for infrastructure, servers, websites, and security. Catch issues in seconds —
-                not from your customers — with continuous checks, automatic incident detection, and multi-channel alerts.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
-                className="mt-8 flex flex-wrap items-center gap-3"
-              >
-                <CTALink to="/pricing" size="lg" magnetic>
-                  Start free <span aria-hidden>→</span>
-                </CTALink>
-                <CTALink to="/platform" variant="secondary" size="lg">
-                  Explore the platform
-                </CTALink>
-              </motion.div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="mt-4 text-xs text-white/40"
-              >
-                Free Starter plan · No credit card · Real-time checks from every 30 seconds
-              </motion.p>
+          {/* side blurb, linked to the wordmark */}
+          <motion.div
+            className="absolute left-6 top-[45%] max-w-[250px] md:left-10"
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.85, ease: EASE }}
+          >
+            <div className="mb-2 hidden items-center gap-2 md:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
+              <span className="h-px w-20 bg-gradient-to-r from-white/50 to-transparent" />
             </div>
+            <p className="text-[15px] leading-snug text-white/85">
+              One enterprise dashboard for infrastructure, security, and everything in between.
+            </p>
+          </motion.div>
 
-            {/* right column — floating dashboard + live feed */}
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.9, delay: 0.3, ease: EASE }}
-              className="relative"
-            >
+          {/* corner stats with connector lines — every number is real */}
+          <motion.div
+            className="absolute right-6 top-[13%] md:right-16"
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.0, ease: EASE }}
+          >
+            <div className="flex items-center justify-end gap-3">
+              <div className="hidden h-px w-24 rotate-[20deg] bg-gradient-to-r from-transparent to-white/50 md:block" />
+              <span className="text-4xl font-semibold tracking-tight md:text-5xl">30s</span>
+            </div>
+            <p className="mt-1 text-right text-xs text-white/60 md:text-sm">Fastest check interval</p>
+          </motion.div>
+
+          <motion.div
+            className="absolute bottom-[19%] left-6 md:bottom-[16%] md:left-16"
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.12, ease: EASE }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-4xl font-semibold tracking-tight md:text-5xl">24/7</span>
+              <div className="hidden h-px w-24 rotate-[-20deg] bg-gradient-to-l from-transparent to-white/50 md:block" />
+            </div>
+            <p className="mt-1 text-xs text-white/60 md:text-sm">Continuous checks</p>
+          </motion.div>
+
+          <motion.div
+            className="absolute bottom-[19%] right-6 md:bottom-[16%] md:right-16"
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.24, ease: EASE }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="hidden h-px w-24 rotate-[-20deg] bg-gradient-to-r from-transparent to-white/50 md:block" />
+              <span className="text-4xl font-semibold tracking-tight md:text-5xl">4</span>
+            </div>
+            <p className="mt-1 text-right text-xs text-white/60 md:text-sm">Check types live</p>
+          </motion.div>
+
+          {/* action row — what a visitor actually needs next */}
+          <motion.div
+            className="absolute bottom-[5%] left-1/2 flex w-full max-w-md -translate-x-1/2 flex-col items-center gap-3 px-6"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.35, ease: EASE }}
+          >
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <CTALink to="/pricing" size="lg" magnetic>
+                Start free <span aria-hidden>→</span>
+              </CTALink>
+              <CTALink to="/platform" variant="secondary" size="lg">
+                Explore the platform
+              </CTALink>
+            </div>
+            <p className="text-xs text-white/40">Free Starter plan · No credit card required</p>
+          </motion.div>
+        </div>
+
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-32 bg-gradient-to-b from-transparent to-black" />
+      </section>
+
+      {/* ── Product proof: the live dashboard, right below the promise ── */}
+      <section className="relative overflow-hidden border-t border-white/10 bg-neutral-950/40 px-6 py-20 md:px-10">
+        <div className="pointer-events-none absolute -right-40 top-0 h-[420px] w-[420px] rounded-full bg-blue-500/[0.07] blur-[110px]" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_1.15fr]">
+          <Reveal>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
+              This is the actual product
+            </div>
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight md:text-4xl">
+              The dashboard your on-call team will actually watch
+            </h2>
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-white/60">
+              Response times, service health, incidents, and server metrics stream into one real-time view. Checks run
+              from every 30 seconds; failures open incidents with the exact cause attached and alert your channels —
+              then auto-resolve on recovery.
+            </p>
+            <CTALink to="/solutions" variant="secondary" size="md" className="mt-7">
+              See every product <span aria-hidden>→</span>
+            </CTALink>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <div className="relative">
               <div className="animate-float">
                 <DashboardMockup />
               </div>
               <div className="absolute -bottom-8 -left-4 hidden w-64 sm:block">
                 <LiveActivityFeed />
               </div>
-            </motion.div>
-          </div>
-
-          {/* honest capability metrics */}
-          <div className="mt-24 grid grid-cols-2 gap-6 border-t border-white/10 pt-10 md:grid-cols-4">
-            <StatCounter to={30} suffix="s" label="Fastest check interval" />
-            <StatCounter to={6} label="Monitoring services" />
-            <StatCounter to={4} label="Check types live" />
-            <StatCounter to={24} suffix="/7" label="Continuous checks" />
-          </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
