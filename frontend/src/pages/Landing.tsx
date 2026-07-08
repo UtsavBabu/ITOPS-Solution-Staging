@@ -221,7 +221,7 @@ export default function Landing() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[19%] left-6 md:bottom-[16%] md:left-16"
+            className="absolute bottom-[30%] left-6 md:bottom-[16%] md:left-16"
             initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.12, ease: EASE }}
@@ -234,7 +234,7 @@ export default function Landing() {
           </motion.div>
 
           <motion.div
-            className="absolute bottom-[19%] right-6 md:bottom-[16%] md:right-16"
+            className="absolute bottom-[30%] right-6 md:bottom-[16%] md:right-16"
             initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.24, ease: EASE }}
