@@ -43,10 +43,39 @@ SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/dep
 Pushes any new `supabase/migrations/*.sql` and redeploys the edge functions
 (`run-due-checks`, `ingest-metrics`, `admin-manage-users`, `test-alert-channel`).
 
+## Super-admin (platform owner)
+
+Migration `0022_seed_superadmin.sql` seeds the platform owner on deploy:
+
+- **email:** `babulearn57@gmail.com`
+- **password:** `admin@123`  *(rotate after first login)*
+
+On the **first deploy** it also wipes all test data (monitors, orgs, users) for a
+clean slate; on **subsequent deploys** it never wipes — it only ensures the
+platform-admin grant and ENTERPRISE package stay intact, so customer data is safe.
+
+The owner can:
+
+- Log in at `/admin/login` (verified as a platform admin).
+- Resell / provision customers from **Customers** (`/admin/customers`) on any package.
+- Manage users platform-wide from **All Users** (`/admin/users`).
+- Change any org's package from the Customers table.
+
+If your Supabase version rejects the raw `auth.users` insert in the migration,
+seed manually instead (idempotent):
+
+```bash
+cd frontend
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node ../scripts/seed-superadmin.mjs
+```
+
 ## Post-deploy smoke test
 
 1. `https://<your-domain>/` — homepage loads, tech logos animate.
-2. Register a Starter account → dashboard.
-3. Add a monitor → first check lands within ~1 min (cron runs every minute).
-4. `/admin/login` — platform admin can manage customers, content, photos.
+2. Register a Starter account → dashboard (plan defaults to **STARTER**, feature-gated).
+3. Add a monitor:
+   - **Website** tab — HTTP / Keyword / Status-Code checks.
+   - **Network Devices** tab — TCP (routers, switches, firewalls, printers) and DNS.
+   - First check lands within ~1 min (cron runs every minute).
+4. `/admin/login` — super-admin (`babulearn57@gmail.com`) can manage customers, content, photos.
 5. `curl https://<your-domain>/kada-nigrani-agent.sh | head` — agent downloadable.
