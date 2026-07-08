@@ -39,7 +39,7 @@ const inputClass =
 export default function Monitors() {
   useRealtimeInvalidate(REALTIME_TABLES, REALTIME_KEYS);
   const queryClient = useQueryClient();
-  const { data: monitors, isLoading } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, refetchInterval: 60_000 });
+  const { data: monitors, isLoading, isError, error, refetch } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, refetchInterval: 60_000 });
 
   const [checkType, setCheckType] = useState<CheckType>("HTTP");
   const [name, setName] = useState("");
@@ -222,6 +222,13 @@ export default function Monitors() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-red-300">Couldn't load monitors: {error instanceof Error ? error.message : "unknown error"}</p>
+            <button onClick={() => refetch()} className="mt-3 rounded-full border border-white/20 px-4 py-1.5 text-sm text-white/80 hover:bg-white/5">
+              Retry
+            </button>
           </div>
         ) : !monitors || monitors.length === 0 ? (
           <p className="p-4 text-sm text-white/50">No monitors yet. Add a check above to start monitoring.</p>

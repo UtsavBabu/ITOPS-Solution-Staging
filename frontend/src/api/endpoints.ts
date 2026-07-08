@@ -89,10 +89,16 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 
 const MONITOR_SELECT = "*, asset:assets(*), sslInfo:ssl_info(*), securitySnapshot:security_snapshots(*)";
 
+// The customer panel is tenant-scoped on purpose: a platform admin's RLS can
+// see every organization's monitors, but embedded assets/ssl/security rows
+// stay null for foreign orgs (no admin policy there) and the panel is about
+// YOUR org anyway — cross-org oversight lives in the admin panel.
 export async function fetchMonitors(): Promise<Monitor[]> {
+  const organizationId = await currentOrganizationId();
   const { data, error } = await supabase
     .from("monitors")
     .select(`${MONITOR_SELECT}, incidents(*)`)
+    .eq("organization_id", organizationId)
     .eq("incidents.status", "OPEN")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -154,9 +160,11 @@ export async function deleteMonitor(id: string): Promise<void> {
 }
 
 export async function fetchAssets(): Promise<Asset[]> {
+  const organizationId = await currentOrganizationId();
   const { data, error } = await supabase
     .from("assets")
     .select("*, monitor:monitors(id, last_status)")
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAsset);
@@ -187,9 +195,11 @@ export async function deleteAsset(id: string): Promise<void> {
 }
 
 export async function fetchIncidents(status?: "OPEN" | "RESOLVED"): Promise<Incident[]> {
+  const organizationId = await currentOrganizationId();
   let query = supabase
     .from("incidents")
     .select("*, monitor:monitors(id, name, url)")
+    .eq("organization_id", organizationId)
     .order("started_at", { ascending: false })
     .limit(200);
   if (status) query = query.eq("status", status);
@@ -200,7 +210,12 @@ export async function fetchIncidents(status?: "OPEN" | "RESOLVED"): Promise<Inci
 }
 
 export async function fetchAlertChannels(): Promise<AlertChannel[]> {
-  const { data, error } = await supabase.from("alert_channels").select("*").order("created_at", { ascending: false });
+  const organizationId = await currentOrganizationId();
+  const { data, error } = await supabase
+    .from("alert_channels")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAlertChannel);
 }

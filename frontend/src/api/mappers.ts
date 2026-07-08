@@ -5,7 +5,12 @@ import type { Asset, AlertChannel, CheckResult, ContentItem, Incident, Monitor, 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
-export function mapAsset(row: Row): Asset {
+export function mapAsset(row: Row | null): Asset {
+  // RLS can null an embedded asset (e.g. a platform admin viewing a foreign
+  // org's monitor). Degrade to a placeholder instead of killing the page.
+  if (!row) {
+    return { id: "", type: "OTHER", name: "—", identifier: "", owner: null, tags: [], createdAt: new Date(0).toISOString(), monitor: null };
+  }
   return {
     id: row.id,
     type: row.type,
