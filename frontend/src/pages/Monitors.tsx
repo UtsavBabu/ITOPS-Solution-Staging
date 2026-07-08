@@ -222,15 +222,26 @@ export default function Monitors() {
       </div>
 
       {tab === "network" && (
-        <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-white/50">
-          Agentless checks for routers, switches, firewalls, printers, and DNS servers — TCP connect with latency
-          (Nagios <code className="text-white/70">check_tcp</code> style) and DNS resolution. The device's port must be
-          reachable from the internet; for servers behind NAT, install the{" "}
-          <Link to="/hosts" className="text-cyan-300 hover:underline">
-            Kada Nigrani agent
-          </Link>{" "}
-          instead. ICMP ping and SNMP polling are on the roadmap.
-        </p>
+        <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p className="text-xs leading-relaxed text-white/50">
+            Agentless checks for routers, switches, firewalls, printers, and DNS servers — TCP connect with latency
+            (Nagios <code className="text-white/70">check_tcp</code> style) and DNS resolution. The device's port must be
+            reachable from the internet; for servers behind NAT, install the{" "}
+            <Link to="/hosts" className="text-cyan-300 hover:underline">
+              Kada Nigrani agent
+            </Link>{" "}
+            instead.
+          </p>
+          <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/90">On the roadmap</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/55">
+              <span className="text-white/80">ICMP ping</span> (latency & packet loss) and{" "}
+              <span className="text-white/80">SNMP</span> (interface traffic, CPU, memory, uptime) polling for deeper
+              router/switch health — these need raw sockets the edge runtime doesn't expose yet, so they'll arrive via
+              the lightweight Kada Nigrani collector rather than the cloud check.
+            </p>
+          </div>
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-neutral-900/60 p-5">

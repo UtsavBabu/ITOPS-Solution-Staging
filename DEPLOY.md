@@ -79,3 +79,31 @@ SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node ../scripts/seed-superadmin.m
    - First check lands within ~1 min (cron runs every minute).
 4. `/admin/login` — super-admin (`babulearn57@gmail.com`) can manage customers, content, photos.
 5. `curl https://<your-domain>/kada-nigrani-agent.sh | head` — agent downloadable.
+6. **Self-serve upgrade (if Stripe is configured):** Pricing or Team → Professional/Business →
+   "Upgrade with Card" redirects to Stripe Checkout; returning applies the plan automatically.
+
+## Self-serve payments (Stripe Checkout)
+
+Paid upgrades (Professional, Business) are purchased by card through Stripe Checkout.
+The plan is applied by a webhook, not trusted to the browser.
+
+Set the secrets (values are never committed):
+
+```bash
+supabase secrets set STRIPE_SECRET_KEY=sk_live_xxx
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
+supabase secrets set STRIPE_PRICE_PROFESSIONAL=price_xxx
+supabase secrets set STRIPE_PRICE_BUSINESS=price_xxx
+supabase secrets set APP_URL=https://<your-domain>
+```
+
+Then register the webhook in the Stripe dashboard pointing at:
+
+```
+https://<your-project-ref>.supabase.co/functions/v1/stripe-webhook
+```
+
+Events to send: `checkout.session.completed`.
+
+If Stripe secrets are absent, the buttons degrade gracefully to a "contact sales" message,
+so the app still works without payments configured. ENTERPRISE remains sales-led.

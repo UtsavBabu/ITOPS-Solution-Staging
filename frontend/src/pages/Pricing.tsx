@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MarketingNav } from "../components/MarketingNav";
 import { MarketingFooter } from "../components/MarketingFooter";
-import { fetchContentItems, fetchPlanCatalog, fetchPlanUsage, submitWaitlistSignup, type PlanCatalogEntry } from "../api/endpoints";
+import { fetchContentItems, fetchPlanCatalog, fetchPlanUsage, submitWaitlistSignup, createCheckoutSession, type PlanCatalogEntry } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import type { Plan } from "../api/types";
 import { MetricBarsBackground } from "../components/PageBackgrounds";
@@ -22,38 +22,65 @@ function titleCase(value: string): string {
 
 function UpgradeForm({ plan }: { plan: Plan }) {
   const [email, setEmail] = useState("");
-  const mutation = useMutation({
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const checkout = useMutation({ mutationFn: () => createCheckoutSession(plan) });
+  const lead = useMutation({
     mutationFn: () => submitWaitlistSignup({ email, product: "upgrade-request", note: `Interested in ${plan}` }),
   });
 
-  if (mutation.isSuccess) {
-    return <p className="text-xs text-emerald-300">Thanks — we'll follow up at {email}.</p>;
+  // Enterprise is custom — keep the sales-led flow.
+  if (plan === "ENTERPRISE") {
+    if (lead.isSuccess) {
+      return <p className="text-xs text-emerald-300">Thanks — we'll follow up at {email}.</p>;
+    }
+    function handleSubmit(event: FormEvent) {
+      event.preventDefault();
+      lead.mutate();
+    }
+    return (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com"
+          className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={lead.isPending}
+          className="w-full rounded-full border border-white/25 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-white hover:text-black disabled:opacity-60"
+        >
+          {lead.isPending ? "Sending…" : "Talk to Sales"}
+        </button>
+      </form>
+    );
   }
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    mutation.mutate();
+  // Paid, self-serve plans — pay by card via Stripe Checkout.
+  function handleUpgrade() {
+    setCheckoutError(null);
+    checkout.mutate(undefined, {
+      onSuccess: (url) => {
+        window.location.href = url;
+      },
+      onError: (err) => setCheckoutError(err.message),
+    });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@company.com"
-        className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2 text-xs text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
-      />
+    <div className="flex flex-col gap-2">
       <button
-        type="submit"
-        disabled={mutation.isPending}
-        className="w-full rounded-full border border-white/25 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-white hover:text-black disabled:opacity-60"
+        type="button"
+        onClick={handleUpgrade}
+        disabled={checkout.isPending}
+        className="w-full rounded-full bg-white px-4 py-2.5 text-center text-xs font-medium text-black transition-transform hover:scale-105 hover:bg-neutral-200 disabled:opacity-60"
       >
-        {mutation.isPending ? "Sending…" : `Talk to Us About ${titleCase(plan)}`}
+        {checkout.isPending ? "Redirecting…" : `Upgrade with Card · ${titleCase(plan)}`}
       </button>
-      {mutation.isError && <p className="text-xs text-red-400">{mutation.error.message}</p>}
-    </form>
+      {checkoutError && <p className="text-xs text-amber-300">{checkoutError}</p>}
+    </div>
   );
 }
 

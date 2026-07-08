@@ -28,6 +28,8 @@ echo "==> Deploying edge functions"
 npx supabase functions deploy run-due-checks
 npx supabase functions deploy ingest-metrics
 npx supabase functions deploy admin-manage-users
+npx supabase functions deploy create-checkout
+npx supabase functions deploy stripe-webhook
 
 echo "==> Done. New check types, public status pages, Kada Nigrani host monitoring,"
-echo "    and admin add/remove users are now live."
+echo "    admin add/remove users, and self-serve Stripe upgrades are now live."

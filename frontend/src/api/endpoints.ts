@@ -155,6 +155,14 @@ export async function updateMonitor(
   if (error) throw new Error(error.message);
 }
 
+export async function createCheckoutSession(plan: Plan): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("create-checkout", { body: { plan } });
+  if (error) throw new Error(error.message);
+  const url = (data as { url?: string } | null)?.url;
+  if (!url) throw new Error("No checkout URL returned.");
+  return url;
+}
+
 export async function deleteMonitor(id: string): Promise<void> {
   const { error } = await supabase.rpc("delete_monitor", { p_monitor_id: id });
   if (error) throw new Error(error.message);

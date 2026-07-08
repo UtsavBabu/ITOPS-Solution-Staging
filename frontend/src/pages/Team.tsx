@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchOrganizationMembers, fetchPlanUsage } from "../api/endpoints";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { fetchOrganizationMembers, fetchPlanUsage, createCheckoutSession } from "../api/endpoints";
+import type { Plan } from "../api/types";
 import { useAuth } from "../context/AuthContext";
 import { StatusPageCard } from "../components/StatusPageCard";
 
@@ -35,6 +37,32 @@ const PLANS = [
   },
 ];
 
+function UpgradeButton({ plan }: { plan: string }) {
+  const checkout = useMutation({ mutationFn: () => createCheckoutSession(plan as Plan) });
+
+  if (plan === "ENTERPRISE") {
+    return (
+      <a
+        href="mailto:sales@itops-monitor.local"
+        className="mt-4 block rounded-full border border-white/20 px-3 py-2 text-center text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
+      >
+        Contact Sales
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => checkout.mutate(undefined, { onSuccess: (url) => (window.location.href = url) })}
+      disabled={checkout.isPending}
+      className="mt-4 w-full rounded-full bg-white px-3 py-2 text-center text-xs font-medium text-black transition-transform hover:scale-105 hover:bg-neutral-200 disabled:opacity-60"
+    >
+      {checkout.isPending ? "Redirecting…" : "Upgrade with Card"}
+    </button>
+  );
+}
+
 function UsageBar({ label, current, max }: { label: string; current: number; max: number }) {
   const unlimited = max >= 100000;
   const pct = unlimited ? 0 : Math.min(100, (current / max) * 100);
@@ -59,6 +87,8 @@ export default function Team() {
   const { organization } = useAuth();
   const { data: members, isLoading: membersLoading } = useQuery({ queryKey: ["organization-members"], queryFn: fetchOrganizationMembers });
   const { data: usage } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage });
+  const [searchParams] = useSearchParams();
+  const upgraded = searchParams.get("upgraded");
 
   const currentPlan = usage?.plan ?? "STARTER";
 
@@ -95,6 +125,11 @@ export default function Team() {
 
       {/* Plan comparison */}
       <div>
+        {upgraded && (
+          <div className="mb-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+            Thanks! Your upgrade to {upgraded} is confirmed and active.
+          </div>
+        )}
         <h2 className="mb-4 text-sm font-medium text-white">Available Plans</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan) => {
@@ -122,20 +157,13 @@ export default function Team() {
                     </li>
                   ))}
                 </ul>
-                {!isCurrent && (
-                  <a
-                    href="mailto:sales@itops-monitor.local"
-                    className="mt-4 block rounded-full border border-white/20 px-3 py-2 text-center text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
-                  >
-                    Contact Sales
-                  </a>
-                )}
+                {!isCurrent && <UpgradeButton plan={plan.name} />}
               </div>
             );
           })}
         </div>
         <p className="mt-3 text-xs text-white/35">
-          To upgrade your plan, contact your ITOps Solution account manager or email sales@itops-monitor.local
+          Professional and Business upgrade instantly by card. Enterprise is custom — email sales@itops-monitor.local or contact your account manager.
         </p>
       </div>
 
