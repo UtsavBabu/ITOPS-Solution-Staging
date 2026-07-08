@@ -5,7 +5,7 @@ import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 
-const REALTIME_TABLES = ["monitors", "incidents"];
+const REALTIME_TABLES = ["monitors", "incidents", "check_results"];
 const REALTIME_KEYS = [["dashboard-summary"], ["monitors"], ["incidents", "OPEN"]];
 
 export default function Dashboard() {
@@ -26,12 +26,32 @@ export default function Dashboard() {
       <h1 className="text-2xl font-medium tracking-tight text-white">Dashboard</h1>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Monitors" value={summary?.totalMonitors ?? "—"} />
-        <StatCard label="Up" value={summary?.upMonitors ?? "—"} />
-        <StatCard label="Down" value={summary?.downMonitors ?? "—"} tone={summary && summary.downMonitors > 0 ? "danger" : "default"} />
-        <StatCard label="Open incidents" value={summary?.openIncidents ?? "—"} tone={summary && summary.openIncidents > 0 ? "danger" : "default"} />
-        <StatCard label="Assets" value={summary?.totalAssets ?? "—"} />
-        <StatCard label="SSL expiring soon" value={summary?.expiringSsl ?? "—"} tone={summary && summary.expiringSsl > 0 ? "warning" : "default"} />
+        {["Monitors", "Up", "Down", "Open incidents", "Assets", "SSL expiring soon"].map((label, i) => {
+          const values = [
+            summary?.totalMonitors,
+            summary?.upMonitors,
+            summary?.downMonitors,
+            summary?.openIncidents,
+            summary?.totalAssets,
+            summary?.expiringSsl,
+          ];
+          const tones: Array<"default" | "danger" | "warning"> = [
+            "default",
+            "default",
+            summary && summary.downMonitors > 0 ? "danger" : "default",
+            summary && summary.openIncidents > 0 ? "danger" : "default",
+            "default",
+            summary && summary.expiringSsl > 0 ? "warning" : "default",
+          ];
+          return (
+            <StatCard
+              key={label}
+              label={label}
+              value={values[i] ?? "—"}
+              tone={tones[i]}
+            />
+          );
+        })}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-neutral-900/60">
@@ -58,10 +78,17 @@ export default function Dashboard() {
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-neutral-900/60">
-        <div className="border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <h2 className="text-sm font-medium text-white">Monitors</h2>
+          <Link to="/monitors" className="text-xs text-white/50 hover:text-white">View all →</Link>
         </div>
-        {!monitors || monitors.length === 0 ? (
+        {!monitors ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
+            ))}
+          </div>
+        ) : monitors.length === 0 ? (
           <p className="p-4 text-sm text-white/50">
             No monitors yet. <Link to="/monitors" className="text-white hover:underline">Add your first website</Link>.
           </p>
@@ -69,13 +96,13 @@ export default function Dashboard() {
           <ul className="divide-y divide-white/10">
             {monitors.slice(0, 8).map((monitor) => (
               <li key={monitor.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                <div>
-                  <p className="font-medium text-white">{monitor.name}</p>
-                  <p className="text-white/50">{monitor.url}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-white">{monitor.name}</p>
+                  <p className="truncate text-xs text-white/50">{monitor.url}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="ml-4 flex shrink-0 items-center gap-3">
                   <StatusBadge status={monitor.lastStatus} />
-                  <Link to={`/monitors/${monitor.id}`} className="text-white hover:underline">
+                  <Link to={`/monitors/${monitor.id}`} className="text-xs text-white/60 hover:text-white">
                     View
                   </Link>
                 </div>

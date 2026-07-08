@@ -30,7 +30,7 @@ const CHECK_TYPE_LABELS: Record<CheckType, string> = {
 
 const DNS_RECORD_TYPES: DnsRecordType[] = ["A", "AAAA", "CNAME", "MX", "TXT", "NS"];
 
-const REALTIME_TABLES = ["monitors", "incidents"];
+const REALTIME_TABLES = ["monitors", "incidents", "check_results"];
 const REALTIME_KEYS = [["monitors"]];
 
 const inputClass =
@@ -216,13 +216,17 @@ export default function Monitors() {
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/60">
+      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-neutral-900/60">
         {isLoading ? (
-          <p className="p-4 text-sm text-white/50">Loading…</p>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
+            ))}
+          </div>
         ) : !monitors || monitors.length === 0 ? (
           <p className="p-4 text-sm text-white/50">No monitors yet. Add a check above to start monitoring.</p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-white/10 text-xs uppercase text-white/40">
               <tr>
                 <th className="px-4 py-2">Name</th>

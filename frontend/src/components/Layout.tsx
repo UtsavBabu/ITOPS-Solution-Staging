@@ -25,7 +25,9 @@ export function Layout() {
       <div className="fixed inset-0 z-0">
         <NetworkPulseBackground tint="emerald" />
       </div>
-      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-white/10 bg-neutral-950">
+
+      {/* Fixed sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-white/10 bg-neutral-950">
         <Link to="/" className="flex items-center gap-2.5 border-b border-white/10 p-4">
           <BrandMark size={30} />
           <div className="min-w-0">
@@ -33,7 +35,7 @@ export function Layout() {
             <p className="truncate text-xs text-white/45">{organization?.name}</p>
           </div>
         </Link>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 overflow-y-auto space-y-1 p-3">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -67,7 +69,9 @@ export function Layout() {
           </button>
         </div>
       </aside>
-      <main className="relative z-10 flex-1 overflow-y-auto p-6">
+
+      {/* Main content offset by sidebar width */}
+      <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
     </div>

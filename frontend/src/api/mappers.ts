@@ -75,7 +75,11 @@ export function mapMonitor(row: Row): Monitor {
     createdAt: row.created_at,
     asset: mapAsset(row.asset),
     sslInfo: mapSslInfo(row.sslInfo ?? row.ssl_info ?? null),
-    securitySnapshot: mapSecuritySnapshot(row.securitySnapshot ?? row.security_snapshots ?? null),
+    securitySnapshot: mapSecuritySnapshot(
+      row.securitySnapshot ??
+      (Array.isArray(row.security_snapshots) ? (row.security_snapshots[0] ?? null) : row.security_snapshots) ??
+      null
+    ),
     incidents: Array.isArray(row.incidents) ? row.incidents.map(mapIncident) : undefined,
   };
 }

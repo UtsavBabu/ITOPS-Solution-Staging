@@ -25,9 +25,11 @@ export function AdminLayout() {
       <div className="fixed inset-0 z-0">
         <GridScanBackground tint="amber" />
       </div>
-      {/* Amber accent stripe + badge distinguish this from the customer app at a glance. */}
+      {/* Amber accent stripe */}
       <div className="fixed left-0 right-0 top-0 z-40 h-1 bg-amber-400" />
-      <aside className="relative z-10 flex w-64 shrink-0 flex-col border-r border-white/10 bg-neutral-950 pt-1">
+
+      {/* Fixed sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-white/10 bg-neutral-950 pt-1">
         <div className="border-b border-white/10 p-4">
           <div className="flex items-center gap-2.5">
             <BrandMark size={28} />
@@ -39,7 +41,7 @@ export function AdminLayout() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 overflow-y-auto space-y-1 p-3">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -68,7 +70,9 @@ export function AdminLayout() {
           </button>
         </div>
       </aside>
-      <main className="relative z-10 flex-1 overflow-y-auto p-8">
+
+      {/* Main content offset by sidebar width */}
+      <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-8">
         <Outlet />
       </main>
     </div>

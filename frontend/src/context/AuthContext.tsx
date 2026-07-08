@@ -31,17 +31,22 @@ async function loadProfile(): Promise<Profile | null> {
   } = await supabase.auth.getSession();
   if (!session) return null;
 
+  // Ensure org + membership exist — self-heals users whose handle_new_user
+  // trigger failed silently at signup. Safe to call repeatedly (no-op if
+  // membership already exists). Requires migration 0017 to be applied.
+  await supabase.rpc("ensure_user_organization");
+
   const [{ data: membership }, { data: isAdmin }] = await Promise.all([
     supabase.from("memberships").select("role, organization_id").eq("user_id", session.user.id).single(),
     supabase.rpc("is_platform_admin"),
   ]);
   if (!membership) return null;
 
-  // Resolved via the membership's organization_id rather than a bare
-  // `.from("organizations").single()` — a platform admin can see every
-  // organization (by design, for the admin panel), which would otherwise
-  // make `.single()` ambiguous and fail with a 406.
-  const { data: org } = await supabase.from("organizations").select("id, name").eq("id", membership.organization_id).single();
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id, name")
+    .eq("id", membership.organization_id)
+    .single();
   if (!org) return null;
 
   return {
