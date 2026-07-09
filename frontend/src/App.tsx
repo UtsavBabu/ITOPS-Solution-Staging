@@ -28,6 +28,7 @@ const CyberSachet = lazy(() => import("./pages/CyberSachet"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Cookies = lazy(() => import("./pages/Cookies"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
 const AdminOrganizations = lazy(() => import("./pages/admin/AdminOrganizations"));
@@ -148,6 +149,7 @@ export default function App() {
 
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/cookies" element={<Cookies />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -5,7 +5,7 @@ import { MarketingNav } from "../components/MarketingNav";
 import { MarketingFooter } from "../components/MarketingFooter";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { CTALink } from "../components/Button";
-import { DashboardMockup, LiveActivityFeed, TechMarquee } from "../components/ProductVisuals";
+import { DashboardMockup, FeatureIcon, LiveActivityFeed, TechMarquee } from "../components/ProductVisuals";
 import { HostsVisual, IncidentVisual, SecurityVisual, ShowcaseRow, UptimeVisual, type ShowcaseItem } from "../components/FeatureShowcase";
 import { fetchContentItems } from "../api/endpoints";
 
@@ -310,9 +310,9 @@ export default function Landing() {
         <TechMarquee />
       </section>
 
-      <section className="relative overflow-hidden border-b border-white/10 bg-neutral-950 px-6 py-20 md:px-10">
+      <section className="relative overflow-hidden border-b border-white/10 bg-neutral-950 px-6 py-16 md:px-10">
         <div className="enterprise-grid pointer-events-none absolute inset-0 opacity-40" />
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[360px] w-[720px] -translate-x-1/2 rounded-full bg-blue-500/[0.06] blur-[120px]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[80%] max-w-4xl -translate-x-1/2 rounded-full bg-blue-500/[0.06] blur-[130px]" />
         <Reveal className="relative mx-auto max-w-5xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/45">The Complete Platform</p>
           <p className="mt-3 text-2xl font-medium tracking-tight md:text-3xl">One Platform, Growing Module by Module</p>
@@ -320,8 +320,14 @@ export default function Landing() {
             ITOps Monitor is built to become a complete IT operations platform. Some modules are live and monitoring
             real infrastructure today; others are publicly on the roadmap.
           </p>
+          {platformPreview && platformPreview.length > 0 && (
+            <p className="mt-3 text-xs font-medium uppercase tracking-wide text-white/35">
+              {platformPreview.filter((i) => i.status === "live").length} modules live today ·{" "}
+              {platformPreview.filter((i) => i.status !== "live").length} on the public roadmap
+            </p>
+          )}
         </Reveal>
-        <div className="mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-3">
+        <div className="relative mx-auto mt-10 flex max-w-4xl flex-wrap justify-center gap-3">
           {platformPreview?.map((item, i) => (
             <motion.span
               key={item.id}
@@ -347,19 +353,29 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-5xl px-6 py-24 md:px-10 2xl:max-w-7xl">
+      <section id="features" className="relative mx-auto max-w-5xl px-6 py-20 md:px-10 2xl:max-w-7xl">
         <Reveal>
           <p className="text-center text-xs font-medium uppercase tracking-[0.15em] text-white/45">Everything Included</p>
           <p className="mt-3 text-center text-2xl font-medium tracking-tight md:text-3xl">Six Services, One Dashboard</p>
+          <p className="mx-auto mt-3 max-w-lg text-center text-sm leading-relaxed text-white/50">
+            Every module below is live in the product today and feeds the same dashboard, incidents, and alerts.
+          </p>
         </Reveal>
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features?.map((feature, i) => {
             const inner = (
               <div className="flex h-full flex-col p-6">
-                <h3 className="text-base font-medium tracking-tight text-white">{feature.title}</h3>
+                <div className="flex items-start justify-between">
+                  <FeatureIcon title={feature.title} />
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.8s_ease-in-out_infinite]" />
+                    Live
+                  </span>
+                </div>
+                <h3 className="mt-4 text-base font-medium tracking-tight text-white">{feature.title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-white/55">{feature.body}</p>
                 {feature.href && (
-                  <p className="mt-4 inline-flex items-center gap-1 text-sm text-white/60 transition-all group-hover:gap-2 group-hover:text-white">
+                  <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-cyan-300 transition-all group-hover:gap-2">
                     Learn more <span aria-hidden>→</span>
                   </p>
                 )}
@@ -382,7 +398,7 @@ export default function Landing() {
       </section>
 
       {/* Per-service deep dives — alternating rows, each with a live-style vignette */}
-      <section className="relative border-t border-white/10 bg-neutral-950/50 px-6 py-24 md:px-10">
+      <section className="relative border-t border-white/10 bg-neutral-950/50 px-6 py-20 md:px-10">
         <div className="enterprise-grid pointer-events-none absolute inset-0 opacity-50" />
         <div className="relative mx-auto max-w-6xl 2xl:max-w-7xl">
           <Reveal className="text-center">
@@ -403,7 +419,7 @@ export default function Landing() {
       </section>
 
       <section id="how-it-works" className="border-y border-white/10 bg-neutral-950">
-        <div className="mx-auto max-w-4xl px-6 py-24 md:px-10 2xl:max-w-5xl">
+        <div className="mx-auto max-w-4xl px-6 py-20 md:px-10 2xl:max-w-5xl">
           <Reveal>
             <p className="text-center text-2xl font-medium tracking-tight md:text-3xl">How It Works</p>
           </Reveal>
@@ -425,7 +441,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="cta" className="px-6 py-24 text-center md:px-10">
+      <section id="cta" className="px-6 py-20 text-center md:px-10">
         <Reveal>
           <p className="text-2xl font-medium tracking-tight md:text-3xl">Ready to Stop Finding Out From Your Customers?</p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">

@@ -8,24 +8,64 @@ import { motion, useInView } from "motion/react";
 const AREA_PATH = "M0,70 C40,55 70,80 110,60 150,40 190,66 230,48 270,30 310,58 350,38 390,24 430,50 470,34 L470,120 L0,120 Z";
 const LINE_PATH = "M0,70 C40,55 70,80 110,60 150,40 190,66 230,48 270,30 310,58 350,38 390,24 430,50 470,34";
 
-function MiniStat({ label, value, tone }: { label: string; value: string; tone: string }) {
+// Decimal-capable count-up used by the dashboard mockup's mini stats — plain
+// numbers read as static on a page that's supposed to feel "live".
+function useCountUp(to: number, active: boolean, duration = 1200): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setN(eased * to);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, to, duration]);
+  return n;
+}
+
+function MiniStat({
+  label,
+  to,
+  decimals = 0,
+  suffix = "",
+  tone,
+  active,
+}: {
+  label: string;
+  to: number;
+  decimals?: number;
+  suffix?: string;
+  tone: string;
+  active: boolean;
+}) {
+  const n = useCountUp(to, active);
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
       <p className="text-[10px] uppercase tracking-wider text-white/40">{label}</p>
-      <p className={`mt-0.5 text-lg font-semibold ${tone}`}>{value}</p>
+      <p className={`mt-0.5 text-lg font-semibold tabular-nums ${tone}`}>
+        {n.toFixed(decimals)}
+        {suffix}
+      </p>
     </div>
   );
 }
 
 export function DashboardMockup() {
   const services = [
-    { name: "api.production", status: "up", ms: "126ms" },
-    { name: "checkout-service", status: "up", ms: "89ms" },
-    { name: "web-01 · host", status: "up", ms: "cpu 31%" },
-    { name: "eu-west gateway", status: "degraded", ms: "512ms" },
+    { name: "api.production", status: "up", ms: "126ms", load: 42 },
+    { name: "checkout-service", status: "up", ms: "89ms", load: 28 },
+    { name: "web-01 · host", status: "up", ms: "cpu 31%", load: 31 },
+    { name: "eu-west gateway", status: "degraded", ms: "512ms", load: 87 },
   ];
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, margin: "-80px" });
   return (
-    <div className="glass overflow-hidden rounded-2xl shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]">
+    <div ref={rootRef} className="glass overflow-hidden rounded-2xl shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]">
       {/* window chrome */}
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
@@ -68,9 +108,9 @@ export function DashboardMockup() {
             <style>{`@keyframes dashdraw { to { stroke-dashoffset: 0; } }`}</style>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
-            <MiniStat label="Uptime" value="99.98%" tone="text-emerald-300" />
-            <MiniStat label="Incidents" value="0" tone="text-white" />
-            <MiniStat label="Checks/min" value="1.2k" tone="text-cyan-300" />
+            <MiniStat label="Uptime" to={99.98} decimals={2} suffix="%" tone="text-emerald-300" active={inView} />
+            <MiniStat label="Incidents" to={0} tone="text-white" active={inView} />
+            <MiniStat label="Checks/min" to={1.2} decimals={1} suffix="k" tone="text-cyan-300" active={inView} />
           </div>
         </div>
 
@@ -85,13 +125,24 @@ export function DashboardMockup() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3 + i * 0.12 }}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                className="group rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                title={`${s.name} · load ${s.load}%`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`h-1.5 w-1.5 rounded-full ${s.status === "up" ? "bg-emerald-400" : "bg-amber-400"} [animation:pulse-glow_1.8s_ease-in-out_infinite]`} />
-                  <span className="text-[11px] text-white/70">{s.name}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.status === "up" ? "bg-emerald-400" : "bg-amber-400"} [animation:pulse-glow_1.8s_ease-in-out_infinite]`} />
+                    <span className="text-[11px] text-white/70">{s.name}</span>
+                  </div>
+                  <span className={`text-[10px] ${s.status === "up" ? "text-white/40" : "text-amber-300"}`}>{s.ms}</span>
                 </div>
-                <span className={`text-[10px] ${s.status === "up" ? "text-white/40" : "text-amber-300"}`}>{s.ms}</span>
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <motion.div
+                    className={`h-full rounded-full ${s.status === "up" ? "bg-emerald-400/60" : "bg-amber-400/70"}`}
+                    initial={{ width: 0 }}
+                    animate={inView ? { width: `${s.load}%` } : { width: 0 }}
+                    transition={{ duration: 1, delay: 0.5 + i * 0.12, ease: "easeOut" }}
+                  />
+                </div>
               </motion.div>
             ))}
           </div>
@@ -139,6 +190,52 @@ export function LiveActivityFeed() {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── Feature icons (Six Services cards) ───────────────────────── */
+
+const FEATURE_ICONS: Record<string, { gradient: string; path: string }> = {
+  "Uptime & Response Time": {
+    gradient: "linear-gradient(135deg, #0e7490, #22d3ee)",
+    path: "M12 3a9 9 0 100 18 9 9 0 000-18zm0 4v5l3.5 3.5",
+  },
+  "SSL Certificate Monitoring": {
+    gradient: "linear-gradient(135deg, #047857, #34d399)",
+    path: "M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm-2.8 9.2l2 2 3.8-4",
+  },
+  "Security Posture Scoring": {
+    gradient: "linear-gradient(135deg, #6d28d9, #a78bfa)",
+    path: "M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm0 5v6m-3-3h6",
+  },
+  "Incident Tracking": {
+    gradient: "linear-gradient(135deg, #be123c, #fb7185)",
+    path: "M12 9v4m0 4h.01M10.3 4.3l-8 14A1 1 0 003 20h18a1 1 0 00.9-1.5l-8-14a1 1 0 00-1.6 0z",
+  },
+  "Multi-Channel Alerting": {
+    gradient: "linear-gradient(135deg, #b45309, #fbbf24)",
+    path: "M12 3v2m0 14v2M5 12H3m18 0h-2M12 8a4 4 0 014 4c0 2.5 1 3.5 2 4H6c1-.5 2-1.5 2-4a4 4 0 014-4zm-1.5 10a1.5 1.5 0 003 0",
+  },
+  "Asset Inventory": {
+    gradient: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
+    path: "M4 5.5h16v5H4zM4 13.5h16v5H4zM7 8h.01M7 16h.01M11 8h4M11 16h2",
+  },
+};
+
+const FEATURE_ICON_FALLBACK = { gradient: "linear-gradient(135deg, #334155, #94a3b8)", path: "M4 7l8-4 8 4-8 4-8-4zm0 5l8 4 8-4M4 17l8 4 8-4" };
+
+export function FeatureIcon({ title, size = 40 }: { title: string; size?: number }) {
+  const meta = FEATURE_ICONS[title] ?? FEATURE_ICON_FALLBACK;
+  return (
+    <span
+      aria-hidden
+      className="grid shrink-0 place-items-center rounded-xl shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)] transition-transform duration-300 group-hover:scale-110"
+      style={{ width: size, height: size, background: meta.gradient }}
+    >
+      <svg viewBox="0 0 24 24" style={{ width: size * 0.55, height: size * 0.55 }} fill="none">
+        <path d={meta.path} stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
   );
 }
 

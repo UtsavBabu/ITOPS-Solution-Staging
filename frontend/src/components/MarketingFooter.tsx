@@ -96,8 +96,10 @@ function NewsletterForm() {
 export function MarketingFooter() {
   return (
     <footer id="site-footer" className="relative overflow-hidden border-t border-white/10 bg-[#04050a] px-6 pb-10 pt-16 md:px-10">
-      {/* ambient top glow */}
+      {/* ambient background: grid texture + top/bottom glows */}
+      <div className="enterprise-grid pointer-events-none absolute inset-0 opacity-[0.15]" />
       <div className="pointer-events-none absolute inset-x-0 -top-24 mx-auto h-48 max-w-3xl rounded-full bg-blue-500/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-32 -right-20 h-64 w-64 rounded-full bg-cyan-400/[0.06] blur-[110px]" />
 
       <div className="relative mx-auto max-w-6xl">
         <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
@@ -133,6 +135,15 @@ export function MarketingFooter() {
                 </span>
                 Kathmandu, Nepal
               </p>
+              <a href="mailto:sales@itops-monitor.local" className="group flex items-center gap-2.5 text-white/60 transition-colors hover:text-white">
+                <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-violet-300 transition-colors group-hover:border-violet-400/40">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M4 6h16v12H4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                    <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                sales@itops-monitor.local
+              </a>
             </div>
           </div>
 
@@ -199,6 +210,9 @@ export function MarketingFooter() {
             </Link>
             <Link to="/terms" className="transition-colors hover:text-white/70">
               Terms of Service
+            </Link>
+            <Link to="/cookies" className="transition-colors hover:text-white/70">
+              Cookie Policy
             </Link>
           </div>
           <div className="flex items-center gap-5">
