@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import type { CheckResult, Monitor } from "../api/types";
 
@@ -195,6 +196,55 @@ export function analyzeMonitor(monitor: Monitor, history: CheckResult[]): Analys
   return { headline, overall, confidence, findings };
 }
 
+interface RemediationStep {
+  action: string;
+  estTime: string;
+  risk: "Low" | "Medium" | "High";
+  requiresApproval: boolean;
+  automatable: boolean; // has a real agent runbook today
+}
+
+// Maps a finding area to concrete, prioritized remediation guidance. Honest:
+// "automatable" is only true where a real Kada Nigrani agent runbook exists;
+// everything else is advisory for a human operator.
+function remediationFor(area: string): RemediationStep[] {
+  switch (area) {
+    case "Network reachability":
+      return [
+        { action: "Confirm the service/device is running and the port is open", estTime: "1–5 min", risk: "Low", requiresApproval: false, automatable: false },
+        { action: "Reload the web server (Nginx/Apache) on the host", estTime: "~30 sec", risk: "Low", requiresApproval: true, automatable: true },
+        { action: "Restart the affected system service", estTime: "~1 min", risk: "Medium", requiresApproval: true, automatable: true },
+      ];
+    case "DNS":
+      return [
+        { action: "Verify A/AAAA records and nameservers at your DNS provider", estTime: "2–10 min", risk: "Low", requiresApproval: false, automatable: false },
+        { action: "Flush the resolver cache on the affected host", estTime: "~10 sec", risk: "Low", requiresApproval: true, automatable: false },
+      ];
+    case "Availability":
+      return [
+        { action: "Reload web-server configuration", estTime: "~30 sec", risk: "Low", requiresApproval: true, automatable: true },
+        { action: "Restart the web server (Nginx/Apache)", estTime: "~1 min", risk: "Medium", requiresApproval: true, automatable: true },
+        { action: "Check application & upstream/database health", estTime: "5–15 min", risk: "Low", requiresApproval: false, automatable: false },
+      ];
+    case "SSL":
+      return [
+        { action: "Renew and reinstall the TLS certificate", estTime: "5–15 min", risk: "Low", requiresApproval: true, automatable: false },
+        { action: "Enable auto-renewal (e.g. Let's Encrypt / certbot)", estTime: "one-time", risk: "Low", requiresApproval: false, automatable: false },
+      ];
+    case "Security headers":
+      return [{ action: "Add missing security headers at the web server or CDN", estTime: "10–20 min", risk: "Low", requiresApproval: false, automatable: false }];
+    case "Performance":
+      return [
+        { action: "Investigate slow queries / saturated upstream", estTime: "10–30 min", risk: "Low", requiresApproval: false, automatable: false },
+        { action: "Clear temporary files / rotate logs on the host", estTime: "~1 min", risk: "Low", requiresApproval: true, automatable: true },
+      ];
+    default:
+      return [];
+  }
+}
+
+const RISK_TEXT: Record<RemediationStep["risk"], string> = { Low: "text-emerald-300", Medium: "text-amber-300", High: "text-red-300" };
+
 const SEV_STYLE: Record<Severity, { dot: string; text: string; ring: string; label: string }> = {
   critical: { dot: "bg-red-400", text: "text-red-300", ring: "border-red-400/30", label: "Critical" },
   warning: { dot: "bg-amber-400", text: "text-amber-300", ring: "border-amber-400/30", label: "Warning" },
@@ -254,9 +304,52 @@ export function RootCauseAnalysis({ monitor, history }: { monitor: Monitor; hist
           );
         })}
       </ul>
+      {/* Prioritized remediation steps for the top actionable finding */}
+      {(() => {
+        const target = analysis.findings.find((f) => f.severity === "critical") ?? analysis.findings.find((f) => f.severity === "warning");
+        const steps = target ? remediationFor(target.area) : [];
+        if (steps.length === 0) return null;
+        return (
+          <div className="border-t border-white/10 px-4 py-4">
+            <p className="mb-2.5 text-[11px] font-medium uppercase tracking-wide text-white/45">Recommended remediation · prioritized</p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left text-xs">
+                <thead className="text-[10px] uppercase tracking-wide text-white/35">
+                  <tr>
+                    <th className="pb-2 pr-3 font-medium">Action</th>
+                    <th className="pb-2 pr-3 font-medium">Est. time</th>
+                    <th className="pb-2 pr-3 font-medium">Risk</th>
+                    <th className="pb-2 pr-3 font-medium">Approval</th>
+                    <th className="pb-2 font-medium">Automation</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06]">
+                  {steps.map((s, i) => (
+                    <tr key={i}>
+                      <td className="py-2 pr-3 text-white/75">{s.action}</td>
+                      <td className="py-2 pr-3 text-white/50">{s.estTime}</td>
+                      <td className={`py-2 pr-3 ${RISK_TEXT[s.risk]}`}>{s.risk}</td>
+                      <td className="py-2 pr-3 text-white/50">{s.requiresApproval ? "Required" : "—"}</td>
+                      <td className="py-2">
+                        {s.automatable ? (
+                          <Link to="/hosts" className="text-cyan-300 hover:underline">Run via agent →</Link>
+                        ) : (
+                          <span className="text-white/30">Manual</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
       <p className="border-t border-white/10 px-4 py-2.5 text-[11px] text-white/30">
-        Diagnosis is generated from collected check telemetry (status, errors, SSL, response times). It highlights the
-        most probable cause and a starting point — it does not alter your systems.
+        Diagnosis is generated from collected check telemetry (status, errors, SSL, response times). Actions marked
+        “Run via agent” execute through an installed Kada Nigrani agent with approval and audit logging; the rest are
+        guidance. The platform never alters systems without an approved runbook.
       </p>
     </section>
   );
