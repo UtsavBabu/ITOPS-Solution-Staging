@@ -107,3 +107,35 @@ Events to send: `checkout.session.completed`.
 
 If Stripe secrets are absent, the buttons degrade gracefully to a "contact sales" message,
 so the app still works without payments configured. ENTERPRISE remains sales-led.
+
+## Remediation runbooks (Kada Nigrani agent)
+
+The agent can run a **fixed allowlist** of safe, named actions an org admin
+requests from the Hosts page — never arbitrary shell.
+
+**How it works**
+1. In the app: **Hosts → a host → Runbooks → choose an action → Run.** This
+   inserts an `approved` row in `host_commands` (via the `request_host_command`
+   RPC, which checks org membership). Nothing runs yet.
+2. On the server, the agent (started with `AGENT_ALLOW_ACTIONS=1`) polls the
+   `agent-commands` edge function each cycle, authenticated by its per-host
+   ingest key, and receives its approved actions.
+3. The agent maps each `action_key` to a **hardcoded** command (the database
+   never stores a raw command), runs it, and posts back the exit code + output.
+4. The Runbooks panel shows the result live with a full audit trail.
+
+**Allowlisted actions:** `ping`, `clear_temp` (safe) · `reload_nginx`,
+`reload_apache` (low) · `restart_service`, `restart_docker_container` (medium).
+
+**Enable on a server** (opt-in — the default agent only reports metrics):
+```bash
+INGEST_URL=".../functions/v1/ingest-metrics" \
+COMMANDS_URL=".../functions/v1/agent-commands" \
+ANON_KEY="<anon>" AGENT_KEY="<host ingest key>" \
+AGENT_ALLOW_ACTIONS=1 \
+AGENT_ALLOWED_SERVICES="nginx apache2 docker" \   # only these may be restarted
+/opt/kada-nigrani-agent.sh
+```
+Run it as a user with permission for the actions you enable (e.g. root or a
+sudo-scoped service account). Omit `AGENT_ALLOW_ACTIONS` and the agent will
+refuse all remediation and only stream metrics.

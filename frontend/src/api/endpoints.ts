@@ -11,7 +11,9 @@ import type {
   CreateMonitorInput,
   DashboardSummary,
   HostAgent,
+  HostCommand,
   HostMetric,
+  RunbookAction,
   Incident,
   Monitor,
   MonitorInterval,
@@ -374,6 +376,44 @@ export async function createHostAgent(input: { name: string; hostname?: string }
     processCount: null,
     createdAt: row.created_at as string,
   };
+}
+
+export async function fetchRunbookActions(): Promise<RunbookAction[]> {
+  const { data, error } = await supabase.rpc("list_runbook_actions");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    actionKey: r.action_key as string,
+    label: r.label as string,
+    description: r.description as string,
+    risk: r.risk as string,
+    needsArg: Boolean(r.needs_arg),
+    argLabel: (r.arg_label as string) ?? null,
+  }));
+}
+
+export async function requestHostCommand(hostAgentId: string, actionKey: string, arg?: string): Promise<void> {
+  const { error } = await supabase.rpc("request_host_command", {
+    p_host_agent_id: hostAgentId,
+    p_action_key: actionKey,
+    p_arg: arg ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function listHostCommands(hostAgentId: string): Promise<HostCommand[]> {
+  const { data, error } = await supabase.rpc("list_host_commands", { p_host_agent_id: hostAgentId, p_limit: 20 });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    hostAgentId: r.host_agent_id as string,
+    actionKey: r.action_key as string,
+    arg: (r.arg as string) ?? null,
+    status: r.status as HostCommand["status"],
+    exitCode: r.exit_code as number | null,
+    output: (r.output as string) ?? null,
+    createdAt: r.created_at as string,
+    finishedAt: (r.finished_at as string) ?? null,
+  }));
 }
 
 export async function deleteHostAgent(id: string): Promise<void> {

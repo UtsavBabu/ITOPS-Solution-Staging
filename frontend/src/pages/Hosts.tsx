@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createHostAgent, deleteHostAgent, listHostAgents, regenerateHostAgentKey } from "../api/endpoints";
 import type { HostAgent } from "../api/types";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
+import { HostRunbooks } from "../components/HostRunbooks";
 
 const INGEST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-metrics`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -66,6 +67,7 @@ function InstallSnippet({ host }: { host: HostAgent }) {
 function HostCard({ host }: { host: HostAgent }) {
   const queryClient = useQueryClient();
   const [showInstall, setShowInstall] = useState(!host.lastSeenAt);
+  const [showRunbooks, setShowRunbooks] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteHostAgent(host.id),
@@ -122,6 +124,9 @@ function HostCard({ host }: { host: HostAgent }) {
       )}
 
       <div className="mt-4 flex items-center gap-3 text-xs">
+        <button onClick={() => setShowRunbooks((v) => !v)} className={showRunbooks ? "text-cyan-300" : "text-white/60 hover:text-white"}>
+          {showRunbooks ? "Hide runbooks" : "Runbooks"}
+        </button>
         <button onClick={() => setShowInstall((v) => !v)} className="text-white/60 hover:text-white">
           {showInstall ? "Hide install" : "Install command"}
         </button>
@@ -143,6 +148,7 @@ function HostCard({ host }: { host: HostAgent }) {
         </button>
       </div>
 
+      {showRunbooks && <HostRunbooks hostId={host.id} />}
       {showInstall && <InstallSnippet host={host} />}
     </div>
   );

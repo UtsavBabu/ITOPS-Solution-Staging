@@ -74,9 +74,62 @@ payload=$(cat <<JSON
 JSON
 )
 
-curl -fsS -X POST "$INGEST_URL" \
+# Metrics post is best-effort — a transient failure must not stop remediation.
+curl -fsS --retry 2 --retry-delay 1 -X POST "$INGEST_URL" \
   -H "Authorization: Bearer $ANON_KEY" \
   -H "apikey: $ANON_KEY" \
   -H "X-Agent-Key: $AGENT_KEY" \
   -H "Content-Type: application/json" \
-  -d "$payload"
+  -d "$payload" || echo "metrics post failed (continuing)"
+
+# ── Remediation runbooks (opt-in) ────────────────────────────────────────────
+# Enable by exporting AGENT_ALLOW_ACTIONS=1. The agent polls for admin-approved
+# actions and runs ONLY the fixed allowlist below — never arbitrary shell.
+# Optionally restrict which services may be restarted with:
+#   AGENT_ALLOWED_SERVICES="nginx apache2 mysql docker"
+if [ "${AGENT_ALLOW_ACTIONS:-0}" = "1" ] && [ -n "${COMMANDS_URL:-}" ]; then
+  run_action() {
+    # $1 = action_key, $2 = arg. Echoes output; returns the action's exit code.
+    case "$1" in
+      ping)
+        echo "pong · uptime $(awk '{printf "%dh", $1/3600}' /proc/uptime) · load$(cut -d' ' -f1-3 /proc/loadavg | sed 's/^/ /')"
+        return 0 ;;
+      clear_temp)
+        rm -rf /tmp/kada-nigrani-* 2>/dev/null
+        echo "cleared agent temp files under /tmp"
+        return 0 ;;
+      reload_nginx)
+        if command -v nginx >/dev/null 2>&1; then nginx -t 2>&1 && nginx -s reload 2>&1; return $?; fi
+        echo "nginx not installed on this host"; return 1 ;;
+      reload_apache)
+        if command -v apachectl >/dev/null 2>&1; then apachectl graceful 2>&1; return $?; fi
+        echo "apache (apachectl) not installed on this host"; return 1 ;;
+      restart_service)
+        case " ${AGENT_ALLOWED_SERVICES:-} " in
+          *" $2 "*) systemctl restart "$2" 2>&1 && echo "restarted service: $2"; return $? ;;
+          *) echo "service '$2' is not in AGENT_ALLOWED_SERVICES — refused"; return 1 ;;
+        esac ;;
+      restart_docker_container)
+        if command -v docker >/dev/null 2>&1; then docker restart "$2" 2>&1; return $?; fi
+        echo "docker not installed on this host"; return 1 ;;
+      *)
+        echo "unknown action: $1"; return 1 ;;
+    esac
+  }
+
+  cmds=$(curl -fsS -X POST "$COMMANDS_URL" \
+    -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+    -H "X-Agent-Key: $AGENT_KEY" -H "Content-Type: application/json" \
+    -d '{"action":"fetch"}' 2>/dev/null || echo '{"commands":[]}')
+
+  echo "$cmds" | python3 -c "import sys,json;[print(c['id']+'|'+c['action_key']+'|'+(c.get('arg') or '')) for c in json.load(sys.stdin).get('commands',[])]" 2>/dev/null | \
+  while IFS='|' read -r cid akey aarg; do
+    [ -z "$cid" ] && continue
+    out=$(run_action "$akey" "$aarg" 2>&1); code=$?
+    payload=$(python3 -c "import json,sys;print(json.dumps({'action':'result','command_id':sys.argv[1],'exit_code':int(sys.argv[2]),'output':sys.argv[3]}))" "$cid" "$code" "$out")
+    curl -fsS -X POST "$COMMANDS_URL" \
+      -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+      -H "X-Agent-Key: $AGENT_KEY" -H "Content-Type: application/json" \
+      -d "$payload" >/dev/null 2>&1
+  done
+fi

@@ -268,6 +268,27 @@ export interface HostAgent {
   createdAt: string;
 }
 
+export interface RunbookAction {
+  actionKey: string;
+  label: string;
+  description: string;
+  risk: string;
+  needsArg: boolean;
+  argLabel: string | null;
+}
+
+export interface HostCommand {
+  id: string;
+  hostAgentId: string;
+  actionKey: string;
+  arg: string | null;
+  status: "approved" | "running" | "success" | "failed" | "cancelled";
+  exitCode: number | null;
+  output: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
 export interface HostMetric {
   cpuPercent: number | null;
   memPercent: number | null;
