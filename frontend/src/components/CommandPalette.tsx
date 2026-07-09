@@ -22,6 +22,7 @@ const COMMANDS: Command[] = [
   { label: "Network & Device Monitoring", hint: "Product", to: "/solutions/infrastructure-monitor", keywords: "router switch firewall tcp dns snmp" },
   { label: "Alerting & Incident Response", hint: "Product", to: "/solutions/alerting-incident-response", keywords: "mttr rca root cause incidents" },
   { label: "DevOps Monitor", hint: "Product", to: "/solutions/devops-monitor", keywords: "kubernetes docker cicd roadmap" },
+  { label: "MoonSAV-EDR", hint: "Product", to: "/solutions/moonsav-edr", keywords: "endpoint detection response edr security malware roadmap" },
   { label: "CyberSachet", hint: "Product", to: "/cybersachet", keywords: "awareness training phishing" },
   { label: "Log in", hint: "Account", to: "/login", keywords: "sign in dashboard" },
   { label: "Get started free", hint: "Account", to: "/pricing", keywords: "register signup create account" },

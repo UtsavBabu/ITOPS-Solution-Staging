@@ -38,6 +38,7 @@ const AdminContent = lazy(() => import("./pages/admin/AdminContent"));
 const AdminVisibility = lazy(() => import("./pages/admin/AdminVisibility"));
 const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
 const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
+const AdminAuditLog = lazy(() => import("./pages/admin/AdminAuditLog"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -145,6 +146,7 @@ export default function App() {
         <Route path="/admin/visibility" element={<AdminVisibility />} />
         <Route path="/admin/plans" element={<AdminPlans />} />
         <Route path="/admin/leads" element={<AdminLeads />} />
+        <Route path="/admin/audit-log" element={<AdminAuditLog />} />
       </Route>
 
       <Route path="/privacy" element={<Privacy />} />

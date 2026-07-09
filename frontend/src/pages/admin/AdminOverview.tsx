@@ -20,6 +20,7 @@ const QUICK_LINKS = [
   { label: "Leads & Messages", to: "/admin/leads", hint: "Waitlist + contact inbox" },
   { label: "Content Manager", to: "/admin/content", hint: "Marketing site content" },
   { label: "Plan Limits", to: "/admin/plans", hint: "Per-package caps" },
+  { label: "Audit Log", to: "/admin/audit-log", hint: "Every admin action, in order" },
 ];
 
 function titleCase(v: string): string {

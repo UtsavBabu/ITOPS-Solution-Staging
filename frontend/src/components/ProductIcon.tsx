@@ -84,6 +84,20 @@ const PRODUCT_META: Record<string, { gradient: string; glyph: ReactElement; labe
       />
     ),
   },
+  "moonsav-edr": {
+    label: "MoonSAV-EDR",
+    gradient: "linear-gradient(135deg, #1e1b4b, #dc2626)",
+    glyph: (
+      <path
+        d="M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm-3 9l2 2 4-4.5"
+        stroke="#fff"
+        strokeWidth="1.7"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ),
+  },
 };
 
 const FALLBACK = {

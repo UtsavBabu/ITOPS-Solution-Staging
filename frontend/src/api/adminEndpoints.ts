@@ -9,6 +9,7 @@ import type {
   AdminPlatformStats,
   AdminUser,
   AdminWaitlistSignup,
+  AuditLogEntry,
   ContactMessageStatus,
   ContentItem,
   OrganizationStatus,
@@ -296,4 +297,28 @@ export async function updateContentItem(
 export async function deleteContentItem(id: string): Promise<void> {
   const { error } = await supabase.from("content_items").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+export interface AuditLogPage {
+  entries: AuditLogEntry[];
+  totalCount: number;
+}
+
+export async function fetchAuditLog(limit: number, offset: number, search?: string): Promise<AuditLogPage> {
+  const { data, error } = await supabase.rpc("admin_list_audit_log", { p_limit: limit, p_offset: offset, p_search: search ?? null });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Record<string, unknown>[];
+  return {
+    entries: rows.map((row) => ({
+      id: row.id as string,
+      actorEmail: (row.actor_email as string) ?? null,
+      action: row.action as string,
+      targetType: row.target_type as string,
+      targetId: (row.target_id as string) ?? null,
+      targetLabel: (row.target_label as string) ?? null,
+      metadata: (row.metadata as Record<string, unknown>) ?? {},
+      createdAt: row.created_at as string,
+    })),
+    totalCount: rows.length > 0 ? Number(rows[0].total_count) : 0,
+  };
 }

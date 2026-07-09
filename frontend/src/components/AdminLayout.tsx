@@ -24,6 +24,7 @@ const NAV_GROUPS = [
       { to: "/admin/plans", label: "Plan Limits", icon: "◎" },
       { to: "/admin/content", label: "Content Manager", icon: "◫" },
       { to: "/admin/visibility", label: "Site Visibility", icon: "◈" },
+      { to: "/admin/audit-log", label: "Audit Log", icon: "☰" },
     ],
   },
   {

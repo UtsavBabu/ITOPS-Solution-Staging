@@ -7,7 +7,7 @@ export type IncidentStatus = "OPEN" | "RESOLVED";
 export type AssetType = "WEBSITE" | "SERVER" | "DATABASE" | "NETWORK" | "OTHER";
 export type AlertChannelType = "EMAIL" | "SLACK" | "WEBHOOK";
 export type Plan = "STARTER" | "PROFESSIONAL" | "BUSINESS" | "ENTERPRISE";
-export type WaitlistProduct = "cybersachet" | "infrastructure-monitor" | "devops-monitor" | "upgrade-request" | "newsletter";
+export type WaitlistProduct = "cybersachet" | "infrastructure-monitor" | "devops-monitor" | "moonsav-edr" | "upgrade-request" | "newsletter";
 export type ContactTopic = "sales" | "support" | "company" | "other";
 
 export interface Organization {
@@ -282,6 +282,17 @@ export interface AdminOrganizationDetail {
   hostCount: number;
   openIncidentCount: number;
   recentIncidents: OrganizationRecentIncident[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actorEmail: string | null;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  targetLabel: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface HostAgent {

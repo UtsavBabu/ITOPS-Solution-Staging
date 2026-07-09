@@ -35,6 +35,7 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
       { label: "Kada Nigrani — Servers", to: "/solutions/kada-nigrani", badge: "Live" },
       { label: "Alerting & Incident Response", to: "/solutions/alerting-incident-response", badge: "Live" },
       { label: "DevOps Monitor", to: "/solutions/devops-monitor" },
+      { label: "MoonSAV-EDR", to: "/solutions/moonsav-edr" },
       { label: "CyberSachet", to: "/cybersachet" },
     ],
   },
