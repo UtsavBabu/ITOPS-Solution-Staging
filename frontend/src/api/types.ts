@@ -284,6 +284,20 @@ export interface AdminOrganizationDetail {
   recentIncidents: OrganizationRecentIncident[];
 }
 
+export interface Product {
+  key: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+}
+
+export interface OrgProductStatus {
+  productKey: string;
+  productName: string;
+  status: "active" | "trial" | "revoked";
+  grantedAt: string | null;
+}
+
 export interface AuditLogEntry {
   id: string;
   actorEmail: string | null;

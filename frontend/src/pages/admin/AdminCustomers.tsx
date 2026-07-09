@@ -8,8 +8,10 @@ import {
   deleteOrganization,
   fetchAdminCustomers,
   fetchOrganizationDetail,
+  fetchOrgProducts,
   renameOrganization,
   restoreOrganization,
+  setOrgProduct,
   updateOrganizationPlan,
 } from "../../api/adminEndpoints";
 import type { AdminCustomer, Plan } from "../../api/types";
@@ -135,9 +137,23 @@ function fmtDuration(ms: number): string {
 }
 
 function CustomerDetailModal({ organizationId, onClose }: { organizationId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
   const { data: detail, isLoading } = useQuery({
     queryKey: ["admin-customer-detail", organizationId],
     queryFn: () => fetchOrganizationDetail(organizationId),
+  });
+  const { data: orgProducts } = useQuery({
+    queryKey: ["admin-org-products", organizationId],
+    queryFn: () => fetchOrgProducts(organizationId),
+  });
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
+  const productMutation = useMutation({
+    mutationFn: ({ key, active }: { key: string; active: boolean }) => setOrgProduct(organizationId, key, active),
+    onMutate: ({ key }) => setTogglingKey(key),
+    onSettled: () => {
+      setTogglingKey(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-org-products", organizationId] });
+    },
   });
 
   return (
@@ -190,6 +206,36 @@ function CustomerDetailModal({ organizationId, onClose }: { organizationId: stri
                   <p className="mt-1 text-lg font-medium text-white">{value}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6">
+              <p className="text-xs font-medium uppercase tracking-wide text-white/40">Licensed Products</p>
+              <div className="mt-2 space-y-1.5">
+                {(orgProducts ?? []).map((p) => {
+                  const active = p.status === "active" || p.status === "trial";
+                  const busy = togglingKey === p.productKey;
+                  return (
+                    <div key={p.productKey} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-white/80">{p.productName}</p>
+                        {active && p.grantedAt && (
+                          <p className="text-[10px] text-white/35">Granted {new Date(p.grantedAt).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => productMutation.mutate({ key: p.productKey, active: !active })}
+                        disabled={busy}
+                        aria-pressed={active}
+                        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${active ? "bg-emerald-400" : "bg-white/15"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-[22px]" : "translate-x-0.5"}`}
+                        />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-6">

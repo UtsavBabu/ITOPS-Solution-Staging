@@ -13,7 +13,9 @@ import type {
   ContactMessageStatus,
   ContentItem,
   OrganizationStatus,
+  OrgProductStatus,
   Plan,
+  Product,
 } from "./types";
 
 export async function fetchAdminStats(): Promise<AdminPlatformStats> {
@@ -321,4 +323,31 @@ export async function fetchAuditLog(limit: number, offset: number, search?: stri
     })),
     totalCount: rows.length > 0 ? Number(rows[0].total_count) : 0,
   };
+}
+
+export async function fetchProducts(): Promise<Product[]> {
+  const { data, error } = await supabase.rpc("admin_list_products");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    key: row.key as string,
+    name: row.name as string,
+    description: (row.description as string) ?? null,
+    sortOrder: row.sort_order as number,
+  }));
+}
+
+export async function fetchOrgProducts(organizationId: string): Promise<OrgProductStatus[]> {
+  const { data, error } = await supabase.rpc("admin_list_org_products", { p_organization_id: organizationId });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    productKey: row.product_key as string,
+    productName: row.product_name as string,
+    status: row.status as OrgProductStatus["status"],
+    grantedAt: (row.granted_at as string) ?? null,
+  }));
+}
+
+export async function setOrgProduct(organizationId: string, productKey: string, active: boolean): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_org_product", { p_organization_id: organizationId, p_product_key: productKey, p_active: active });
+  if (error) throw new Error(error.message);
 }
