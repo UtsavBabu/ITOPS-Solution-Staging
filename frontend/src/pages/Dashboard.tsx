@@ -65,12 +65,12 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Total Monitors" value={summary?.totalMonitors ?? "—"} />
-        <StatCard label="Up" value={summary?.upMonitors ?? "—"} />
-        <StatCard label="Down" value={summary?.downMonitors ?? "—"} tone={summary && summary.downMonitors > 0 ? "danger" : "default"} />
-        <StatCard label="Open Incidents" value={summary?.openIncidents ?? "—"} tone={summary && summary.openIncidents > 0 ? "danger" : "default"} />
-        <StatCard label="Assets" value={summary?.totalAssets ?? "—"} />
-        <StatCard label="SSL Expiring" value={summary?.expiringSsl ?? "—"} tone={summary && summary.expiringSsl > 0 ? "warning" : "default"} />
+        <StatCard label="Total Monitors" value={summary?.totalMonitors ?? "—"} icon="monitors" />
+        <StatCard label="Up" value={summary?.upMonitors ?? "—"} icon="up" />
+        <StatCard label="Down" value={summary?.downMonitors ?? "—"} tone={summary && summary.downMonitors > 0 ? "danger" : "default"} icon="down" />
+        <StatCard label="Open Incidents" value={summary?.openIncidents ?? "—"} tone={summary && summary.openIncidents > 0 ? "danger" : "default"} icon="incidents" />
+        <StatCard label="Assets" value={summary?.totalAssets ?? "—"} icon="assets" />
+        <StatCard label="SSL Expiring" value={summary?.expiringSsl ?? "—"} tone={summary && summary.expiringSsl > 0 ? "warning" : "default"} icon="ssl" />
       </div>
 
       {/* Open Incidents */}

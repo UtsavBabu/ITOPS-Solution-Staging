@@ -220,6 +220,51 @@ const FEATURE_ICONS: Record<string, { gradient: string; path: string }> = {
     gradient: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
     path: "M4 5.5h16v5H4zM4 13.5h16v5H4zM7 8h.01M7 16h.01M11 8h4M11 16h2",
   },
+  // Platform module list reuses several of the above by meaning, plus a few new ones.
+  "Website & API Monitoring": {
+    gradient: "linear-gradient(135deg, #0e7490, #22d3ee)",
+    path: "M12 3a9 9 0 100 18 9 9 0 000-18zm0 0c2.5 2.4 3.8 5.6 3.8 9s-1.3 6.6-3.8 9m0-18C9.5 5.4 8.2 8.6 8.2 12s1.3 6.6 3.8 9M3.5 9h17M3.5 15h17",
+  },
+  "Security Monitoring": {
+    gradient: "linear-gradient(135deg, #047857, #34d399)",
+    path: "M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm-2.8 9.2l2 2 3.8-4",
+  },
+  "Incident Management": {
+    gradient: "linear-gradient(135deg, #be123c, #fb7185)",
+    path: "M12 9v4m0 4h.01M10.3 4.3l-8 14A1 1 0 003 20h18a1 1 0 00.9-1.5l-8-14a1 1 0 00-1.6 0z",
+  },
+  "Enterprise Dashboard": {
+    gradient: "linear-gradient(135deg, #4338ca, #818cf8)",
+    path: "M4 5.5h16v5H4zM4 13.5h7v5H4zM13 13.5h7v5h-7z",
+  },
+  "Network & Device Monitoring": {
+    gradient: "linear-gradient(135deg, #6d28d9, #a78bfa)",
+    path: "M5 20V10m7 10V4m7 16v-7M3 20h18",
+  },
+  "Kada Nigrani (Server Monitoring)": {
+    gradient: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
+    path: "M4 5.5h16v5H4zM4 13.5h16v5H4zM7 8h.01M7 16h.01M11 8h4M11 16h2",
+  },
+  "DevOps Monitoring": {
+    gradient: "linear-gradient(135deg, #b45309, #fbbf24)",
+    path: "M8.5 7A4.5 4.5 0 104 11.5M8.5 7H5M8.5 7v3.5m7 6.5a4.5 4.5 0 104.5-4.5m-4.5 4.5H19m-3.5 0v-3.5M9 15l6-6",
+  },
+  "Cloud Monitoring": {
+    gradient: "linear-gradient(135deg, #0369a1, #38bdf8)",
+    path: "M19.4 10.1a7 7 0 0 0-13.7-1A5.5 5.5 0 0 0 6.5 20h12a4.5 4.5 0 0 0 .9-8.9z",
+  },
+  "Endpoint Monitoring": {
+    gradient: "linear-gradient(135deg, #0f766e, #2dd4bf)",
+    path: "M4 4h16v12H4zM9 20h6M12 16v4",
+  },
+  "Cyber Sachet ": {
+    gradient: "linear-gradient(135deg, #9d174d, #f472b6)",
+    path: "M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm0 6v4m0 3h.01",
+  },
+  "Reporting & Analytics": {
+    gradient: "linear-gradient(135deg, #4d7c0f, #a3e635)",
+    path: "M4 20V10m6 10V4m6 16v-7M3 20h18",
+  },
 };
 
 const FEATURE_ICON_FALLBACK = { gradient: "linear-gradient(135deg, #334155, #94a3b8)", path: "M4 7l8-4 8 4-8 4-8-4zm0 5l8 4 8-4M4 17l8 4 8-4" };

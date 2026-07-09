@@ -6,6 +6,7 @@ import { fetchContentItems } from "../api/endpoints";
 import type { ContentItem } from "../api/types";
 import { CircuitTraceBackground } from "../components/PageBackgrounds";
 import { Reveal, SpotlightCard } from "../components/Animated";
+import { FeatureIcon } from "../components/ProductVisuals";
 
 const CARD_TINTS = ["emerald", "cyan", "violet", "amber", "blue", "white"] as const;
 
@@ -14,7 +15,7 @@ function ModuleCard({ module, index }: { module: ContentItem; index: number }) {
     <SpotlightCard tint={CARD_TINTS[index % CARD_TINTS.length]} delay={index * 0.05} className="h-full">
       <div className="flex h-full flex-col p-6">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-medium tracking-tight text-white">{module.title}</h3>
+          <FeatureIcon title={module.title} size={36} />
           <span
             className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
               module.status === "live" ? "bg-emerald-400/10 text-emerald-300" : "bg-white/10 text-white/60"
@@ -23,7 +24,8 @@ function ModuleCard({ module, index }: { module: ContentItem; index: number }) {
             {module.status === "live" ? "Live" : "Roadmap"}
           </span>
         </div>
-        <p className="mt-3 flex-1 text-sm leading-relaxed text-white/55">{module.body}</p>
+        <h3 className="mt-4 text-base font-medium tracking-tight text-white">{module.title}</h3>
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-white/55">{module.body}</p>
         {module.href && (
           <p className="mt-4 inline-flex items-center gap-1 text-sm text-white/70 transition-all group-hover:gap-2 group-hover:text-white">
             {module.status === "live" ? "View solution" : "See the plan"} <span aria-hidden>→</span>
