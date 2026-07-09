@@ -44,7 +44,7 @@ const PRODUCT_META: Record<string, { gradient: string; glyph: ReactElement; labe
     ),
   },
   "infrastructure-monitor": {
-    label: "Infrastructure Monitor",
+    label: "Network & Device Monitoring",
     gradient: "linear-gradient(135deg, #6d28d9, #a78bfa)",
     glyph: (
       <path
@@ -62,6 +62,20 @@ const PRODUCT_META: Record<string, { gradient: string; glyph: ReactElement; labe
     glyph: (
       <path
         d="M8.5 7A4.5 4.5 0 104 11.5M8.5 7H5M8.5 7v3.5m7 6.5a4.5 4.5 0 104.5-4.5m-4.5 4.5H19m-3.5 0v-3.5M9 15l6-6"
+        stroke="#fff"
+        strokeWidth="1.7"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ),
+  },
+  "alerting-incident-response": {
+    label: "Alerting & Incident Response",
+    gradient: "linear-gradient(135deg, #be123c, #fb7185)",
+    glyph: (
+      <path
+        d="M12 3v2m0 14v2M5 12H3m18 0h-2M12 8a4 4 0 014 4c0 2.5 1 3.5 2 4H6c1-.5 2-1.5 2-4a4 4 0 014-4zm-1.5 10a1.5 1.5 0 003 0"
         stroke="#fff"
         strokeWidth="1.7"
         fill="none"

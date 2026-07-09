@@ -31,8 +31,9 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
     links: [
       { label: "Website & API Monitoring", to: "/solutions/website-api-monitoring", badge: "Live" },
       { label: "Security Monitoring", to: "/solutions/security-monitoring", badge: "Live" },
+      { label: "Network & Device Monitoring", to: "/solutions/infrastructure-monitor", badge: "Live" },
       { label: "Kada Nigrani — Servers", to: "/solutions/kada-nigrani", badge: "Live" },
-      { label: "Infrastructure Monitor", to: "/solutions/infrastructure-monitor" },
+      { label: "Alerting & Incident Response", to: "/solutions/alerting-incident-response", badge: "Live" },
       { label: "DevOps Monitor", to: "/solutions/devops-monitor" },
       { label: "CyberSachet", to: "/cybersachet" },
     ],
