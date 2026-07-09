@@ -53,9 +53,19 @@ function Row({ faq, open, onToggle }: { faq: ContentItem; open: boolean; onToggl
   );
 }
 
-export function FaqAccordion({ faqs }: { faqs: ContentItem[] }) {
+export function FaqAccordion({
+  faqs,
+  openId: controlledOpenId,
+  onOpenChange,
+}: {
+  faqs: ContentItem[];
+  openId?: string | null;
+  onOpenChange?: (id: string | null) => void;
+}) {
   const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [internalOpenId, setInternalOpenId] = useState<string | null>(null);
+  const openId = controlledOpenId !== undefined ? controlledOpenId : internalOpenId;
+  const setOpenId = onOpenChange ?? setInternalOpenId;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

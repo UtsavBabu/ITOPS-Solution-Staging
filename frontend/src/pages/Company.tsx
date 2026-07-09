@@ -49,7 +49,7 @@ export default function Company() {
           </div>
         </div>
 
-        <div className="mx-auto mt-20 max-w-4xl">
+        <div className="mx-auto mt-20 max-w-4xl 2xl:max-w-5xl">
           <Reveal>
             <p className="text-center text-xs font-medium uppercase tracking-[0.15em] text-white/45">Leadership</p>
           </Reveal>
@@ -75,7 +75,7 @@ export default function Company() {
           </div>
         </div>
 
-        <div className="mx-auto mt-20 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mx-auto mt-20 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 2xl:max-w-5xl">
           {missionVision?.map((item, i) => (
             <SpotlightCard key={item.id} tint={i % 2 === 0 ? "violet" : "amber"} delay={i * 0.1}>
               <div className="p-6">
