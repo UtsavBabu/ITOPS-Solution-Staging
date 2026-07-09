@@ -5,6 +5,7 @@ import type { CheckResult, Monitor } from "../api/types";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ResponseTimeChart } from "../components/ResponseTimeChart";
+import { RootCauseAnalysis } from "../components/RootCauseAnalysis";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 
 const CHECK_TYPE_LABELS: Record<Monitor["checkType"], string> = {
@@ -234,6 +235,9 @@ export default function MonitorDetail() {
           }
         />
       </div>
+
+      {/* Root cause analysis — evidence-based diagnosis over real telemetry */}
+      {!historyLoading && <RootCauseAnalysis monitor={monitor} history={history ?? []} />}
 
       {/* Response time chart */}
       <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
