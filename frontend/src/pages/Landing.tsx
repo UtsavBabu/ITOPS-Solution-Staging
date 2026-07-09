@@ -269,7 +269,7 @@ export default function Landing() {
       </section>
 
       {/* ── Product proof: the live dashboard, right below the promise ── */}
-      <section className="relative overflow-hidden border-t border-white/10 bg-neutral-950/40 px-6 py-20 md:px-10">
+      <section className="relative overflow-hidden border-t border-white/10 bg-neutral-950/40 px-6 pb-32 pt-20 md:px-10">
         <div className="pointer-events-none absolute -right-40 top-0 h-[420px] w-[420px] rounded-full bg-blue-500/[0.07] blur-[110px]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1fr_1.15fr]">
           <Reveal>
@@ -294,7 +294,7 @@ export default function Landing() {
               <div className="animate-float">
                 <DashboardMockup />
               </div>
-              <div className="absolute -bottom-8 -left-4 hidden w-64 sm:block">
+              <div className="absolute left-4 top-full -mt-8 hidden w-64 sm:block">
                 <LiveActivityFeed />
               </div>
             </div>
@@ -310,8 +310,10 @@ export default function Landing() {
         <TechMarquee />
       </section>
 
-      <section className="border-b border-white/10 bg-neutral-950 px-6 py-20 md:px-10">
-        <Reveal className="mx-auto max-w-5xl text-center">
+      <section className="relative overflow-hidden border-b border-white/10 bg-neutral-950 px-6 py-20 md:px-10">
+        <div className="enterprise-grid pointer-events-none absolute inset-0 opacity-40" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[360px] w-[720px] -translate-x-1/2 rounded-full bg-blue-500/[0.06] blur-[120px]" />
+        <Reveal className="relative mx-auto max-w-5xl text-center">
           <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/45">The Complete Platform</p>
           <p className="mt-3 text-2xl font-medium tracking-tight md:text-3xl">One Platform, Growing Module by Module</p>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/55">
