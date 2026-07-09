@@ -33,7 +33,7 @@ export default function Support() {
           </div>
         </div>
 
-        <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-3 2xl:max-w-6xl">
           {channels?.map((channel, i) => (
             <SpotlightCard key={channel.id} tint={CARD_TINTS[i % CARD_TINTS.length]} delay={i * 0.08}>
               <div className="p-6">

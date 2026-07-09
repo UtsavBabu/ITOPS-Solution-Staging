@@ -345,7 +345,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-5xl px-6 py-24 md:px-10">
+      <section id="features" className="mx-auto max-w-5xl px-6 py-24 md:px-10 2xl:max-w-7xl">
         <Reveal>
           <p className="text-center text-xs font-medium uppercase tracking-[0.15em] text-white/45">Everything Included</p>
           <p className="mt-3 text-center text-2xl font-medium tracking-tight md:text-3xl">Six Services, One Dashboard</p>
@@ -382,7 +382,7 @@ export default function Landing() {
       {/* Per-service deep dives — alternating rows, each with a live-style vignette */}
       <section className="relative border-t border-white/10 bg-neutral-950/50 px-6 py-24 md:px-10">
         <div className="enterprise-grid pointer-events-none absolute inset-0 opacity-50" />
-        <div className="relative mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-6xl 2xl:max-w-7xl">
           <Reveal className="text-center">
             <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/45">What You Get</p>
             <p className="mt-3 text-2xl font-medium tracking-tight md:text-4xl">
@@ -401,7 +401,7 @@ export default function Landing() {
       </section>
 
       <section id="how-it-works" className="border-y border-white/10 bg-neutral-950">
-        <div className="mx-auto max-w-4xl px-6 py-24 md:px-10">
+        <div className="mx-auto max-w-4xl px-6 py-24 md:px-10 2xl:max-w-5xl">
           <Reveal>
             <p className="text-center text-2xl font-medium tracking-tight md:text-3xl">How It Works</p>
           </Reveal>

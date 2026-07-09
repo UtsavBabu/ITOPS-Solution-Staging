@@ -1,24 +1,40 @@
 -- =============================================================================
 -- 0021: Superadmin setup, clean slate, plan enforcement, ensure_user_org fix
 -- =============================================================================
+--
+-- NOTE: this file was never actually applied by the CLI (schema_migrations
+-- has no 0021 row) — its ensure_user_organization function was redeployed
+-- separately via 0020, and its other effects (waitlist constraint,
+-- contact_messages.status, check_results realtime) were applied piecemeal
+-- and are already live. The one-time wipe below is now guarded so this file
+-- can never destroy real customer data if it's ever executed again (directly
+-- via psql or a future `db push --include-all`) — it only wipes when the
+-- platform has no super-admin yet, exactly like 0022's own guard.
 
--- 1. Wipe all test data (monitors, users, orgs) — clean slate
+-- 1. Wipe all test data (monitors, users, orgs) — clean slate, ONLY on a
+--    platform that has no super-admin yet (i.e. truly first deploy).
 -- =============================================================================
-delete from public.check_results;
-delete from public.security_snapshots;
-delete from public.ssl_info;
-delete from public.incidents;
-delete from public.monitors;
-delete from public.host_metrics;
-delete from public.host_agents;
-delete from public.alert_channels;
-delete from public.assets;
-delete from public.memberships;
-delete from public.organizations;
-delete from public.waitlist_signups;
-delete from public.contact_messages;
--- Remove all auth users (cascade deletes memberships via FK)
-delete from auth.users;
+do $$
+begin
+  if not exists (select 1 from auth.users where email = 'babulearn57@gmail.com') then
+    delete from public.check_results;
+    delete from public.security_snapshots;
+    delete from public.ssl_info;
+    delete from public.incidents;
+    delete from public.monitors;
+    delete from public.host_metrics;
+    delete from public.host_agents;
+    delete from public.alert_channels;
+    delete from public.assets;
+    delete from public.memberships;
+    delete from public.organizations;
+    delete from public.waitlist_signups;
+    delete from public.contact_messages;
+    -- Remove all auth users (cascade deletes memberships via FK)
+    delete from auth.users;
+  end if;
+end;
+$$;
 
 -- 2. ensure_user_organization — idempotent self-heal RPC
 -- =============================================================================

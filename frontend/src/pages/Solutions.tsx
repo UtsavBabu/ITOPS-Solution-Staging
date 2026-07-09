@@ -100,7 +100,7 @@ export default function Solutions() {
           </div>
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="mx-auto mt-10 grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 2xl:max-w-6xl">
           {isLoading &&
             [0, 1, 2, 3].map((i) => (
               <div key={i} className="h-64 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />

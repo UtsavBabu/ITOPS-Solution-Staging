@@ -125,7 +125,7 @@ export default function Pricing() {
         {isLoading ? (
           <p className="mt-16 text-center text-white/50">Loading plans…</p>
         ) : (
-          <div className="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 2xl:max-w-7xl">
             {plans?.map((plan, i) => (
               <SpotlightCard
                 key={plan.plan}

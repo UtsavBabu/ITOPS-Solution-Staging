@@ -4,12 +4,14 @@ import type {
   AdminContactMessage,
   AdminCustomer,
   AdminOrganization,
+  AdminOrganizationDetail,
   AdminPlanLimit,
   AdminPlatformStats,
   AdminUser,
   AdminWaitlistSignup,
   ContactMessageStatus,
   ContentItem,
+  OrganizationStatus,
   Plan,
 } from "./types";
 
@@ -34,6 +36,7 @@ export async function fetchAdminOrganizations(): Promise<AdminOrganization[]> {
     id: row.id,
     name: row.name,
     plan: row.plan as Plan,
+    status: (row.status as OrganizationStatus) ?? "active",
     createdAt: row.created_at,
   }));
 }
@@ -44,6 +47,45 @@ export async function updateOrganizationPlan(organizationId: string, plan: Plan)
     p_plan: plan,
   });
   if (error) throw new Error(error.message);
+}
+
+export async function renameOrganization(organizationId: string, name: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_rename_organization", { p_organization_id: organizationId, p_name: name });
+  if (error) throw new Error(error.message);
+}
+
+export async function archiveOrganization(organizationId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_archive_organization", { p_organization_id: organizationId });
+  if (error) throw new Error(error.message);
+}
+
+export async function restoreOrganization(organizationId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_restore_organization", { p_organization_id: organizationId });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteOrganization(organizationId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_delete_organization", { p_organization_id: organizationId });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchOrganizationDetail(organizationId: string): Promise<AdminOrganizationDetail> {
+  const { data, error } = await supabase.rpc("admin_get_organization_detail", { p_organization_id: organizationId });
+  if (error) throw new Error(error.message);
+  const row = data as Record<string, unknown>;
+  return {
+    organizationId: row.organizationId as string,
+    name: row.name as string,
+    plan: row.plan as Plan,
+    status: row.status as OrganizationStatus,
+    createdAt: row.createdAt as string,
+    members: row.members as AdminOrganizationDetail["members"],
+    monitorCount: row.monitorCount as number,
+    assetCount: row.assetCount as number,
+    hostCount: row.hostCount as number,
+    openIncidentCount: row.openIncidentCount as number,
+    recentIncidents: row.recentIncidents as AdminOrganizationDetail["recentIncidents"],
+  };
 }
 
 export async function fetchAdminWaitlistSignups(): Promise<AdminWaitlistSignup[]> {
@@ -134,6 +176,7 @@ export async function fetchAdminCustomers(): Promise<AdminCustomer[]> {
     organizationId: row.organization_id as string,
     name: row.name as string,
     plan: row.plan as Plan,
+    status: (row.status as OrganizationStatus) ?? "active",
     adminEmail: (row.admin_email as string) ?? null,
     memberCount: Number(row.member_count),
     monitorsUsed: Number(row.monitors_used),

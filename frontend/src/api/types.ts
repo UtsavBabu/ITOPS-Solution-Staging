@@ -172,10 +172,13 @@ export interface AdminPlatformStats {
   newContactMessages: number;
 }
 
+export type OrganizationStatus = "active" | "archived";
+
 export interface AdminOrganization {
   id: string;
   name: string;
   plan: Plan;
+  status: OrganizationStatus;
   createdAt: string;
 }
 
@@ -241,6 +244,7 @@ export interface AdminCustomer {
   organizationId: string;
   name: string;
   plan: Plan;
+  status: OrganizationStatus;
   adminEmail: string | null;
   memberCount: number;
   monitorsUsed: number;
@@ -248,6 +252,36 @@ export interface AdminCustomer {
   hostsUsed: number;
   maxHosts: number;
   createdAt: string;
+}
+
+export interface OrganizationMember {
+  userId: string;
+  email: string;
+  role: string;
+  joinedAt: string;
+}
+
+export interface OrganizationRecentIncident {
+  id: string;
+  monitorName: string;
+  status: string;
+  cause: string | null;
+  startedAt: string;
+  resolvedAt: string | null;
+}
+
+export interface AdminOrganizationDetail {
+  organizationId: string;
+  name: string;
+  plan: Plan;
+  status: OrganizationStatus;
+  createdAt: string;
+  members: OrganizationMember[];
+  monitorCount: number;
+  assetCount: number;
+  hostCount: number;
+  openIncidentCount: number;
+  recentIncidents: OrganizationRecentIncident[];
 }
 
 export interface HostAgent {
