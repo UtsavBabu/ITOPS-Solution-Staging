@@ -112,6 +112,9 @@ if [ "${AGENT_ALLOW_ACTIONS:-0}" = "1" ] && [ -n "${COMMANDS_URL:-}" ]; then
       restart_docker_container)
         if command -v docker >/dev/null 2>&1; then docker restart "$2" 2>&1; return $?; fi
         echo "docker not installed on this host"; return 1 ;;
+      renew_ssl_certbot)
+        if command -v certbot >/dev/null 2>&1; then certbot renew --quiet --no-random-sleep-on-renew 2>&1; return $?; fi
+        echo "certbot not installed on this host — install it first (e.g. apt install certbot)"; return 1 ;;
       *)
         echo "unknown action: $1"; return 1 ;;
     esac

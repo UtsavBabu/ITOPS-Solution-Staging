@@ -15,8 +15,8 @@ including two real bugs that browser testing caught and fixed.
 ## Architecture
 
 ```
-frontend/          React + Vite + TS + Tailwind — talks directly to Supabase
-                    via supabase-js. No custom REST API in between.
+frontend/          React + Vite + JavaScript + Tailwind — talks directly to
+                    Supabase via supabase-js. No custom REST API in between.
 
 supabase/
 ├── migrations/     Schema, RLS policies, and RPC functions (Postgres)

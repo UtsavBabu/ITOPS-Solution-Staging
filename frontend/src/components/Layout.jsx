@@ -1,0 +1,229 @@
+import { Link, NavLink, Outlet } from "react-router-dom";
+import { motion } from "motion/react";
+import { useAuth } from "../context/AuthContext";
+import { EnterpriseAuroraBackground } from "./PageBackgrounds";
+import { BrandMark } from "./BrandLogo";
+import { ThemeToggle } from "./ThemeToggle";
+import { useQuery } from "@tanstack/react-query";
+import { fetchMyPermissions, fetchPlanUsage } from "../api/endpoints";
+import { usePortalType } from "../hooks/usePortalType";
+import { AppSearch } from "./AppSearch";
+import { NotificationCenter } from "./NotificationCenter";
+const PLAN_COLORS = {
+  STARTER: "bg-white/10 light:bg-slate-900/8 text-white/60 light:text-slate-600",
+  PROFESSIONAL: "bg-blue-400/10 light:bg-blue-500/10 text-blue-300 light:text-blue-700",
+  BUSINESS: "bg-violet-400/10 light:bg-violet-500/10 text-violet-300 light:text-violet-700",
+  ENTERPRISE: "bg-amber-400/10 light:bg-amber-500/10 text-amber-300 light:text-amber-700"
+};
+// `module` maps each item to its permission_modules key (migration 0032).
+// Every legacy role (ADMIN/MEMBER/READ_ONLY) already has `view` on the
+// modules it always had access to, so this is purely additive — it only
+// starts hiding items once an org actually assigns a narrower custom role.
+const NAV_GROUPS = [{
+  label: "Monitoring",
+  items: [{
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: "⬡",
+    end: true,
+    module: "dashboard"
+  }, {
+    to: "/monitors",
+    label: "Website & API",
+    icon: "◈",
+    module: "monitors"
+  }, {
+    to: "/network",
+    label: "Network Devices",
+    icon: "◇",
+    module: "monitors"
+  }, {
+    to: "/hosts",
+    label: "Server Agents",
+    icon: "▣",
+    module: "hosts"
+  }, {
+    to: "/incidents",
+    label: "Incidents",
+    icon: "⚡",
+    module: "incidents"
+  }]
+}, {
+  label: "Inventory",
+  items: [{
+    to: "/assets",
+    label: "Assets",
+    icon: "◫",
+    module: "assets"
+  }]
+}, {
+  label: "Training",
+  items: [{
+    to: "/training",
+    label: "CyberSachet",
+    icon: "🎓"
+    // No `module` gate — visibility of the page's real content is decided
+    // by the CyberSachet product license (organization_products), not RBAC;
+    // every org member can see the nav item and, if unlicensed, the upsell.
+  }]
+}, {
+  label: "Settings",
+  items: [{
+    to: "/settings/alerts",
+    label: "Alert Channels",
+    icon: "◎",
+    module: "alert_channels"
+  }, {
+    to: "/team",
+    label: "Team & Plan",
+    icon: "◉",
+    module: "team"
+  }]
+}];
+export function Layout() {
+  const {
+    user,
+    organization,
+    isPlatformAdmin,
+    logout
+  } = useAuth();
+  const {
+    data: usage
+  } = useQuery({
+    queryKey: ["plan-usage"],
+    queryFn: fetchPlanUsage,
+    staleTime: 60_000
+  });
+  // Undefined (still loading) or a thrown error (my_permissions() RPC
+  // missing on an un-migrated database) both mean "don't hide anything yet"
+  // — the real boundary is the RLS/RPC checks each page already makes, this
+  // is only a UX affordance.
+  const {
+    data: can
+  } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false,
+    staleTime: 60_000
+  });
+  const visibleGroups = NAV_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(item => !item.module || !can || can("organization", item.module, "view"))
+  })).filter(group => group.items.length > 0);
+  const { portal } = usePortalType();
+  const planColor = PLAN_COLORS[usage?.plan ?? "STARTER"] ?? PLAN_COLORS.STARTER;
+  const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
+  return <div className="flex min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 antialiased" style={{
+    fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif"
+  }}>
+      <div className="fixed inset-0 z-0">
+        <EnterpriseAuroraBackground intensity="ambient" tint="emerald" forceDark />
+      </div>
+
+      {/* Fixed sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white">
+        {/* Brand */}
+        <Link to="/" className="flex items-center gap-2.5 border-b border-white/10 light:border-slate-900/10 p-4">
+          <BrandMark size={30} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white light:text-slate-900">ITOps Monitor</p>
+            <p className="truncate text-xs text-white/45 light:text-slate-500">{organization?.name ?? "Loading…"}</p>
+          </div>
+        </Link>
+        <p className="border-b border-white/10 light:border-slate-900/10 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wide text-white/30 light:text-slate-400">
+          {portal === "employee" ? "Employee Portal" : "Organization Console"}
+        </p>
+
+        <AppSearch scope="customer" navItems={navItems} />
+
+        {/* Plan badge */}
+        {usage && <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-2">
+            <div className="flex items-center justify-between">
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${planColor}`}>
+                {usage.plan} plan
+              </span>
+              <span className="text-[11px] text-white/35 light:text-slate-400">
+                {usage.currentMonitors}/{usage.maxMonitors} monitors
+              </span>
+            </div>
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10 light:bg-slate-900/10">
+              <motion.div className="h-full rounded-full bg-emerald-400" initial={{
+            width: 0
+          }} animate={{
+            width: `${Math.min(100, usage.currentMonitors / usage.maxMonitors * 100)}%`
+          }} transition={{
+            duration: 0.7,
+            ease: [0.16, 1, 0.3, 1]
+          }} />
+            </div>
+          </div>}
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3">
+          {visibleGroups.map(group => <div key={group.label} className="mb-4">
+              <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 light:text-slate-400">
+                {group.label}
+              </p>
+              <div className="space-y-0.5 px-2">
+                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} className={({
+              isActive
+            }) => `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "text-black light:text-white" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900"}`}>
+                    {({
+                isActive
+              }) => isActive ? <>
+                          <motion.span layoutId="nav-active-pill" transition={{
+                  duration: 0.35,
+                  ease: [0.16, 1, 0.3, 1]
+                }} className="absolute inset-0 rounded-lg bg-white light:bg-slate-900" />
+                          <span className="relative text-[13px] opacity-70">{item.icon}</span>
+                          <span className="relative">{item.label}</span>
+                        </> : <>
+                          <span className="text-[13px] opacity-70">{item.icon}</span>
+                          {item.label}
+                        </>}
+                  </NavLink>)}
+              </div>
+            </div>)}
+
+          {isPlatformAdmin && <div className="px-2">
+              <NavLink to="/admin" className="flex items-center gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm font-medium text-amber-300 light:text-amber-600 transition-colors hover:bg-amber-400/10">
+                <span className="text-[13px]">★</span>
+                Platform Admin
+              </NavLink>
+            </div>}
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-white/10 light:border-slate-900/10 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="truncate px-1 text-xs text-white/40 light:text-slate-500">{user?.email}</p>
+            <div className="flex shrink-0 items-center gap-2">
+              <NotificationCenter scope="customer" />
+              <ThemeToggle className="h-7 w-7 border-white/10 light:border-slate-900/10" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {/* /team is an operator-only route (RequireConsoleAccess in
+                App.jsx) — an Employee Portal member would just bounce back
+                here, so the link isn't shown to them at all. */}
+            {portal !== "employee" && <Link to="/team" className="flex-1 rounded-lg border border-white/10 light:border-slate-900/10 px-2 py-1.5 text-center text-xs text-white/60 light:text-slate-500 transition-colors hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900">
+              Upgrade
+            </Link>}
+            <button onClick={logout} className="flex-1 rounded-lg border border-white/15 light:border-slate-900/15 px-2 py-1.5 text-xs text-white/80 light:text-slate-700 transition-colors hover:bg-white/5 light:hover:bg-slate-900/5">
+              Log out
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      {/* Solid surface in light mode — the ambient aurora background is a
+          deliberately dark-only effect (built for a dark canvas); a clean
+          flat surface reads better in light mode than an inverted version
+          of it would. */}
+      <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-6 light:bg-white">
+        <Outlet />
+      </main>
+    </div>;
+}

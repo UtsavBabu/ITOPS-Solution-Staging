@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Ultra-wide breakpoint — the default Tailwind scale tops out at 2xl
+   (1536px), so on 1800px+ monitors every centered `max-w-*` container
+   stopped growing and left large dead gutters on both sides. `3xl:`
+   lets wide-viewport-only containers/grids use more of the screen. */
+@theme {
+  --breakpoint-3xl: 112.5rem;
+}
+
+/* Site defaults to dark (unchanged from before this existed). Adding
+   `.light` to <html> (via ThemeContext) flips into light mode — this
+   `light:` variant matches Tailwind's own `dark:` mechanics, just inverted,
+   since dark was always the unmarked default in every existing class. */
+@custom-variant light (&:where(.light, .light *));
+
 :root {
   color-scheme: dark;
 
@@ -18,6 +32,7 @@
   /* Borders + text */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
+  --text-base: #ffffff;
 
   /* Signature gradient used on CTAs + accents */
   --grad-brand: linear-gradient(100deg, #22d3ee 0%, #3b82f6 50%, #a78bfa 100%);
@@ -26,6 +41,17 @@
   /* Elevation */
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px -24px rgba(0, 0, 0, 0.9);
   --shadow-glow-blue: 0 10px 40px -12px rgba(59, 130, 246, 0.5);
+}
+
+html.light {
+  color-scheme: light;
+  --bg-base: #f6f7fb;
+  --bg-elev-1: #ffffff;
+  --bg-elev-2: #eef0f6;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --text-base: #0b0f19;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 20px 50px -24px rgba(15, 23, 42, 0.18);
 }
 
 html,
@@ -37,10 +63,11 @@ body,
 body {
   margin: 0;
   background: var(--bg-base);
-  color: #fff;
+  color: var(--text-base);
   font-family: "Readex Pro", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Respect users who prefer less motion */
@@ -62,6 +89,21 @@ body {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-subtle);
+  color: #fff;
+}
+html.light .glass {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.035), rgba(15, 23, 42, 0.015));
+  color: #0b0f19;
+}
+
+/* Forced-dark "device mockup" surface — the small product-screenshot
+   vignettes (uptime sparkline, security score ring, etc.) are meant to read
+   as literal dark UI screenshots regardless of page theme, the same way a
+   docs site keeps code/app screenshots dark on a light page. */
+.mockup-dark {
+  background: #0d0f16;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 /* Gradient text */
@@ -101,6 +143,11 @@ body {
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 40%, transparent 100%);
 }
+html.light .enterprise-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+}
 
 /* Keyframes */
 @keyframes float-y {
@@ -128,9 +175,16 @@ body {
   12%, 88% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-8px); }
 }
+/* Radar "contact" ping — an expanding, fading ring behind a status dot. */
+@keyframes sonar-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
 
 .animate-float { animation: float-y 6s ease-in-out infinite; }
 .animate-marquee { animation: marquee 32s linear infinite; }
+.animate-shimmer { animation: shimmer 1.6s ease-in-out infinite; }
+.animate-sonar { animation: sonar-ping 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
 
 /* Thin premium scrollbar */
 * {
@@ -139,3 +193,5 @@ body {
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 8px; }
+html.light * { scrollbar-color: rgba(15, 23, 42, 0.18) transparent; }
+html.light *::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.18); }

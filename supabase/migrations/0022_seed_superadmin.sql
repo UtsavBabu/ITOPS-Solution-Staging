@@ -18,6 +18,13 @@
 -- Password is hashed with pgcrypto's crypt() (a standard bcrypt hash that
 -- GoTrue's own bcrypt verifier accepts), so the hash is reproducible in SQL
 -- without baking in an external tool's output.
+--
+-- NOTE: as originally written this failed against a live project on a
+-- current Supabase/GoTrue schema (confirmed_at is now a generated column,
+-- can't be assigned explicitly) — fixed below. On the project this was
+-- first deployed to, the super-admin account already existed by the time
+-- this was reconciled, so the wipe branch never ran; this file is kept as
+-- the accurate bootstrap path for any future from-scratch deploy.
 
 do $$
 declare
@@ -48,7 +55,10 @@ begin
     delete from auth.users;
   end if;
 
-  -- 2. Create the super-admin auth user (idempotent).
+  -- 2. Create the super-admin auth user (idempotent). confirmed_at is a
+  --    generated column on current Supabase/GoTrue schemas (derived from
+  --    email_confirmed_at) — it can no longer be assigned explicitly the
+  --    way this statement originally did.
   insert into auth.users (
     instance_id,
     id,
@@ -56,7 +66,6 @@ begin
     role,
     email,
     encrypted_password,
-    confirmed_at,
     email_confirmed_at,
     last_sign_in_at,
     raw_app_meta_data,
@@ -71,7 +80,6 @@ begin
     'authenticated',
     'babulearn57@gmail.com',
     crypt('admin@123', gen_salt('bf')),
-    now(),
     now(),
     now(),
     '{"provider":"email","providers":["email"]}'::jsonb,

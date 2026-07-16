@@ -30,18 +30,29 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(jwt);
   if (userError || !userData.user) return json({ error: "Invalid session" }, 401);
 
-  // Are they a platform admin? Checked against the table with the service role.
+  // Are they a platform admin? Checked against the table with the service
+  // role. Their specific role governs which actions below they can take —
+  // requires migration 0030/0031 (platform_admins.role) — falls back to
+  // "any admin, any action" if that column doesn't exist yet, so this
+  // doesn't hard-fail on an un-migrated database.
   const { data: adminRow } = await admin
     .from("platform_admins")
-    .select("user_id")
+    .select("user_id, role")
     .eq("user_id", userData.user.id)
     .maybeSingle();
   if (!adminRow) return json({ error: "Not authorized — platform admins only" }, 403);
+  const role = (adminRow as { role?: string }).role;
 
   const body = await req.json().catch(() => ({}));
   const action = body.action as string | undefined;
 
   if (action === "create") {
+    // Provisioning covers support's day-to-day customer onboarding and a
+    // reseller's own sales — both need it. Billing/content_editor don't.
+    if (role && !["super_admin", "support", "reseller"].includes(role)) {
+      return json({ error: "Not authorized — support, reseller, or super admin access required" }, 403);
+    }
+
     const email = (body.email as string | undefined)?.trim();
     const password = body.password as string | undefined;
     const organizationName = (body.organizationName as string | undefined)?.trim() || "New Organization";
@@ -67,16 +78,20 @@ Deno.serve(async (req) => {
     });
     if (createErr) return json({ error: createErr.message }, 400);
 
-    // Assign the chosen package to the freshly-created org (the trigger just
-    // made it on STARTER). Best-effort: the account still exists if this fails.
-    if (plan && plan !== "STARTER" && created.user?.id) {
+    // Stamp who provisioned this org (a reseller's console is scoped to
+    // orgs they created — see migration 0031) and assign the chosen
+    // package (the trigger just made it on STARTER). Both best-effort: the
+    // account still exists if either of these fails.
+    if (created.user?.id) {
       const { data: membership } = await admin
         .from("memberships")
         .select("organization_id")
         .eq("user_id", created.user.id)
         .maybeSingle();
       if (membership?.organization_id) {
-        await admin.from("organizations").update({ plan }).eq("id", membership.organization_id);
+        const updates: Record<string, unknown> = { created_by: userData.user.id };
+        if (plan && plan !== "STARTER") updates.plan = plan;
+        await admin.from("organizations").update(updates).eq("id", membership.organization_id);
       }
     }
 
@@ -84,12 +99,61 @@ Deno.serve(async (req) => {
   }
 
   if (action === "delete") {
+    if (role && !["super_admin", "support"].includes(role)) {
+      return json({ error: "Not authorized — support or super admin access required" }, 403);
+    }
+
     const userId = body.userId as string | undefined;
     if (!userId) return json({ error: "userId is required" }, 400);
     if (userId === userData.user.id) return json({ error: "You can't delete your own account here." }, 400);
 
     const { error: delErr } = await admin.auth.admin.deleteUser(userId);
     if (delErr) return json({ error: delErr.message }, 400);
+
+    return json({ ok: true });
+  }
+
+  if (action === "update") {
+    // Same reach as reset_password — editing a name isn't a higher-trust
+    // action than resetting the credential that gets you into the account.
+    if (role && !["super_admin", "support", "reseller"].includes(role)) {
+      return json({ error: "Not authorized — support, reseller, or super admin access required" }, 403);
+    }
+
+    const userId = body.userId as string | undefined;
+    const fullName = (body.fullName as string | undefined)?.trim();
+    if (!userId || fullName === undefined) {
+      return json({ error: "userId and fullName are required." }, 400);
+    }
+
+    // updateUserById replaces user_metadata wholesale — fetch first and
+    // merge so organization_name (set at signup) doesn't get wiped out.
+    const { data: existing, error: fetchErr } = await admin.auth.admin.getUserById(userId);
+    if (fetchErr || !existing.user) return json({ error: fetchErr?.message ?? "User not found" }, 404);
+
+    const { error: updateErr } = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: { ...existing.user.user_metadata, full_name: fullName },
+    });
+    if (updateErr) return json({ error: updateErr.message }, 400);
+
+    return json({ ok: true });
+  }
+
+  if (action === "reset_password") {
+    // Same reach as provisioning — a support/reseller/super_admin who can
+    // create an account can also help its owner back into it.
+    if (role && !["super_admin", "support", "reseller"].includes(role)) {
+      return json({ error: "Not authorized — support, reseller, or super admin access required" }, 403);
+    }
+
+    const userId = body.userId as string | undefined;
+    const password = body.password as string | undefined;
+    if (!userId || !password || password.length < 8) {
+      return json({ error: "userId and a password of at least 8 characters are required." }, 400);
+    }
+
+    const { error: resetErr } = await admin.auth.admin.updateUserById(userId, { password });
+    if (resetErr) return json({ error: resetErr.message }, 400);
 
     return json({ ok: true });
   }
