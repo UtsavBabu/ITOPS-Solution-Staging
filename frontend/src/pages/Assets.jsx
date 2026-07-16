@@ -102,7 +102,24 @@ export default function Assets() {
       </Reveal>
 
       <SpotlightCard className="overflow-hidden" delay={0.1} scan tint="amber">
-        {isError ? <ErrorState message="Couldn't load assets." onRetry={() => refetch()} /> : isLoading ? <SkeletonRows count={4} /> : !assets || assets.length === 0 ? <EmptyState title="No assets yet." description="Add infrastructure above, or connect a monitor to auto-track it." /> : <table className="w-full text-left text-sm">
+        {isError ? <ErrorState message="Couldn't load assets." onRetry={() => refetch()} /> : isLoading ? <SkeletonRows count={4} /> : !assets || assets.length === 0 ? <EmptyState title="No assets yet." description="Add infrastructure above, or connect a monitor to auto-track it." /> : <>
+          {/* Below `sm`, a 4-column table with a real identifier (usually a
+              full URL or IP) forces horizontal scroll — cards stack the
+              same fields instead. */}
+          <div className="divide-y divide-white/10 sm:hidden light:divide-slate-900/8">
+            {assets.map((asset, i) => <motion.div key={asset.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-medium text-white light:text-slate-900">{asset.name}</p>
+                  <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/60 light:text-slate-500">{asset.type}</span>
+                </div>
+                <p className="mt-1 truncate text-xs text-white/50 light:text-slate-500">{asset.identifier}</p>
+                <div className="mt-2 flex items-center justify-between text-xs text-white/40 light:text-slate-400">
+                  <span>Added {new Date(asset.createdAt).toLocaleDateString()}</span>
+                  {!asset.monitor && <button onClick={() => handleDelete(asset.id, asset.name)} className="text-red-300 light:text-red-600 hover:underline">Delete</button>}
+                </div>
+              </motion.div>)}
+          </div>
+          <table className="hidden w-full text-left text-sm sm:table">
             <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Type</th>
@@ -137,7 +154,8 @@ export default function Assets() {
                   </td>
                 </motion.tr>)}
             </tbody>
-          </table>}
+          </table>
+        </>}
       </SpotlightCard>
     </div>;
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { adminCreateUser, adminDeleteUser, adminResetPassword, adminUpdateMemberRole, adminUpdateUserName, fetchAdminUsers, fetchRoles, setUserPlatformAdmin } from "../../api/adminEndpoints";
@@ -265,7 +266,7 @@ export default function AdminUsers() {
       <Reveal y={12} className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Users</h1>
-          <p className="text-sm text-white/50 light:text-slate-500">Every user across every organization on the platform.</p>
+          <p className="text-sm text-white/50 light:text-slate-500">Every individual person across every organization — not the organizations themselves (see <Link to="/admin/customers" className="underline hover:text-white/70 light:hover:text-slate-600">Customers</Link> for those). Change a person's Role here; to see what a role actually grants, see <Link to="/admin/roles" className="underline hover:text-white/70 light:hover:text-slate-600">Roles &amp; Permissions</Link>.</p>
         </div>
         <CreateUserForm />
       </Reveal>

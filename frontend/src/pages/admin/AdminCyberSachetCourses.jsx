@@ -11,9 +11,39 @@ import { CATEGORY_LABELS } from "../../data/cybersachetCourses";
 const LEVELS = ["beginner", "intermediate", "advanced"];
 const QUESTION_TYPES = [{ value: "single", label: "Single choice" }, { value: "multiple", label: "Multiple answer" }, { value: "ordering", label: "Arrange steps" }];
 const inputClass = "w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-amber-400/40 focus:outline-none";
+const labelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/35 light:text-slate-400";
 
 function slugify(title) {
   return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+// Every field in this file is compact and inline (a table-like list of
+// courses/lessons/questions, not a full form page), so labels sit directly
+// above each control instead of using the floating-label `Field` component
+// built for the auth pages — same information, denser layout.
+function LabeledField({ label, className = "", children }) {
+  return <label className={`block ${className}`}>
+      <span className={labelClass}>{label}</span>
+      {children}
+    </label>;
+}
+function LabeledInput({ label, className = "", ...props }) {
+  return <LabeledField label={label} className={className}>
+      <input className={inputClass} {...props} />
+    </LabeledField>;
+}
+function LabeledSelect({ label, className = "", children, ...props }) {
+  return <LabeledField label={label} className={className}>
+      <select className={inputClass} {...props}>{children}</select>
+    </LabeledField>;
+}
+function LabeledTextarea({ label, className = "", ...props }) {
+  return <LabeledField label={label} className={className}>
+      <textarea className={inputClass} {...props} />
+    </LabeledField>;
+}
+function SectionLabel({ children }) {
+  return <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40 light:text-slate-400">{children}</p>;
 }
 
 function ModulesEditor({ courseId }) {
@@ -49,9 +79,9 @@ function ModuleRow({ mod, onSaved }) {
     onSuccess: () => { toast.success("Module deleted — its lessons are ungrouped, not deleted."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to delete module")
   });
-  return <div className="flex items-center gap-2 rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-2.5">
-      <input value={title} onChange={e => setTitle(e.target.value)} className={`flex-1 ${inputClass}`} />
-      <span className="shrink-0 text-[11px] text-white/35 light:text-slate-400">{mod.lessonCount} lesson{mod.lessonCount === 1 ? "" : "s"}</span>
+  return <div className="flex items-end gap-2 rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-2.5">
+      <LabeledInput label="Module name" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" />
+      <span className="shrink-0 pb-2.5 text-[11px] text-white/35 light:text-slate-400">{mod.lessonCount} lesson{mod.lessonCount === 1 ? "" : "s"}</span>
       <button onClick={() => save.mutate()} disabled={save.isPending} className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">Save</button>
       <button onClick={async () => { if (await confirm({ title: "Delete module?", description: "Its lessons become ungrouped, not deleted." })) remove.mutate(); }} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 light:text-red-600 hover:bg-red-400/10">Delete</button>
     </div>;
@@ -86,21 +116,21 @@ function LessonRow({ lesson, courseId, modules, onSaved }) {
   function updateChoice(i, v) {
     setCheckChoices(checkChoices.map((c, idx) => idx === i ? v : c));
   }
-  return <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-3 space-y-2">
-      <div className="flex items-center gap-2">
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Lesson title" className={`flex-1 ${inputClass}`} />
-        <select value={moduleId} onChange={e => setModuleId(e.target.value)} className={`w-40 shrink-0 ${inputClass}`}>
+  return <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-3 space-y-3">
+      <div className="flex items-end gap-2">
+        <LabeledInput label="Lesson title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" />
+        <LabeledSelect label="Module" value={moduleId} onChange={e => setModuleId(e.target.value)} className="w-40 shrink-0">
           <option value="">No module</option>
           {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-        </select>
+        </LabeledSelect>
         <button onClick={() => save.mutate()} disabled={save.isPending} className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">Save</button>
         <button onClick={async () => { if (await confirm({ title: "Delete lesson?", description: "This removes it for every organization." })) remove.mutate(); }} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 light:text-red-600 hover:bg-red-400/10">Delete</button>
       </div>
-      <textarea value={body} onChange={e => setBody(e.target.value)} rows={4} placeholder="Lesson content (plain text)" className={inputClass} />
-      <input value={keyTakeaway} onChange={e => setKeyTakeaway(e.target.value)} placeholder="Key takeaway (one sentence, shown as a highlighted callout — optional)" className={inputClass} />
+      <LabeledTextarea label="Lesson content (plain text)" value={body} onChange={e => setBody(e.target.value)} rows={4} />
+      <LabeledInput label="Key takeaway — shown as a highlighted callout (optional)" value={keyTakeaway} onChange={e => setKeyTakeaway(e.target.value)} />
       <div className="rounded-lg border border-white/10 light:border-slate-900/10 p-2.5 space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-white/35 light:text-slate-400">Knowledge checkpoint (optional — required to mark this lesson complete if set)</p>
-        <input value={checkQuestion} onChange={e => setCheckQuestion(e.target.value)} placeholder="Comprehension question" className={inputClass} />
+        <SectionLabel>Knowledge checkpoint (optional — required to mark this lesson complete if set)</SectionLabel>
+        <LabeledInput label="Comprehension question" value={checkQuestion} onChange={e => setCheckQuestion(e.target.value)} />
         {checkQuestion && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {checkChoices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
                 <input type="radio" name={`lesson-correct-${lesson.id}`} checked={checkCorrectIndex === i} onChange={() => setCheckCorrectIndex(i)} className="accent-emerald-400" />
@@ -179,11 +209,11 @@ function QuizRow({ question, courseId, onSaved }) {
     setCorrectIndexes(next);
   }
   return <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-3 space-y-2">
-      <div className="flex items-center gap-2">
-        <input value={text} onChange={e => setText(e.target.value)} placeholder="Question" className={`flex-1 ${inputClass}`} />
-        <select value={questionType} onChange={e => setQuestionType(e.target.value)} className={`w-36 shrink-0 ${inputClass}`}>
+      <div className="flex items-end gap-2">
+        <LabeledInput label="Question" value={text} onChange={e => setText(e.target.value)} className="flex-1" />
+        <LabeledSelect label="Answer type" value={questionType} onChange={e => setQuestionType(e.target.value)} className="w-36 shrink-0">
           {QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
+        </LabeledSelect>
         <button onClick={() => save.mutate()} disabled={save.isPending} className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">Save</button>
         <button onClick={async () => { if (await confirm({ title: "Delete question?", description: "This removes it from the quiz for every organization." })) remove.mutate(); }} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 light:text-red-600 hover:bg-red-400/10">Delete</button>
       </div>
@@ -261,30 +291,34 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to delete course")
   });
   return <SpotlightCard className="overflow-hidden" tint="amber">
-      <div className="p-5 space-y-3">
+      <div className="p-5 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex-1 min-w-[240px] space-y-2">
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Course title" className={`text-sm font-medium ${inputClass}`} />
-            <div className="flex flex-wrap gap-2">
-              <input value={slug} onChange={e => setSlug(slugify(e.target.value))} placeholder="url-slug" className={`w-56 ${inputClass}`} />
-              <select value={level} onChange={e => setLevel(e.target.value)} className={`w-36 ${inputClass}`}>
-                {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
-              <input type="number" min={1} value={estimatedMinutes} onChange={e => setEstimatedMinutes(e.target.value)} placeholder="Minutes" className={`w-24 ${inputClass}`} />
-              <input list="cybersachet-categories" value={category} onChange={e => setCategory(e.target.value)} placeholder="Category" className={`w-44 ${inputClass}`} />
+          <LabeledInput label="Course title" value={title} onChange={e => setTitle(e.target.value)} className="min-w-[240px] flex-1 text-sm font-medium" />
+          <span className="mt-6 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium bg-white/10 light:bg-slate-900/8 text-white/60 light:text-slate-500">
+            {course.lessonCount} lesson{course.lessonCount === 1 ? "" : "s"} · {course.quizQuestionCount} quiz Q · {course.enrollmentCount} enrolled
+          </span>
+        </div>
+
+        <div>
+          <SectionLabel>Catalog details</SectionLabel>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <LabeledInput label="URL slug" value={slug} onChange={e => setSlug(slugify(e.target.value))} />
+            <LabeledSelect label="Difficulty" value={level} onChange={e => setLevel(e.target.value)}>
+              {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+            </LabeledSelect>
+            <LabeledInput label="Minutes" type="number" min={1} value={estimatedMinutes} onChange={e => setEstimatedMinutes(e.target.value)} />
+            <LabeledField label="Category">
+              <input list="cybersachet-categories" value={category} onChange={e => setCategory(e.target.value)} className={inputClass} />
               <datalist id="cybersachet-categories">
                 {Object.keys(CATEGORY_LABELS).map(k => <option key={k} value={k} />)}
               </datalist>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="rounded-full px-2.5 py-1 text-[11px] font-medium bg-white/10 light:bg-slate-900/8 text-white/60 light:text-slate-500">
-              {course.lessonCount} lesson{course.lessonCount === 1 ? "" : "s"} · {course.quizQuestionCount} quiz Q · {course.enrollmentCount} enrolled
-            </span>
+            </LabeledField>
           </div>
         </div>
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Description" className={inputClass} />
-        <div className="flex flex-wrap items-center justify-between gap-3">
+
+        <LabeledTextarea label="Description" value={description} onChange={e => setDescription(e.target.value)} rows={2} />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 light:border-slate-900/10 pt-3">
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-white/70 light:text-slate-600">
               <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="h-4 w-4 rounded border-white/20 light:border-slate-900/25 bg-black/40 light:bg-slate-900/[0.03] accent-emerald-400" />

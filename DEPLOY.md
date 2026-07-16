@@ -285,6 +285,109 @@ drop-then-create pattern — same `CREATE OR REPLACE` gotcha documented in
 0030 and 0034: Postgres treats a different parameter or return-column list
 as a different function identity, not a replacement.
 
+## Real SSL certificate detail (migration 0052)
+
+The admin SSL Certificates page only ever showed a bare "Invalid" badge —
+not because certificate data doesn't exist, but because
+`admin_list_ssl_certificates()` never selected the columns `ssl_info` has
+carried since migration 0001 (`subject`, `protocol`, `error_message`,
+`valid_from`, `checked_at`). Fixed by returning them and surfacing them in
+an expandable row per certificate, including the **real error message**
+when a check fails or is skipped — no more guessing why something says
+"Invalid." Apply the same way as always:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+**Root cause of most/all "Invalid" badges on a fresh deploy**: `runSslCheck()`
+(`supabase/functions/_shared/checks.ts`) fetches real certificate data from
+whoisjson.com's SSL Certificate API and needs `WHOISJSON_API_KEY` (set via
+`supabase secrets set WHOISJSON_API_KEY=...`, free tier: 1,000 req/month at
+whoisjson.com). Without it, every check returns `isValid: false` with
+`error_message: "SSL check skipped: WHOISJSON_API_KEY not configured"` —
+which is now what the admin page actually shows instead of a silent
+"Invalid." This is the same degrade-visibly pattern as `RESEND_API_KEY`/
+Google OAuth/Stripe: the feature is real, it just needs this one secret to
+start reporting real data instead of "not configured."
+
+**Deliberately not added**: algorithm, key length, SAN, certificate chain,
+fingerprint, OCSP status, HSTS, weak-cipher detection, or a "security
+score." whoisjson.com's exact response schema is already flagged as
+unverified in `checks.ts`'s own comments (no live response has been checked
+against it yet) — inventing fields on top of an already-uncertain schema
+would be exactly the kind of decoration this project has avoided
+everywhere else. Also **not** a "download private key" action (this
+platform monitors sites remotely; it never has a customer's private key,
+and a feature offering to download one would be a real security
+anti-pattern, not a missing capability) — and **not** new Certbot/nginx-
+reload infrastructure, because that already exists and is real: see
+"Remediation runbooks" below — `renew_ssl_certbot`, `reload_nginx`, and
+`reload_apache` are already live, allowlisted actions the Kada Nigrani
+agent can run on a customer's own server from **Hosts → a host →
+Runbooks**, not from the admin SSL page (which watches certs on domains
+this platform has no server access to).
+
+## CyberSachet content license gate (migration 0054)
+
+Package-enforcement audit finding: `enroll_in_course()`, `check_lesson_answer()`,
+and `submit_quiz()` all correctly call `_cybersachet_course_allowed()` (the
+real license + Starter-free-tier check) before doing anything real — but
+the three **read** RPCs backing the lesson/quiz UI never did.
+`list_course_lessons()`, `list_course_quiz()`, and `list_course_modules()`
+only checked `c.published`, meaning any authenticated user — an unlicensed
+org, or a licensed Starter org reading a course that isn't one of its two
+free ones — could read full lesson bodies and quiz questions directly via
+RPC, bypassing the frontend's local-preview-vs-real switch entirely. Fixed
+by adding `my_cybersachet_license() and _cybersachet_course_allowed(c.id)`
+to all three. `list_cybersachet_courses()` itself is deliberately left
+open — the catalog (title/description/lesson count) is meant to be visible
+pre-license so a Starter org can see what upgrading unlocks; that's the
+existing `LockedCourseCard` UX, not a leak. Apply the same way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+**Verification note**: no organization in the live database has ever had an
+active `cybersachet` product row — every org has always run in local-preview
+mode, which never calls these RPCs at all, so this fix is confirmed not to
+regress the (currently universal) unlicensed path. The positive path — a
+real license correctly still seeing real content — has never been
+live-testable on this project and still isn't, since creating one requires
+writing a real `organization_products` row for a real org, which needs your
+go-ahead. Say the word and I'll license a specific org for a real end-to-end
+test.
+
+## Retire the legacy ADMIN role key (migration 0055)
+
+Real bug behind the "why are there so many confusing roles" report: `handle_new_user()`
+and `ensure_user_organization()` have hardcoded the legacy `ADMIN` role key
+for every org creator since migration 0001 — including brand-new signups
+today, years after migration 0032 introduced the clean `organization_administrator`
+role. Every new customer was being labeled "Organization Administrator
+(legacy)" from day one, for no reason: the two roles have byte-for-byte
+identical permission grids, verified against migration 0032's seed data
+before touching anything. Apply the same way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+- New signups now get `organization_administrator` directly.
+- **Backfilled** the 3 existing live memberships that held `ADMIN` to the
+  same key — safe because the grids are identical, and the one other place
+  that read the literal role value (`admin_list_customers()`'s "pick the
+  org's admin email to display" ordering) was fixed in the same migration
+  to recognize both keys, so existing customers' admin contact still
+  resolves correctly.
+- **`fetchOrgRoles()`** (shared by every role picker — Team & Plan and
+  Platform Admin's All Users) now excludes `ADMIN`/`MEMBER`/`READ_ONLY`
+  from the assignable list. They stay in the `roles` table itself for any
+  historical audit-log reference, just aren't offered for new assignment —
+  verified live: the picker dropped from 12 options with 3 confusing
+  "(legacy)" duplicates to 9 clean ones.
+
 ## CyberSachet Training & Certification (migrations 0037, 0040–0044)
 
 Turns the CyberSachet product page from a roadmap into a real, licensed
@@ -648,6 +751,112 @@ npx supabase functions deploy send-org-invite
   departments, invites, ...) plus a switcher UI — real, substantial,
   higher-regression-risk work on a live product, not something to fold
   into this pass.
+
+## First live deployment (migrations 0019–0051) — real bugs found and fixed
+
+Migrations 0021 onward had never actually been applied to a live database
+before. Pushing them for real (not just compiling/reading them) surfaced
+four genuine bugs, all now fixed in the migration files themselves:
+
+- **0035**: `interval` used unquoted as a column name in a `RETURNS TABLE`
+  list — a reserved SQL keyword there, though fine as an actual table
+  column name (Postgres's grammar is context-sensitive). Fixed by quoting
+  it (`"interval"`).
+- **0042 / 0048**: a few `create or replace function` calls changed a
+  function's `RETURNS TABLE` shape without the `drop function if exists`
+  this codebase's own convention requires whenever that shape changes —
+  Postgres rejects that as "cannot change return type of existing
+  function." Fixed by adding the missing drops.
+- **0022**: `confirmed_at` is a generated column on current Supabase/GoTrue
+  schemas and can no longer be assigned explicitly — this migration
+  predates that change. Fixed by dropping it from the explicit column list
+  (`email_confirmed_at` alone is sufficient).
+- **Migration 0051** — the most important one: `pgcrypto` (`digest()`,
+  `gen_random_bytes()`) lives in Supabase's `extensions` schema, not
+  `public`. Every SECURITY DEFINER function pins `search_path = public,
+  pg_temp` (correct practice, migration 0003), which means none of them
+  could ever see `extensions` — so any pgcrypto call inside one failed with
+  "function ... does not exist" the moment it actually ran. This silently
+  broke **`create_host_agent()`** (adding a server agent — since its insert
+  relies on `ingest_key`'s column default calling `gen_random_bytes()`),
+  **`regenerate_host_agent_key()`**, the CyberSachet **certificate-hash
+  issuing functions** (`issue_cybersachet_certificate`,
+  `issue_course_certificate`), and this session's own
+  **`create_org_invite()`**. Fixed by adding `extensions` to each affected
+  function's search path. Apply the same way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+- **One pre-existing repo quirk left as-is, not "fixed"**: two migration
+  files share the version number `0019` (`0019_realtime_check_results.sql`
+  and `0019_tcp_network_monitoring.sql`) — a historical numbering mistake.
+  Supabase's migration tracking can only record one of them as applied per
+  version number; the second's actual schema changes (the `tcp_port`
+  column, the TCP-check `create_monitor` signature) were already live on
+  this project through some earlier, untracked deploy. Renumbering it now
+  would be riskier than leaving a cosmetic tracking gap — the live schema
+  itself is correct and unaffected.
+- **Post-deploy state**: all 50 original migrations plus 0051 are applied.
+  The pre-existing super-admin account (`babulearn57@gmail.com`) was
+  detected already present, so 0021/0022's one-time wipe-on-first-deploy
+  guard correctly never fired — no existing organization, monitor, or user
+  data was touched. Departments and Invites were both verified live
+  end-to-end (create/rename/archive/restore/delete, member assignment;
+  invite create/copy-link/accept-page/revoke) against this real database
+  before writing this up.
+
+## Mobile layout fix + two real cross-tenant data bugs (migration 0053)
+
+**Mobile**: `Layout.jsx` and `AdminLayout.jsx` had a fixed 256px sidebar with
+no responsive handling at all — on a phone-width screen the sidebar and the
+`ml-64`-pushed content fought for space, leaving the app nearly unusable
+below the `lg` breakpoint (1024px). Fixed with a standard off-canvas
+pattern: the sidebar is transform-hidden (`-translate-x-full`) below `lg`,
+opened by a new mobile top bar's hamburger button, with a tap-to-close
+backdrop; at `lg` and up it's `translate-x-0` (always docked), so desktop
+is visually unchanged. Verified live at an iPhone-13 viewport across
+Dashboard, Team & Plan, CyberSachet Training, and both admin pages — no
+page-level horizontal overflow anywhere. Dense tables (Team Members,
+Departments, SSL Certificates) scroll horizontally within their own card
+rather than breaking the page, the standard pattern for data-dense tables
+on narrow screens — not rebuilt as card lists in this pass.
+
+**Follow-up mobile audit** (same session, one message later): checked 17
+pages at iPhone-13 width — zero had page-level overflow, but two had a real
+"congested" problem the overflow check alone doesn't catch: `Monitors.jsx`
+(6-column table, `min-w-[640px]`, Status buried three columns in) and
+`Assets.jsx` (identifier — usually a full URL — truncated at the table's
+right edge). Fixed both with a real `table` (`sm:`/`md:` and up) /
+stacked-card (below that) split — same data, Status right next to the name
+on the card instead of scrolled off-screen. Incidents/Hosts/Team & Plan
+were checked and are already card- or section-based, not tables, so they
+didn't need this. No migration — frontend only.
+
+**Two real bugs found while checking those pages on mobile** (unrelated to
+mobile itself — same class of bug, found by coincidence testing as an
+account that happens to be both a platform admin and a customer-org
+member, which is exactly what the super-admin account is):
+
+- `get_plan_usage()` (migration 0004) and `get_dashboard_summary()`
+  (migration 0001) never filtered to the caller's own organization —
+  both relied entirely on RLS to narrow the result to one row. That's true
+  for an ordinary member, but `organizations_admin_select` /
+  `monitors_admin_select` (migration 0031-era policies) additionally grant
+  **platform admins** visibility into every organization, for legitimate
+  admin-page reasons. For an admin who's also a member of their own
+  organization, these two functions silently returned rows for **other
+  organizations** — Team & Plan showed a different org's plan/monitor
+  count, and the Dashboard's stat tiles aggregated monitors/incidents/
+  assets/SSL **platform-wide** instead of for their own org. Fixed by
+  explicitly scoping both to `memberships ... limit 1`, the same pattern
+  every other org-scoped RPC in this codebase already uses. Apply the same
+  way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
 
 ## Google sign-in & CAPTCHA
 

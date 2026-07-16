@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
@@ -24,19 +26,38 @@ const NAV_GROUPS = [{
     label: "Customers",
     icon: "◈"
     // No per-item roles — reseller sees this page too (scoped server-side
-    // to the customers they provisioned, see migration 0031), but not the
-    // items below. (Organizations was a duplicate of this page and was
-    // folded in — same rename/archive/delete/plan actions, nothing lost.)
+    // to the customers they provisioned, see migration 0031). Org lifecycle
+    // and billing, not identity/access, which is why Resellers/All Users/
+    // Roles/Audit Log live in their own group below instead of here.
+    // (Organizations was a duplicate of this page and was folded in — same
+    // rename/archive/delete/plan actions, nothing lost.)
+  }]
+}, {
+  // Every "who can do what" screen in one place — platform users, resellers,
+  // role/permission definitions, and the audit trail of access changes.
+  // No group-level `roles` here (unlike Customers/Monitoring): each item
+  // keeps exactly the individual restriction it already had, so this is a
+  // pure regrouping, not a visibility change.
+  label: "Identity & Access",
+  items: [{
+    to: "/admin/users",
+    label: "All Users",
+    icon: "◉",
+    roles: ["super_admin", "platform_administrator", "support"]
   }, {
     to: "/admin/resellers",
     label: "Resellers",
     icon: "🤝",
     roles: ["super_admin", "platform_administrator", "support"]
   }, {
-    to: "/admin/users",
-    label: "All Users",
-    icon: "◉",
-    roles: ["super_admin", "platform_administrator", "support"]
+    to: "/admin/roles",
+    label: "Roles & Permissions",
+    icon: "🛡",
+    roles: ["super_admin", "platform_administrator"]
+  }, {
+    to: "/admin/audit-log",
+    label: "Audit Log",
+    icon: "☰"
   }]
 }, {
   // Cross-org monitoring views — excluded for reseller the same way the
@@ -78,15 +99,6 @@ const NAV_GROUPS = [{
     label: "Site Visibility",
     icon: "◈",
     roles: ["super_admin", "content_editor"]
-  }, {
-    to: "/admin/roles",
-    label: "Roles & Permissions",
-    icon: "🛡",
-    roles: ["super_admin", "platform_administrator"]
-  }, {
-    to: "/admin/audit-log",
-    label: "Audit Log",
-    icon: "☰"
   }]
 }, {
   label: "Training",
@@ -129,6 +141,8 @@ export function AdminLayout() {
     items: g.items.filter(item => visibleFor(platformAdminRole, item))
   })).filter(g => g.items.length > 0);
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeMobileNav = () => setMobileNavOpen(false);
   return <div className="flex min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 antialiased" style={{
     fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif"
   }}>
@@ -138,9 +152,29 @@ export function AdminLayout() {
       {/* Amber accent stripe */}
       <div className="fixed left-0 right-0 top-0 z-40 h-1 bg-amber-400" />
 
-      {/* Fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white pt-1">
-        <Link to="/admin" className="group block border-b border-white/10 light:border-slate-900/10 p-4 transition-colors hover:bg-white/[0.02] light:hover:bg-slate-900/[0.02]">
+      {/* Mobile top bar — the sidebar below is off-canvas until this hamburger opens it */}
+      <div className="fixed inset-x-0 top-1 z-30 flex h-14 items-center justify-between border-b border-white/10 light:border-slate-900/10 bg-neutral-950/95 light:bg-white/95 px-4 backdrop-blur lg:hidden">
+        <Link to="/admin" className="flex items-center gap-2">
+          <BrandMark size={24} />
+          <span className="truncate text-sm font-medium text-white light:text-slate-900">Platform Console</span>
+        </Link>
+        <button onClick={() => setMobileNavOpen(true)} aria-label="Open menu" className="grid h-9 w-9 place-items-center rounded-lg border border-white/15 light:border-slate-900/15 text-white/70 light:text-slate-600">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Backdrop — mobile only, closes the sidebar on tap */}
+      <AnimatePresence>
+        {mobileNavOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeMobileNav} className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden" />}
+      </AnimatePresence>
+
+      {/* Sidebar — off-canvas (slides in) below the lg breakpoint, always
+          docked at lg and up. Transform-based so desktop keeps its existing
+          persistent layout untouched. */}
+      <aside className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white pt-1 transition-transform duration-300 ease-out lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <Link to="/admin" onClick={closeMobileNav} className="group block border-b border-white/10 light:border-slate-900/10 p-4 transition-colors hover:bg-white/[0.02] light:hover:bg-slate-900/[0.02]">
           <div className="flex items-center gap-2.5">
             <BrandMark size={28} />
             <div className="min-w-0">
@@ -160,7 +194,7 @@ export function AdminLayout() {
                 {group.label}
               </p>
               <div className="space-y-0.5 px-2">
-                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} className={({
+                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
               isActive
             }) => `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "bg-amber-400 text-black" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900"}`}>
                     <span className="text-[13px] opacity-70">{item.icon}</span>
@@ -172,7 +206,7 @@ export function AdminLayout() {
 
         <div className="border-t border-white/10 light:border-slate-900/10 p-3">
           <div className="flex items-center justify-between gap-2">
-            <Link to="/dashboard" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900">
+            <Link to="/dashboard" onClick={closeMobileNav} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900">
               ← Customer Dashboard
             </Link>
             <div className="flex shrink-0 items-center gap-2">
@@ -188,8 +222,10 @@ export function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-8 light:bg-white">
-        <Outlet />
+      <main className="relative z-10 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-14 lg:ml-64 lg:pt-1 light:bg-white">
+        <div className="p-4 sm:p-8">
+          <Outlet />
+        </div>
       </main>
     </div>;
 }

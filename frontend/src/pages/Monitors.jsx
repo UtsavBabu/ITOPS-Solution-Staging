@@ -116,11 +116,38 @@ function targetLabel(monitor) {
   if (monitor.checkType === "TCP") return `${monitor.url}:${monitor.tcpPort ?? "?"}`;
   return monitor.url;
 }
+// Below `md`, the 6-column table forces horizontal scroll with the most
+// important field (Status) buried three columns in — real "congested on
+// mobile" the audit found. Cards stack the same data instead, Status right
+// next to the name where it's actually useful at a glance.
+function MonitorCards({ monitors, onDelete }) {
+  return <div className="divide-y divide-white/10 light:divide-slate-900/8">
+      {monitors.map((monitor, i) => <motion.div key={monitor.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }} className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <Link to={`/monitors/${monitor.id}`} className="font-medium text-white light:text-slate-900 hover:underline">
+              {monitor.name}
+            </Link>
+            <StatusBadge status={monitor.lastStatus} />
+          </div>
+          <p className="mt-1 truncate text-xs text-white/50 light:text-slate-500">{targetLabel(monitor)}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/40 light:text-slate-400">
+            <span className="rounded-full bg-white/10 px-2 py-0.5 font-medium text-white/70 light:text-slate-600">
+              {CHECK_TYPE_LABELS[monitor.checkType]}
+            </span>
+            <span>Every {INTERVAL_LABELS[monitor.interval]}</span>
+            <span>{monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}</span>
+          </div>
+          <button onClick={() => onDelete(monitor)} className="mt-3 text-xs text-red-300 light:text-red-600 hover:underline">
+            Delete
+          </button>
+        </motion.div>)}
+    </div>;
+}
 function MonitorTable({
   monitors,
   onDelete
 }) {
-  return <table className="w-full min-w-[640px] text-left text-sm">
+  return <table className="hidden w-full min-w-[640px] text-left text-sm md:table">
       <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
         <tr>
           <th className="px-4 py-2">Name</th>
@@ -412,7 +439,10 @@ export default function Monitors({ mode = "web" }) {
       </Reveal>
 
       <SpotlightCard className="overflow-x-auto" delay={0.1} scan>
-        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={tab === "web" ? "No website monitors yet." : "No network devices yet."} description={tab === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />}
+        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={tab === "web" ? "No website monitors yet." : "No network devices yet."} description={tab === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : <>
+            <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />
+            <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={handleDelete} /></div>
+          </>}
       </SpotlightCard>
     </div>;
 }

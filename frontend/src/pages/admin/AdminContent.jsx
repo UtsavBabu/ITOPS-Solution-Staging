@@ -6,6 +6,24 @@ import { Reveal, SpotlightCard } from "../../components/Animated";
 import { useToast } from "../../components/Toast";
 import { ErrorState } from "../../components/EmptyState";
 const EASE = [0.16, 1, 0.3, 1];
+const fieldInputClass = "w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none";
+const fieldLabelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/35 light:text-slate-400";
+// Compact inline labels above each control — placeholder text alone reads
+// fine on an empty field, but once real content fills it in (a course
+// title, a roadmap item's title) there's no way to tell what any field is
+// without clearing it first.
+function LabeledInput({ label, className = "", inputClassName = "", ...props }) {
+  return <label className={`block ${className}`}>
+      <span className={fieldLabelClass}>{label}</span>
+      <input className={`${fieldInputClass} ${inputClassName}`} {...props} />
+    </label>;
+}
+function LabeledTextarea({ label, className = "", ...props }) {
+  return <label className={`block ${className}`}>
+      <span className={fieldLabelClass}>{label}</span>
+      <textarea className={fieldInputClass} {...props} />
+    </label>;
+}
 const PAGE_LABELS = {
   landing: "Landing",
   platform: "Platform",
@@ -37,20 +55,23 @@ function CapabilitiesEditor({
   }
   return <div className="mt-3 space-y-2 border-t border-white/10 light:border-slate-900/10 pt-3">
       <p className="text-xs font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Capabilities</p>
-      {capabilities.map((cap, i) => <div key={i} className="flex flex-wrap items-center gap-2">
-          <input value={cap.title} onChange={e => updateRow(i, {
+      {capabilities.map((cap, i) => <div key={i} className="flex flex-wrap items-end gap-2">
+          <LabeledInput label="Title" value={cap.title} onChange={e => updateRow(i, {
         title: e.target.value
-      })} placeholder="Title" className="w-48 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
-          <input value={cap.detail} onChange={e => updateRow(i, {
+      })} className="w-48" />
+          <LabeledInput label="Detail" value={cap.detail} onChange={e => updateRow(i, {
         detail: e.target.value
-      })} placeholder="Detail" className="flex-1 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
-          <select value={cap.status} onChange={e => updateRow(i, {
+      })} className="flex-1" />
+          <label className="block">
+            <span className={fieldLabelClass}>Status</span>
+            <select value={cap.status} onChange={e => updateRow(i, {
         status: e.target.value
-      })} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none">
-            <option value="live">live</option>
-            <option value="roadmap">roadmap</option>
-          </select>
-          <button onClick={() => removeRow(i)} className="text-xs text-red-300 light:text-red-600 hover:text-red-200">
+      })} className={fieldInputClass}>
+              <option value="live">live</option>
+              <option value="roadmap">roadmap</option>
+            </select>
+          </label>
+          <button onClick={() => removeRow(i)} className="pb-2 text-xs text-red-300 light:text-red-600 hover:text-red-200">
             Remove
           </button>
         </div>)}
@@ -161,8 +182,8 @@ function ItemEditor({
     duration: 0.3,
     ease: EASE
   }} className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/30 light:bg-slate-900/[0.02] p-4">
-      <div className="flex flex-wrap items-start gap-2">
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" className="flex-1 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-sm font-medium text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
+      <div className="flex flex-wrap items-end gap-2">
+        <LabeledInput label="Title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" inputClassName="text-sm font-medium" />
         <button onClick={() => moveMutation.mutate(item.sortOrder - 1)} disabled={isFirst || moveMutation.isPending} aria-label="Move up" className="rounded-lg border border-white/15 px-2 py-1.5 text-xs text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-30 disabled:hover:text-white/60 light:hover:text-slate-500">
           ↑
         </button>
@@ -171,15 +192,13 @@ function ItemEditor({
         </button>
       </div>
 
-      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <input value={subtitle} onChange={e => setSubtitle(e.target.value)} placeholder="Subtitle (optional)" className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
-        <div className="flex gap-2">
-          <input value={status} onChange={e => setStatus(e.target.value)} placeholder="Status (e.g. live/roadmap)" className="w-1/2 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
-          <input value={href} onChange={e => setHref(e.target.value)} placeholder="Link (optional)" className="w-1/2 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
-        </div>
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <LabeledInput label="Subtitle (optional)" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
+        <LabeledInput label="Status (e.g. live/roadmap)" value={status} onChange={e => setStatus(e.target.value)} />
+        <LabeledInput label="Link (optional)" value={href} onChange={e => setHref(e.target.value)} />
       </div>
 
-      <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Body / description" rows={2} className="mt-2 w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
+      <LabeledTextarea label="Body / description" value={body} onChange={e => setBody(e.target.value)} rows={2} className="mt-2" />
 
       {hasImage && <div className="mt-2 flex items-center gap-3 border-t border-white/10 light:border-slate-900/10 pt-3">
           {imageUrl.trim() ? <img src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-full border border-white/15 light:border-slate-900/15 object-cover" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-white/20 light:border-slate-900/20 bg-white/5 light:bg-slate-900/[0.03] text-[10px] text-white/40 light:text-slate-400">
@@ -254,12 +273,12 @@ function NewItemForm({
         + Add item to this section
       </button>;
   }
-  return <div className="flex gap-2">
-      <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title for new item" className="flex-1 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900 focus:border-white/40 focus:outline-none" />
+  return <div className="flex items-end gap-2">
+      <LabeledInput label="Title for new item" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" />
       <button onClick={() => title.trim() && mutation.mutate()} disabled={mutation.isPending} className="rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">
         Create
       </button>
-      <button onClick={() => setOpen(false)} className="text-xs text-white/50 light:text-slate-500 hover:text-white light:hover:text-slate-900">
+      <button onClick={() => setOpen(false)} className="pb-1.5 text-xs text-white/50 light:text-slate-500 hover:text-white light:hover:text-slate-900">
         Cancel
       </button>
     </div>;

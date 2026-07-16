@@ -97,9 +97,14 @@ export async function fetchAdminSslCertificates(expiringOnly = false) {
     monitorId: row.monitor_id,
     monitorName: row.monitor_name,
     issuer: row.issuer,
+    subject: row.subject,
+    protocol: row.protocol,
     isValid: row.is_valid,
+    errorMessage: row.error_message,
     daysRemaining: row.days_remaining,
-    validTo: row.valid_to
+    validFrom: row.valid_from,
+    validTo: row.valid_to,
+    checkedAt: row.checked_at
   }));
 }
 export async function fetchAdminOrganizations() {

@@ -371,6 +371,14 @@ export async function updateMemberRole(userId, role) {
   const { error } = await supabase.rpc("update_organization_member_role", { p_user_id: userId, p_role: role });
   if (error) throw new Error(error.message);
 }
+// ADMIN/MEMBER/READ_ONLY predate the named organization roles migration
+// 0032 introduced (organization_administrator, it_manager, ...) and have
+// been fully retired since migration 0055 — zero live memberships use them
+// and new signups no longer get assigned them. Excluded here so they don't
+// show up as confusing "(legacy)" duplicates next to their modern
+// equivalent in every role picker; kept in the `roles` table itself only
+// so any historical audit-log reference to them still resolves a name.
+const RETIRED_ROLE_KEYS = ["ADMIN", "MEMBER", "READ_ONLY"];
 export async function fetchOrgRoles() {
   // Reads the `roles` table directly rather than the admin_list_roles RPC
   // (which requires a platform-admin account) — system org roles have
@@ -383,7 +391,9 @@ export async function fetchOrgRoles() {
     .order("is_system", { ascending: false })
     .order("name");
   if (error) throw new Error(error.message);
-  return (data ?? []).map(row => ({ key: row.key, name: row.name, isSystem: row.is_system }));
+  return (data ?? [])
+    .filter(row => !RETIRED_ROLE_KEYS.includes(row.key))
+    .map(row => ({ key: row.key, name: row.name, isSystem: row.is_system }));
 }
 /**
  * Every module/action the current user's platform role (if any) and org

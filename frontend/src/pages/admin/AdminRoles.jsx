@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { PERMISSION_ACTIONS, deleteRole, fetchPermissionModules, fetchRolePermissions, fetchRoles, upsertRole } from "../../api/adminEndpoints";
@@ -11,6 +12,12 @@ import { useToast } from "../../components/Toast";
 const EASE = [0.16, 1, 0.3, 1];
 const ACTION_LABEL = { view: "View", create: "Create", edit: "Edit", delete: "Delete", configure: "Configure", export: "Export", manage: "Manage" };
 const EMPTY_ACTIONS = Object.fromEntries(PERMISSION_ACTIONS.map(a => [a, false]));
+// Predate the named organization roles (organization_administrator, it_manager,
+// ...) and have been fully retired since migration 0055 — no account holds
+// one anymore, and new accounts can't be assigned one. Hidden by default so
+// they don't read as duplicates of their modern equivalent; still viewable
+// via "Show legacy roles" for historical reference.
+const LEGACY_ROLE_KEYS = ["ADMIN", "MEMBER", "READ_ONLY"];
 
 function slugify(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -186,9 +193,12 @@ export default function AdminRoles() {
   const [selectedKey, setSelectedKey] = useState(null);
   const [creating, setCreating] = useState(null); // null | { cloneFrom }
   const [compareKeys, setCompareKeys] = useState([]);
+  const [showLegacy, setShowLegacy] = useState(false);
 
   const { data: modules, isLoading: modulesLoading } = useQuery({ queryKey: ["permission-modules"], queryFn: fetchPermissionModules });
-  const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useQuery({ queryKey: ["admin-roles", scopeFilter], queryFn: () => fetchRoles(scopeFilter), retry: false });
+  const { data: rolesRaw, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useQuery({ queryKey: ["admin-roles", scopeFilter], queryFn: () => fetchRoles(scopeFilter), retry: false });
+  const legacyCount = (rolesRaw ?? []).filter(r => LEGACY_ROLE_KEYS.includes(r.key)).length;
+  const roles = showLegacy ? rolesRaw : (rolesRaw ?? []).filter(r => !LEGACY_ROLE_KEYS.includes(r.key));
 
   const deleteMutation = useMutation({
     mutationFn: key => deleteRole(key),
@@ -221,6 +231,9 @@ export default function AdminRoles() {
           <p className="text-sm text-white/50 light:text-slate-500">
             Every role is a real row — view, create, edit, delete, configure, export, and manage, per module. No code changes to add a role.
           </p>
+          <p className="mt-1 text-xs text-white/35 light:text-slate-400">
+            This page only defines what a role can do. To give a specific person a role, go to <Link to="/admin/users" className="underline hover:text-white/60 light:hover:text-slate-600">All Users</Link> (platform-wide) or a customer's own Team &amp; Plan page.
+          </p>
         </div>
         <button
           onClick={() => { setCreating({ cloneFrom: selectedRole }); setSelectedKey(null); }}
@@ -230,7 +243,7 @@ export default function AdminRoles() {
         </button>
       </Reveal>
 
-      <Reveal delay={0.05} className="flex items-center gap-2">
+      <Reveal delay={0.05} className="flex flex-wrap items-center gap-2">
         {["platform", "organization"].map(s => (
           <button
             key={s}
@@ -241,6 +254,9 @@ export default function AdminRoles() {
             {roles && scopeFilter === s && <span className="ml-1.5 opacity-60">· {roles.length}</span>}
           </button>
         ))}
+        {legacyCount > 0 && <button onClick={() => setShowLegacy(v => !v)} className="ml-2 text-xs text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">
+            {showLegacy ? "Hide" : "Show"} {legacyCount} legacy role{legacyCount === 1 ? "" : "s"}
+          </button>}
       </Reveal>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">

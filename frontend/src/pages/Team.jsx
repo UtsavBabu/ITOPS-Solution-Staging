@@ -517,6 +517,10 @@ export default function Team() {
         <p className="text-sm text-white/50 light:text-slate-500">{organization?.name}</p>
       </Reveal>
 
+      <Reveal delay={0.02}>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-white/40 light:text-slate-400">Plan &amp; Billing</h2>
+      </Reveal>
+
       {/* Current usage */}
       {usageError ? <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white">
           <ErrorState message="Couldn't load your plan usage." onRetry={() => refetchUsage()} />
@@ -589,6 +593,11 @@ export default function Team() {
           Professional and Business upgrade instantly by card. Enterprise is custom — email sales@itops-monitor.local or contact your account manager.
         </p>
       </div>
+
+      <Reveal delay={0.08}>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-white/40 light:text-slate-400">Identity &amp; Access</h2>
+        <p className="mt-0.5 text-xs text-white/35 light:text-slate-400">Who's in your organization, what they can do, how they're grouped, and who you've invited.</p>
+      </Reveal>
 
       {/* Members */}
       <SpotlightCard className="overflow-hidden" delay={0.1}>

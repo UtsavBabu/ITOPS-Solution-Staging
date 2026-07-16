@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
@@ -114,6 +115,8 @@ export function Layout() {
   const { portal } = usePortalType();
   const planColor = PLAN_COLORS[usage?.plan ?? "STARTER"] ?? PLAN_COLORS.STARTER;
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeMobileNav = () => setMobileNavOpen(false);
   return <div className="flex min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 antialiased" style={{
     fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif"
   }}>
@@ -121,10 +124,30 @@ export function Layout() {
         <EnterpriseAuroraBackground intensity="ambient" tint="emerald" forceDark />
       </div>
 
-      {/* Fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white">
+      {/* Mobile top bar — the sidebar below is off-canvas until this hamburger opens it */}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-white/10 light:border-slate-900/10 bg-neutral-950/95 light:bg-white/95 px-4 backdrop-blur lg:hidden">
+        <Link to="/" className="flex items-center gap-2">
+          <BrandMark size={24} />
+          <span className="truncate text-sm font-medium text-white light:text-slate-900">{organization?.name ?? "ITOps Monitor"}</span>
+        </Link>
+        <button onClick={() => setMobileNavOpen(true)} aria-label="Open menu" className="grid h-9 w-9 place-items-center rounded-lg border border-white/15 light:border-slate-900/15 text-white/70 light:text-slate-600">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Backdrop — mobile only, closes the sidebar on tap */}
+      <AnimatePresence>
+        {mobileNavOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeMobileNav} className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden" />}
+      </AnimatePresence>
+
+      {/* Sidebar — off-canvas (slides in) below the lg breakpoint, always
+          docked at lg and up. Transform-based so desktop keeps its existing
+          persistent layout untouched. */}
+      <aside className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white transition-transform duration-300 ease-out lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-2.5 border-b border-white/10 light:border-slate-900/10 p-4">
+        <Link to="/" onClick={closeMobileNav} className="flex items-center gap-2.5 border-b border-white/10 light:border-slate-900/10 p-4">
           <BrandMark size={30} />
           <div className="min-w-0">
             <p className="text-sm font-medium text-white light:text-slate-900">ITOps Monitor</p>
@@ -166,7 +189,7 @@ export function Layout() {
                 {group.label}
               </p>
               <div className="space-y-0.5 px-2">
-                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} className={({
+                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
               isActive
             }) => `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "text-black light:text-white" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900"}`}>
                     {({
@@ -187,7 +210,7 @@ export function Layout() {
             </div>)}
 
           {isPlatformAdmin && <div className="px-2">
-              <NavLink to="/admin" className="flex items-center gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm font-medium text-amber-300 light:text-amber-600 transition-colors hover:bg-amber-400/10">
+              <NavLink to="/admin" onClick={closeMobileNav} className="flex items-center gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm font-medium text-amber-300 light:text-amber-600 transition-colors hover:bg-amber-400/10">
                 <span className="text-[13px]">★</span>
                 Platform Admin
               </NavLink>
@@ -222,8 +245,10 @@ export function Layout() {
           deliberately dark-only effect (built for a dark canvas); a clean
           flat surface reads better in light mode than an inverted version
           of it would. */}
-      <main className="relative z-10 ml-64 flex-1 overflow-y-auto p-6 light:bg-white">
-        <Outlet />
+      <main className="relative z-10 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-14 lg:ml-64 lg:pt-0 light:bg-white">
+        <div className="p-4 sm:p-6">
+          <Outlet />
+        </div>
       </main>
     </div>;
 }
