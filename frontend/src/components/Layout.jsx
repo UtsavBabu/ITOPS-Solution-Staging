@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useQuery } from "@tanstack/react-query";
 import { fetchMyPermissions, fetchPlanUsage } from "../api/endpoints";
 import { usePortalType } from "../hooks/usePortalType";
+import { useExpandedNavGroups } from "../hooks/useExpandedNavGroups";
 import { AppSearch } from "./AppSearch";
 import { NotificationCenter } from "./NotificationCenter";
 const PLAN_COLORS = {
@@ -123,6 +124,8 @@ export function Layout() {
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeMobileNav = () => setMobileNavOpen(false);
+  const location = useLocation();
+  const { expanded, toggle } = useExpandedNavGroups(visibleGroups, location.pathname);
   return <div className="flex min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 antialiased" style={{
     fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif"
   }}>
@@ -190,30 +193,61 @@ export function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3">
-          {visibleGroups.map(group => <div key={group.label} className="mb-4">
-              <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 light:text-slate-400">
-                {group.label}
-              </p>
-              <div className="space-y-0.5 px-2">
-                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
+          {visibleGroups.map(group => {
+          const CustomerNavItem = item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
+            isActive
+          }) => `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "text-black light:text-white" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900"}`}>
+              {({
               isActive
-            }) => `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "text-black light:text-white" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900"}`}>
-                    {({
-                isActive
-              }) => isActive ? <>
-                          <motion.span layoutId="nav-active-pill" transition={{
-                  duration: 0.35,
-                  ease: [0.16, 1, 0.3, 1]
-                }} className="absolute inset-0 rounded-lg bg-white light:bg-slate-900" />
-                          <span className="relative text-[13px] opacity-70">{item.icon}</span>
-                          <span className="relative">{item.label}</span>
-                        </> : <>
-                          <span className="text-[13px] opacity-70">{item.icon}</span>
-                          {item.label}
-                        </>}
-                  </NavLink>)}
-              </div>
-            </div>)}
+            }) => isActive ? <>
+                    <motion.span layoutId="nav-active-pill" transition={{
+                duration: 0.35,
+                ease: [0.16, 1, 0.3, 1]
+              }} className="absolute inset-0 rounded-lg bg-white light:bg-slate-900" />
+                    <span className="relative text-[13px] opacity-70">{item.icon}</span>
+                    <span className="relative">{item.label}</span>
+                  </> : <>
+                    <span className="text-[13px] opacity-70">{item.icon}</span>
+                    {item.label}
+                  </>}
+            </NavLink>;
+          // A single-item group (Inventory, Training) is just a plain link —
+          // nothing to collapse, same rule AdminLayout.jsx uses.
+          if (group.items.length === 1) {
+            return <div key={group.label} className="mb-1 px-2">{CustomerNavItem(group.items[0])}</div>;
+          }
+          const isOpen = expanded.has(group.label);
+          return <div key={group.label} className="mb-1">
+                <button type="button" onClick={() => toggle(group.label)} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-2 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 light:text-slate-400 transition-colors hover:text-white/55 light:hover:text-slate-600">
+                  <span>{group.label}</span>
+                  <motion.span animate={{
+                rotate: isOpen ? 90 : 0
+              }} transition={{
+                duration: 0.2,
+                ease: [0.16, 1, 0.3, 1]
+              }} className="text-[9px]" aria-hidden>▸</motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && <motion.div initial={{
+                height: 0,
+                opacity: 0
+              }} animate={{
+                height: "auto",
+                opacity: 1
+              }} exit={{
+                height: 0,
+                opacity: 0
+              }} transition={{
+                duration: 0.2,
+                ease: [0.16, 1, 0.3, 1]
+              }} className="overflow-hidden">
+                      <div className="space-y-0.5 px-2 pb-1.5 pt-0.5">
+                        {group.items.map(CustomerNavItem)}
+                      </div>
+                    </motion.div>}
+                </AnimatePresence>
+              </div>;
+        })}
 
           {isPlatformAdmin && <div className="px-2">
               <NavLink to="/admin" onClick={closeMobileNav} className="flex items-center gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-sm font-medium text-amber-300 light:text-amber-600 transition-colors hover:bg-amber-400/10">

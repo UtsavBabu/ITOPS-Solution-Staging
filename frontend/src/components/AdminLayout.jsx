@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { useExpandedNavGroups } from "../hooks/useExpandedNavGroups";
+const EASE = [0.16, 1, 0.3, 1];
 import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
@@ -143,6 +145,8 @@ export function AdminLayout() {
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeMobileNav = () => setMobileNavOpen(false);
+  const location = useLocation();
+  const { expanded, toggle } = useExpandedNavGroups(visibleGroups, location.pathname);
   return <div className="flex min-h-screen bg-black light:bg-slate-50 text-white light:text-slate-900 antialiased" style={{
     fontFamily: "'Readex Pro', system-ui, -apple-system, sans-serif"
   }}>
@@ -189,19 +193,52 @@ export function AdminLayout() {
         <AppSearch scope="admin" navItems={navItems} />
 
         <nav className="flex-1 overflow-y-auto py-3">
-          {visibleGroups.map(group => <div key={group.label} className="mb-4">
-              <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 light:text-slate-400">
-                {group.label}
-              </p>
-              <div className="space-y-0.5 px-2">
-                {group.items.map(item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
-              isActive
-            }) => `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "bg-amber-400 text-black" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900"}`}>
-                    <span className="text-[13px] opacity-70">{item.icon}</span>
-                    {item.label}
-                  </NavLink>)}
-              </div>
-            </div>)}
+          {visibleGroups.map(group => {
+          const AdminNavItem = item => <NavLink key={item.to} to={item.to} end={"end" in item ? item.end : false} onClick={closeMobileNav} className={({
+            isActive
+          }) => `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? "bg-amber-400 text-black" : "text-white/60 light:text-slate-500 hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900"}`}>
+              <span className="text-[13px] opacity-70">{item.icon}</span>
+              {item.label}
+            </NavLink>;
+          // A single-item group (e.g. "Overview", "Customers") is just a
+          // plain link, same as Google's own "Home"/"Dashboard" entries sitting
+          // outside the collapsible tree — collapsing a one-item section would
+          // be pure friction with nothing to hide.
+          if (group.items.length === 1) {
+            return <div key={group.label} className="mb-1 px-2">{AdminNavItem(group.items[0])}</div>;
+          }
+          const isOpen = expanded.has(group.label);
+          return <div key={group.label} className="mb-1">
+                <button type="button" onClick={() => toggle(group.label)} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-2 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30 light:text-slate-400 transition-colors hover:text-white/55 light:hover:text-slate-600">
+                  <span>{group.label}</span>
+                  <motion.span animate={{
+                rotate: isOpen ? 90 : 0
+              }} transition={{
+                duration: 0.2,
+                ease: EASE
+              }} className="text-[9px]" aria-hidden>▸</motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && <motion.div initial={{
+                height: 0,
+                opacity: 0
+              }} animate={{
+                height: "auto",
+                opacity: 1
+              }} exit={{
+                height: 0,
+                opacity: 0
+              }} transition={{
+                duration: 0.2,
+                ease: EASE
+              }} className="overflow-hidden">
+                      <div className="space-y-0.5 px-2 pb-1.5 pt-0.5">
+                        {group.items.map(AdminNavItem)}
+                      </div>
+                    </motion.div>}
+                </AnimatePresence>
+              </div>;
+        })}
         </nav>
 
         <div className="border-t border-white/10 light:border-slate-900/10 p-3">
