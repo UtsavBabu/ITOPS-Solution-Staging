@@ -457,6 +457,58 @@ plpgsql variable, and an unqualified `where id = p_organization_id` check
 collided with it ("column reference \"id\" is ambiguous"). Fixed in 0059
 by qualifying it; re-ran the same live test to confirm.
 
+## Users split out of Team & Plan (frontend only, no migration)
+
+Team & Plan was doing double duty as both billing (usage/plan comparison)
+and full identity management (members, role assignment, departments,
+invites, CyberSachet training assignment) — that's what made "where do I
+add a user" genuinely hard to find, screenshots included. Split it:
+
+- **New `/users` page** (`frontend/src/pages/Users.jsx`) — Team Members
+  table with role/department assignment, Invite a team member, Departments,
+  and CyberSachet Training assignment. Everything that was "Identity &
+  Access" on the old Team.jsx, verbatim, just moved.
+- **`Team.jsx` trimmed** to Current Usage + Available Plans + the public
+  Status Page card — billing only. Each page cross-links to the other.
+- New sidebar nav item ("Users") and a Dashboard quick action, both
+  gated on the same `team` permission module the old page used — no new
+  RBAC surface, same boundary.
+
+**Real bug found and fixed along the way, not related to the split but
+surfaced by live-testing it**: `AppSearch` and `NotificationCenter` were
+unconditionally running admin-only RPCs (`fetchAdminCustomers`,
+`fetchAdminUsers`, `fetchAdminOpenIncidents`, `fetchSecurityHighlights`,
+`fetchResellerApplications`) on every customer-scoped page load regardless
+of the viewer's role — every non-platform-admin was silently eating a 400
+on every page. Gated both hooks' queries behind `enabled: scope === "..."`
+matching the scope actually in use.
+
+No new migration — apply the existing pending ones (0051–0059, see the
+sections above) the same way as always:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+Verified live via a real fresh signup (new org, new account, no
+elevated/admin test account): `/users` shows Team Members/Invites/
+Departments with zero legacy roles in the invite dropdown (confirms the
+migration-0055 role cleanup is also finally live once this is deployed);
+`/team` shows only Current Usage/Available Plans; zero console/network
+errors on either page after the AppSearch/NotificationCenter fix.
+
+**Deliberately not built**: a per-user, per-product on/off toggle. Products
+(CyberSachet, MoonSAV-EDR, etc.) are licensed at the **organization**
+level via `organization_products` — every member of a licensed org shares
+that access, further narrowed by their role's module grants (e.g. a role
+without `training:view` doesn't see CyberSachet even though the org is
+licensed). That's the correct level for a subscription product, not a
+per-seat toggle. The real "list the product, click to turn it on/off"
+UI the request described **already exists** — Platform Admin → Customers
+→ open an org → Products panel — and predates this session; it wasn't
+rebuilt because it already works. What doesn't exist, and wasn't
+fabricated, is a second, per-user override on top of that.
+
 ## CyberSachet Training & Certification (migrations 0037, 0040–0044)
 
 Turns the CyberSachet product page from a roadmap into a real, licensed
