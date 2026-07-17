@@ -191,10 +191,123 @@ function InviteRow({ invite, canManage, onChanged }) {
     </tr>;
 }
 
+// email,role — role matches either a role key (e.g. "it_manager") or its
+// display name (e.g. "IT Manager"), case-insensitive. A header row is
+// detected and skipped automatically if its first cell isn't an email.
+function parseInviteCsv(text, orgRoles) {
+  const roleByKey = new Map(orgRoles.map(r => [r.key.toLowerCase(), r]));
+  const roleByName = new Map(orgRoles.map(r => [r.name.toLowerCase(), r]));
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length && !/^[^@\s]+@[^@\s]+\.[^@\s]+,/.test(lines[0] + ",")) {
+    const firstCell = lines[0].split(",")[0]?.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(firstCell)) lines.shift();
+  }
+  return lines.map(line => {
+    const [emailRaw, roleRaw] = line.split(",").map(s => (s ?? "").trim().replace(/^"|"$/g, ""));
+    const email = (emailRaw ?? "").toLowerCase();
+    const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    const matchedRole = roleRaw ? roleByKey.get(roleRaw.toLowerCase()) ?? roleByName.get(roleRaw.toLowerCase()) : null;
+    let reason = null;
+    if (!emailValid) reason = "Invalid email";
+    else if (!matchedRole) reason = roleRaw ? `Unknown role "${roleRaw}"` : "Missing role";
+    return { email, roleRaw: roleRaw ?? "", role: matchedRole, valid: emailValid && !!matchedRole, reason };
+  });
+}
+
+function BulkInvitePanel({ orgRoles, onDone }) {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [fileName, setFileName] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [results, setResults] = useState(null);
+
+  function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    setResults(null);
+    const reader = new FileReader();
+    reader.onload = () => setRows(parseInviteCsv(String(reader.result ?? ""), orgRoles));
+    reader.readAsText(file);
+  }
+
+  function downloadTemplate() {
+    const sampleRole = orgRoles[0]?.key ?? "helpdesk";
+    const csv = `email,role\njane@yourcompany.com,${sampleRole}\njohn@yourcompany.com,${sampleRole}\n`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "invite-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const validRows = rows.filter(r => r.valid);
+
+  async function handleSend() {
+    setSending(true);
+    const outcomes = [];
+    for (const row of validRows) {
+      try {
+        await createOrgInvite(row.email, row.role.key);
+        outcomes.push({ email: row.email, ok: true });
+      } catch (err) {
+        outcomes.push({ email: row.email, ok: false, error: err instanceof Error ? err.message : "Failed" });
+      }
+    }
+    setSending(false);
+    setResults(outcomes);
+    const succeeded = outcomes.filter(o => o.ok).length;
+    if (succeeded > 0) toast.success(`${succeeded} of ${outcomes.length} invited.`);
+    if (succeeded < outcomes.length) toast.error(`${outcomes.length - succeeded} invite(s) failed — see the list below.`);
+    onDone();
+  }
+
+  return <div className="space-y-3 border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="cursor-pointer rounded-full border border-white/15 light:border-slate-900/15 px-3 py-1.5 text-xs text-white/70 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-900/5">
+          {fileName ?? "Choose CSV…"}
+          <input type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
+        </label>
+        <button type="button" onClick={downloadTemplate} className="text-xs text-cyan-300 light:text-cyan-600 hover:underline">Download template</button>
+        <span className="text-xs text-white/35 light:text-slate-400">Columns: email, role (role key or name — e.g. "it_manager" or "IT Manager")</span>
+      </div>
+
+      {rows.length > 0 && <>
+          <div className="max-h-56 overflow-y-auto rounded-xl border border-white/10 light:border-slate-900/10">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 border-b border-white/10 light:border-slate-900/10 bg-neutral-900 light:bg-white uppercase text-white/40 light:text-slate-400">
+                <tr><th className="px-3 py-1.5">Email</th><th className="px-3 py-1.5">Role</th><th className="px-3 py-1.5">Status</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
+                {rows.map((r, i) => <tr key={i}>
+                    <td className="px-3 py-1.5 text-white light:text-slate-900">{r.email || "—"}</td>
+                    <td className="px-3 py-1.5 text-white/60 light:text-slate-600">{r.role?.name ?? r.roleRaw ?? "—"}</td>
+                    <td className={`px-3 py-1.5 ${r.valid ? "text-emerald-300 light:text-emerald-600" : "text-red-300 light:text-red-600"}`}>{r.valid ? "Ready" : r.reason}</td>
+                  </tr>)}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleSend} disabled={sending || validRows.length === 0} className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 disabled:opacity-50">
+              {sending ? "Sending…" : `Send ${validRows.length} invite${validRows.length === 1 ? "" : "s"}`}
+            </button>
+            {rows.length > validRows.length && <span className="text-xs text-amber-300">{rows.length - validRows.length} row(s) need fixing before they can be sent.</span>}
+          </div>
+        </>}
+
+      {results && <div className="rounded-xl border border-white/10 light:border-slate-900/10 p-3 text-xs">
+          {results.map(r => <p key={r.email} className={r.ok ? "text-emerald-300 light:text-emerald-600" : "text-red-300 light:text-red-600"}>{r.email} — {r.ok ? "invited" : r.error}</p>)}
+        </div>}
+    </div>;
+}
+
 function InvitesPanel({ orgRoles, canManage }) {
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { data: invites, isLoading, isError, refetch } = useQuery({ queryKey: ["org-invites"], queryFn: fetchOrgInvites, enabled: canManage });
   const create = useMutation({
     mutationFn: () => createOrgInvite(email, role || orgRoles[0]?.key),
@@ -205,11 +318,16 @@ function InvitesPanel({ orgRoles, canManage }) {
   if (!canManage) return null;
 
   return <SpotlightCard className="overflow-hidden" delay={0.06}>
-      <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
-        <h2 className="text-sm font-medium text-white light:text-slate-900">Invite a team member</h2>
-        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">A real invite link — they create their own account and land directly in your organization with the role you choose. Email delivery uses Resend if configured; otherwise copy the link and send it yourself.</p>
+      <div className="flex items-start justify-between gap-3 border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-medium text-white light:text-slate-900">Invite a team member</h2>
+          <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">A real invite link — they create their own account and land directly in your organization with the role you choose. Email delivery uses Resend if configured; otherwise copy the link and send it yourself.</p>
+        </div>
+        <button type="button" onClick={() => setBulkOpen(v => !v)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${bulkOpen ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300" : "border-white/15 light:border-slate-900/15 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+          {bulkOpen ? "Single invite" : "Bulk import (CSV)"}
+        </button>
       </div>
-      <div className="flex flex-wrap items-end gap-2 border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+      {bulkOpen ? <BulkInvitePanel orgRoles={orgRoles} onDone={refetch} /> : <div className="flex flex-wrap items-end gap-2 border-b border-white/10 light:border-slate-900/10 px-4 py-3">
         <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="name@company.com" className="w-56 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900 placeholder:text-white/30" />
         <select value={role} onChange={e => setRole(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900">
           {orgRoles.map(r => <option key={r.key} value={r.key}>{r.name}</option>)}
@@ -217,7 +335,7 @@ function InvitesPanel({ orgRoles, canManage }) {
         <button onClick={() => create.mutate()} disabled={create.isPending || !email || !orgRoles.length} className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 disabled:opacity-50">
           {create.isPending ? "Sending…" : "+ Send invite"}
         </button>
-      </div>
+      </div>}
       {isError ? <ErrorState message="Couldn't load invites." onRetry={refetch} /> : isLoading ? <SkeletonRows count={2} /> : (invites ?? []).length === 0 ? <p className="p-4 text-sm text-white/40 light:text-slate-400">No invites sent yet.</p> : <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
