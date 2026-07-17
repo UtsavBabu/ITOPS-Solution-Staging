@@ -600,6 +600,18 @@ export async function reviewResellerApplication(id, status) {
   if (error) throw new Error(error.message);
 }
 
+export async function fetchAdminResellers() {
+  const { data, error } = await supabase.rpc("admin_list_resellers");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    userId: row.user_id,
+    email: row.email,
+    fullName: row.full_name || null,
+    grantedAt: row.granted_at,
+    customerCount: Number(row.customer_count)
+  }));
+}
+
 // ── CyberSachet course authoring ────────────────────────────────────────────
 
 export async function adminFetchCybersachetCourses() {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { adminCreateUser, fetchAdminUsers, fetchResellerApplications, reviewResellerApplication, setUserPlatformAdmin } from "../../api/adminEndpoints";
+import { adminCreateUser, fetchAdminResellers, fetchAdminUsers, fetchResellerApplications, reviewResellerApplication, setUserPlatformAdmin } from "../../api/adminEndpoints";
 import { useAuth } from "../../context/AuthContext";
 import { Reveal, SpotlightCard } from "../../components/Animated";
 import { SkeletonRows } from "../../components/Skeleton";
@@ -143,6 +143,73 @@ function DirectAddResellerForm({ onCreated }) {
     </form>;
 }
 
+function ResellerRow({ reseller, i, isSuperAdmin, onRevoked }) {
+  const confirm = useConfirm();
+  const toast = useToast();
+  const revoke = useMutation({
+    mutationFn: () => setUserPlatformAdmin(reseller.userId, false),
+    onSuccess: () => { toast.success(`Revoked reseller access for ${reseller.email}.`); onRevoked(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to revoke access")
+  });
+  async function handleRevoke() {
+    const ok = await confirm({
+      title: `Revoke ${reseller.email}'s reseller access?`,
+      description: reseller.customerCount > 0 ? `They provisioned ${reseller.customerCount} customer${reseller.customerCount === 1 ? "" : "s"} — those organizations stay, they just lose access to manage them as a reseller.` : "They have no customers provisioned yet.",
+      confirmLabel: "Revoke",
+      danger: true
+    });
+    if (ok) revoke.mutate();
+  }
+  return <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, delay: Math.min(i, 10) * 0.03 }}>
+      <td className="px-4 py-3">
+        <p className="text-sm font-medium text-white light:text-slate-900">{reseller.fullName || reseller.email}</p>
+        {reseller.fullName && <p className="text-xs text-white/40 light:text-slate-400">{reseller.email}</p>}
+      </td>
+      <td className="px-4 py-3 text-sm text-white/70 light:text-slate-600">
+        {reseller.customerCount} customer{reseller.customerCount === 1 ? "" : "s"}
+      </td>
+      <td className="px-4 py-3 text-xs text-white/40 light:text-slate-400">{new Date(reseller.grantedAt).toLocaleDateString()}</td>
+      {isSuperAdmin && <td className="px-4 py-3 text-right">
+          <button onClick={handleRevoke} disabled={revoke.isPending} className="text-xs text-red-300 light:text-red-600 hover:underline disabled:opacity-50">
+            Revoke
+          </button>
+        </td>}
+    </motion.tr>;
+}
+
+function ActiveResellersPanel({ isSuperAdmin }) {
+  const { data: resellers, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-resellers"],
+    queryFn: fetchAdminResellers,
+    retry: false
+  });
+  const totalCustomers = (resellers ?? []).reduce((sum, r) => sum + r.customerCount, 0);
+
+  return <SpotlightCard className="overflow-hidden" delay={0.02}>
+      <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Active Resellers</h2>
+        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">
+          Partners with reseller access today{resellers && resellers.length > 0 ? ` — ${resellers.length} reseller${resellers.length === 1 ? "" : "s"}, ${totalCustomers} customer${totalCustomers === 1 ? "" : "s"} provisioned between them.` : "."}
+        </p>
+      </div>
+      {isError ? <ErrorState message="Couldn't load resellers — migration 0060 may not be applied yet." onRetry={() => refetch()} /> : isLoading ? <SkeletonRows count={2} /> : !resellers || resellers.length === 0 ? <EmptyState title="No active resellers yet." description="Approve an application below, or add one directly, to grant reseller access." /> : <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
+                <tr>
+                  <th className="px-4 py-2">Reseller</th>
+                  <th className="px-4 py-2">Customers</th>
+                  <th className="px-4 py-2">Granted</th>
+                  {isSuperAdmin && <th className="px-4 py-2"></th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
+                {resellers.map((r, i) => <ResellerRow key={r.userId} reseller={r} i={i} isSuperAdmin={isSuperAdmin} onRevoked={refetch} />)}
+              </tbody>
+            </table>
+          </div>}
+    </SpotlightCard>;
+}
+
 function ApplicationRow({ app, i, matchedUser, isSuperAdmin, canReview, onChanged }) {
   const confirm = useConfirm();
   const toast = useToast();
@@ -201,6 +268,7 @@ export default function AdminResellers() {
   function handleChanged() {
     queryClient.invalidateQueries({ queryKey: ["reseller-applications"] });
     queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-resellers"] });
   }
 
   const pendingCount = applications?.filter(a => a.status === "pending").length ?? 0;
@@ -210,15 +278,22 @@ export default function AdminResellers() {
         <div>
           <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Resellers</h1>
           <p className="text-sm text-white/50 light:text-slate-500">
-            Applications from partners who want to sell ITOps Monitor to their own customers.
-            {pendingCount > 0 && <span className="ml-1 font-medium text-amber-300">{pendingCount} pending review.</span>}
+            Partners who provision and manage their own customers under this platform.
+            {pendingCount > 0 && <span className="ml-1 font-medium text-amber-300">{pendingCount} application{pendingCount === 1 ? "" : "s"} pending review.</span>}
           </p>
         </div>
         {isSuperAdmin && <DirectAddResellerForm onCreated={handleChanged} />}
       </Reveal>
 
-      <SpotlightCard className="overflow-hidden" delay={0.05} tint="amber">
-        {isLoading ? <SkeletonRows count={3} className="h-24" /> : isError ? <ErrorState message="Couldn't load applications — the reseller pipeline migration (0033) may not be applied yet." onRetry={() => refetch()} /> : !applications || applications.length === 0 ? <EmptyState title="No reseller applications yet." description="They'll show up here as soon as someone applies from the public 'Become a Reseller' page." /> : applications.map((app, i) => <ApplicationRow key={app.id} app={app} i={i} matchedUser={usersByEmail.get(app.email.toLowerCase())} isSuperAdmin={isSuperAdmin} canReview={canReview} onChanged={handleChanged} />)}
-      </SpotlightCard>
+      <ActiveResellersPanel isSuperAdmin={isSuperAdmin} />
+
+      <div>
+        <Reveal delay={0.06}>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-white/40 light:text-slate-400">Applications</h2>
+        </Reveal>
+        <SpotlightCard className="overflow-hidden" delay={0.08} tint="amber">
+          {isLoading ? <SkeletonRows count={3} className="h-24" /> : isError ? <ErrorState message="Couldn't load applications — the reseller pipeline migration (0033) may not be applied yet." onRetry={() => refetch()} /> : !applications || applications.length === 0 ? <EmptyState title="No reseller applications yet." description="They'll show up here as soon as someone applies from the public 'Become a Reseller' page." /> : applications.map((app, i) => <ApplicationRow key={app.id} app={app} i={i} matchedUser={usersByEmail.get(app.email.toLowerCase())} isSuperAdmin={isSuperAdmin} canReview={canReview} onChanged={handleChanged} />)}
+        </SpotlightCard>
+      </div>
     </div>;
 }
