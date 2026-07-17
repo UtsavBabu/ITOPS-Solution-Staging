@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, submitCourseQuiz } from "../api/endpoints";
+import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, submitCourseQuiz } from "../api/endpoints";
 import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { EmptyState, ErrorState } from "../components/EmptyState";
@@ -50,20 +50,59 @@ function CategoryFilterChips({ categories, active, onChange }) {
     </div>;
 }
 
-function CourseCard({ course, enrollment, index, assignment, onOpen }) {
+// Org admins (training:manage) can assign a course straight from its
+// catalog card instead of only from Users → CyberSachet Training — a
+// popover, not a page navigation, since it's a one-field decision (who).
+function AssignCourseButton({ course, members }) {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [userId, setUserId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const assign = useMutation({
+    mutationFn: () => assignCybersachetCourseToMember(userId, course.id, dueDate ? new Date(dueDate).toISOString() : null),
+    onSuccess: () => { toast.success("Course assigned."); setOpen(false); setUserId(""); setDueDate(""); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to assign course")
+  });
+  return <div className="relative" onClick={e => e.stopPropagation()}>
+      <button type="button" onClick={() => setOpen(v => !v)} className="rounded-full border border-white/15 light:border-sky-200 px-2.5 py-1 text-[11px] font-medium text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900">
+        + Assign
+      </button>
+      <AnimatePresence>
+        {open && <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute right-0 top-full z-20 mt-1.5 w-56 space-y-2 rounded-xl border border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)]">
+            <p className="text-xs font-medium text-white light:text-slate-900">Assign "{course.title}"</p>
+            <select value={userId} onChange={e => setUserId(e.target.value)} className="w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900">
+              <option value="">Choose member…</option>
+              {members.map(m => <option key={m.userId} value={m.userId}>{m.email}</option>)}
+            </select>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} title="Due date (optional)" className="w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900" />
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => assign.mutate()} disabled={!userId || assign.isPending} className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-black hover:bg-neutral-200 disabled:opacity-50">
+                {assign.isPending ? "Assigning…" : "Assign"}
+              </button>
+              <button type="button" onClick={() => setOpen(false)} className="text-[11px] text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Cancel</button>
+            </div>
+          </motion.div>}
+      </AnimatePresence>
+    </div>;
+}
+
+function CourseCard({ course, enrollment, index, assignment, onOpen, canManageTraining, members }) {
   const pct = enrollment && course.lessonCount > 0 ? Math.round(enrollment.completedLessonCount / course.lessonCount * 100) : 0;
   const displayPct = enrollment?.completedAt ? 100 : pct;
   const status = enrollment?.completedAt ? "Completed" : enrollment ? "In progress" : "Not started";
-  return <button type="button" onClick={() => onOpen(course)} className="block h-full w-full text-left">
-      <SpotlightCard tint="rose" delay={index * 0.06} className="h-full cursor-pointer">
+  return <div role="button" tabIndex={0} onClick={() => onOpen(course)} onKeyDown={e => { if (e.key === "Enter") onOpen(course); }} className="block h-full w-full cursor-pointer text-left">
+      <SpotlightCard tint="rose" delay={index * 0.06} className="h-full">
       <div className="flex h-full flex-col p-5">
         <div className="flex items-center justify-between gap-2">
-          {assignment && <span className="inline-flex w-fit items-center gap-1 rounded-full bg-rose-400/10 light:bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-rose-300 light:text-sky-700">
-              ★ Assigned{assignment.dueAt ? ` · due ${new Date(assignment.dueAt).toLocaleDateString()}` : ""}
-            </span>}
-          {course.freeTier && <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-400/10 light:bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:text-emerald-700">
-              Included free
-            </span>}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {assignment && <span className="inline-flex w-fit items-center gap-1 rounded-full bg-rose-400/10 light:bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-rose-300 light:text-sky-700">
+                ★ Assigned{assignment.dueAt ? ` · due ${new Date(assignment.dueAt).toLocaleDateString()}` : ""}
+              </span>}
+            {course.freeTier && <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-400/10 light:bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:text-emerald-700">
+                Included free
+              </span>}
+          </div>
+          {canManageTraining && <AssignCourseButton course={course} members={members} />}
         </div>
         <div className="mt-2 flex items-start justify-between gap-3">
           <CourseIcon slug={course.slug} />
@@ -83,7 +122,7 @@ function CourseCard({ course, enrollment, index, assignment, onOpen }) {
         </div>
       </div>
       </SpotlightCard>
-    </button>;
+    </div>;
 }
 
 function LockedCourseCard({ course, index, requiredPlan = "Professional" }) {
@@ -589,6 +628,11 @@ export default function CyberSachetTraining() {
   const { data: assignments } = useQuery({ queryKey: ["cybersachet-my-assignments"], queryFn: fetchMyCybersachetAssignments, enabled: !!licensed });
   const { data: stats } = useQuery({ queryKey: ["cybersachet-my-stats"], queryFn: fetchMyCybersachetStats, enabled: !!licensed });
   const { data: leaderboard } = useQuery({ queryKey: ["cybersachet-leaderboard"], queryFn: fetchCybersachetLeaderboard, enabled: !!licensed });
+  const { data: can } = useQuery({ queryKey: ["my-permissions", organization?.id], queryFn: () => fetchMyPermissions(organization?.id), enabled: !!organization?.id, retry: false });
+  const canManageTraining = !!can && can("organization", "training", "manage");
+  // Only fetched for an admin who can actually assign something — a regular
+  // member never needs the org's member list just to see their own courses.
+  const { data: members } = useQuery({ queryKey: ["organization-members"], queryFn: fetchOrganizationMembers, enabled: canManageTraining, retry: false });
   const assignmentByCourseId = new Map((assignments ?? []).map(a => [a.courseId, a]));
 
   const [, setLocalVersion] = useState(0);
@@ -638,8 +682,11 @@ export default function CyberSachetTraining() {
   // Non-Starter local preview still shows the whole catalog open — there's
   // no admin in a solo preview to assign anything, so "assigned-only"
   // doesn't apply; Professional+ live accounts keep the real assigned-only
-  // rule unchanged.
-  const visibleCourses = isStarter ? freeCourses : (local ? allCourses : [...freeCourses, ...assignedCourses]);
+  // rule unchanged for a regular member. An admin (training:manage) on a
+  // real, non-Starter org sees the whole catalog too — same exception as
+  // local preview, for the same reason: they need to browse it to decide
+  // what to assign, not just see what's already assigned to themselves.
+  const visibleCourses = isStarter ? freeCourses : (local || canManageTraining ? allCourses : [...freeCourses, ...assignedCourses]);
   const filteredVisible = activeCategory ? visibleCourses.filter(c => c.category === activeCategory) : visibleCourses;
   const filteredLocked = activeCategory ? lockedCourses.filter(c => c.category === activeCategory) : lockedCourses;
   const categories = [...new Set(allCourses.map(c => c.category))].filter(Boolean);
@@ -648,7 +695,7 @@ export default function CyberSachetTraining() {
 
   return <div className="space-y-6">
       <Reveal y={12}>
-        <TrainingHero title="CyberSachet Training" subtitle={local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : "Your assigned courses, progress, and certification, in one place."} stats={visibleCourses ? [{ label: local ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
+        <TrainingHero title="CyberSachet Training" subtitle={local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : canManageTraining ? "The full catalog — assign any course to a team member, or take one yourself." : "Your assigned courses, progress, and certification, in one place."} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
 
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
@@ -684,7 +731,7 @@ export default function CyberSachetTraining() {
       {!local && coursesLoading ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
         </div> : !local && coursesError ? <ErrorState message="Couldn't load courses." onRetry={refetchCourses} /> : filteredVisible.length === 0 && filteredLocked.length === 0 ? <EmptyState title="No courses assigned yet." description="Course assignment is admin-only — ask your organization admin to assign training." /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredVisible.map((course, i) => <CourseCard key={course.id} course={course} index={i} enrollment={enrollmentByCourseId.get(course.id)} assignment={assignmentByCourseId.get(course.id)} onOpen={setOpenCourse} />)}
+          {filteredVisible.map((course, i) => <CourseCard key={course.id} course={course} index={i} enrollment={enrollmentByCourseId.get(course.id)} assignment={assignmentByCourseId.get(course.id)} onOpen={setOpenCourse} canManageTraining={canManageTraining && !local} members={members ?? []} />)}
           {filteredLocked.map((course, i) => <LockedCourseCard key={course.id} course={course} index={filteredVisible.length + i} />)}
         </div>}
 
