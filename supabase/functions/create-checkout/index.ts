@@ -57,10 +57,25 @@ Deno.serve(async (req) => {
   // Resolve the caller's organization.
   const { data: membership } = await supabase
     .from("memberships")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("user_id", userData.user.id)
     .maybeSingle();
   if (!membership?.organization_id) return json({ error: "No organization found for this user." }, 400);
+
+  // Only a role with billing:manage may change the org's subscription —
+  // same 'billing' permission module the Team & Plan page is gated on
+  // (migration 0061). Enforced here, not just hidden in the UI, since this
+  // function runs with the service-role key and would otherwise trust any
+  // authenticated org member to trigger a real Stripe checkout.
+  const { data: perm } = await supabase
+    .from("role_permissions")
+    .select("can_manage")
+    .eq("role_key", membership.role)
+    .eq("module_key", "billing")
+    .maybeSingle();
+  if (!perm?.can_manage) {
+    return json({ error: "You don't have permission to change this organization's plan — ask an administrator." }, 403);
+  }
 
   const { data: org } = await supabase
     .from("organizations")

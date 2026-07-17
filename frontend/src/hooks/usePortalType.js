@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext";
 // console. This reads the exact same my_permissions() grid the sidebar nav
 // already filters against (migration 0032) — it's not a second permission
 // system, just a second consumer of the one that exists.
-const OPERATIONAL_MODULES = ["monitors", "hosts", "assets", "incidents", "alert_channels", "team"];
+const OPERATIONAL_MODULES = ["monitors", "hosts", "assets", "incidents", "alert_channels", "team", "billing"];
 
 /**
  * "Employee Portal" vs "Organization Console" for the customer-facing app.

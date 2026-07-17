@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { fetchDashboardSummary, fetchIncidents, fetchMonitors, fetchPlanUsage } from "../api/endpoints";
+import { fetchDashboardSummary, fetchIncidents, fetchMonitors, fetchMyPermissions, fetchPlanUsage } from "../api/endpoints";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { Reveal, SpotlightCard } from "../components/Animated";
@@ -105,6 +105,13 @@ export default function Dashboard() {
   const {
     organization
   } = useAuth();
+  const { data: can } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canViewBilling = !can || can("organization", "billing", "view");
   const {
     data: summary
   } = useQuery({
@@ -240,11 +247,11 @@ export default function Dashboard() {
         label: "Users",
         to: "/users",
         color: "border-white/15 light:border-slate-900/15 hover:bg-white/5 light:hover:bg-slate-900/[0.04]"
-      }, {
+      }, ...(canViewBilling ? [{
         label: "Team & Plan",
         to: "/team",
         color: "border-amber-400/20 light:border-amber-500/30 bg-amber-400/5 light:bg-amber-100 hover:bg-amber-400/10 light:hover:bg-amber-400/20 text-amber-300 light:text-amber-700"
-      }].map((action, i) => <motion.div key={action.to} initial={{
+      }] : [])].map((action, i) => <motion.div key={action.to} initial={{
         opacity: 0,
         y: 12
       }} animate={{

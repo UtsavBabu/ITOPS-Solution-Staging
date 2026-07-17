@@ -1,12 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { fetchPlanUsage, createCheckoutSession } from "../api/endpoints";
+import { fetchMyPermissions, fetchPlanUsage, createCheckoutSession } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { StatusPageCard } from "../components/StatusPageCard";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
-import { ErrorState } from "../components/EmptyState";
+import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useToast } from "../components/Toast";
 const EASE = [0.16, 1, 0.3, 1];
 const PLANS = [{
@@ -93,9 +93,30 @@ export default function Team() {
     queryKey: ["plan-usage"],
     queryFn: fetchPlanUsage
   });
+  // Billing is its own permission module (migration 0061), separate from
+  // 'team' (Users) — only an org's admin (and billing_manager) get it, so
+  // this page is admin-only even though get_plan_usage() itself stays
+  // readable everywhere (the sidebar plan badge and upgrade prompts on
+  // other pages need it). undefined while loading means "don't flash the
+  // restricted state before permissions resolve."
+  const { data: can, isLoading: permsLoading } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canViewBilling = !can || can("organization", "billing", "view");
   const [searchParams] = useSearchParams();
   const upgraded = searchParams.get("upgraded");
   const currentPlan = usage?.plan ?? "STARTER";
+  if (!permsLoading && !canViewBilling) {
+    return <div className="space-y-8">
+        <Reveal y={12}>
+          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Team & Plan</h1>
+        </Reveal>
+        <EmptyState title="Admin access required." description="Only your organization's administrator (or a billing manager) can view plan and billing details. Head to Users to manage your own team." />
+      </div>;
+  }
   return <div className="space-y-8">
       <Reveal y={12}>
         <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Team & Plan</h1>

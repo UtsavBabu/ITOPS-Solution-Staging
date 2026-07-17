@@ -83,7 +83,7 @@ const NAV_GROUPS = [{
     to: "/team",
     label: "Team & Plan",
     icon: "◉",
-    module: "team"
+    module: "billing"
   }]
 }];
 export function Layout() {
@@ -117,6 +117,7 @@ export function Layout() {
     ...group,
     items: group.items.filter(item => !item.module || !can || can("organization", item.module, "view"))
   })).filter(group => group.items.length > 0);
+  const canViewBilling = !can || can("organization", "billing", "view");
   const { portal } = usePortalType();
   const planColor = PLAN_COLORS[usage?.plan ?? "STARTER"] ?? PLAN_COLORS.STARTER;
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
@@ -233,9 +234,11 @@ export function Layout() {
           </div>
           <div className="flex gap-2">
             {/* /team is an operator-only route (RequireConsoleAccess in
-                App.jsx) — an Employee Portal member would just bounce back
-                here, so the link isn't shown to them at all. */}
-            {portal !== "employee" && <Link to="/team" className="flex-1 rounded-lg border border-white/10 light:border-slate-900/10 px-2 py-1.5 text-center text-xs text-white/60 light:text-slate-500 transition-colors hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900">
+                App.jsx) gated further on the 'billing' module (migration
+                0061) — an Employee Portal member or a non-billing role
+                wouldn't see anything useful there, so the link isn't shown
+                to them at all. */}
+            {portal !== "employee" && canViewBilling && <Link to="/team" className="flex-1 rounded-lg border border-white/10 light:border-slate-900/10 px-2 py-1.5 text-center text-xs text-white/60 light:text-slate-500 transition-colors hover:bg-white/5 light:hover:bg-slate-900/5 hover:text-white light:hover:text-slate-900 light:hover:text-slate-900">
               Upgrade
             </Link>}
             <button onClick={logout} className="flex-1 rounded-lg border border-white/15 light:border-slate-900/15 px-2 py-1.5 text-xs text-white/80 light:text-slate-700 transition-colors hover:bg-white/5 light:hover:bg-slate-900/5">
