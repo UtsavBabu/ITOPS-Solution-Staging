@@ -245,7 +245,9 @@ export async function fetchPlanUsage() {
     currentMonitors: Number(row.current_monitors),
     maxAlertChannels: Number(row.max_alert_channels),
     currentAlertChannels: Number(row.current_alert_channels),
-    historyDays: Number(row.history_days)
+    historyDays: Number(row.history_days),
+    maxMembers: Number(row.max_members),
+    currentMembers: Number(row.current_members)
   };
 }
 export async function fetchOrganizationMembers() {

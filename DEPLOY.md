@@ -388,6 +388,43 @@ SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/dep
   verified live: the picker dropped from 12 options with 3 confusing
   "(legacy)" duplicates to 9 clean ones.
 
+## Real per-package seat limits + platform-admin access validation (migrations 0056–0057)
+
+Two things requested directly: "add users as per their package" (there was
+no such limit at all), and "check, validate" that non-super-admin platform
+roles are actually restricted, not just cosmetically hidden.
+
+**0056 — seat limits**: `plan_limits` governed monitors/alert-channels/
+history/hosts per package but never team size — a Starter org could invite
+unlimited members, identical to Enterprise. Added `max_members` (mirrors
+`max_monitors`' existing per-tier numbers: 3/25/100/100000 — consistent
+with the scheme already used for monitors/hosts rather than an invented
+one), enforced inside `create_org_invite()` and `switch_organization_via_invite()`
+— a pending invite reserves its seat, same as an existing member occupies
+one, so an org can't oversell itself. Surfaced on Team & Plan's Current
+Usage panel as a real "N / max" bar, verified live. Apply the same way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+**0057 — platform-admin read-access validation**: audited every platform
+RPC's authorization check rather than assuming the nav-hiding was the real
+boundary. Finding: `admin_upsert_role()`/`admin_delete_role()` (the
+mutation path) correctly require `has_platform_permission('roles',
+'manage')` — only `super_admin` actually holds that grant (via its
+blanket "every platform module" rule), so role editing was already
+properly restricted. But the two **read** paths, `admin_list_roles()` and
+`admin_get_role_permissions()`, only checked the coarse `is_platform_admin()`
+— true for every platform role. The nav already hides "Roles &
+Permissions" from anyone but `super_admin`/`platform_administrator`, but
+that was cosmetic only: a `support` or `billing` admin could still call
+those RPCs directly and read the full role/permission grid. Fixed to
+match the nav's actual intent — `platform_administrator` gets a real
+`roles:view` grant (it already couldn't edit; still can't), nobody else
+can read it either. No other platform RPC audited had this gap — the
+mutation paths were already correctly scoped throughout.
+
 ## CyberSachet Training & Certification (migrations 0037, 0040–0044)
 
 Turns the CyberSachet product page from a roadmap into a real, licensed

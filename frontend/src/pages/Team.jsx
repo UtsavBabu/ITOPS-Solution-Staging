@@ -531,7 +531,8 @@ export default function Team() {
               {currentPlan} plan
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <UsageBar label="Team Members" current={usage.currentMembers} max={usage.maxMembers} />
             <UsageBar label="Monitors" current={usage.currentMonitors} max={usage.maxMonitors} />
             <UsageBar label="Alert Channels" current={usage.currentAlertChannels} max={usage.maxAlertChannels} />
             <div>
