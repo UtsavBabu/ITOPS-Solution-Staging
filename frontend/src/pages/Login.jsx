@@ -50,9 +50,15 @@ export default function Login() {
     }
     setIsSubmitting(true);
     try {
-      await login(email, password, captchaToken);
-      setSuccess(true);
-      navigate("/dashboard");
+      const { mfaPending } = await login(email, password, captchaToken);
+      // mfaPending: App.jsx is already showing the two-factor prompt full-
+      // screen regardless of route — navigating now would just leave the
+      // address bar reading /dashboard under it. resolveMfaChallenge()
+      // handles landing them in the app for real once they verify.
+      if (!mfaPending) {
+        setSuccess(true);
+        navigate("/dashboard");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

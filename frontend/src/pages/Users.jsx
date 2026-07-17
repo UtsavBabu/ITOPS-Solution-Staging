@@ -720,6 +720,7 @@ export default function Users() {
                   <th className="px-4 py-2">Role</th>
                   <th className="px-4 py-2">Department</th>
                   <th className="px-4 py-2">Team</th>
+                  <th className="px-4 py-2">MFA</th>
                   <th className="px-4 py-2">Joined</th>
                 </tr>
               </thead>
@@ -742,6 +743,9 @@ export default function Users() {
                     </td>
                     <td className="px-4 py-3">
                       <TeamControl member={member} canManage={canManageTeam} teams={teams ?? []} mutation={teamMutation} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {member.hasMfa ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:bg-emerald-100 light:text-emerald-700">✓ Enabled</span> : <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/40 light:bg-slate-900/[0.05] light:text-slate-400">Off</span>}
                     </td>
                     <td className="px-4 py-3 text-white/50 light:text-slate-500">{new Date(member.joinedAt).toLocaleDateString()}</td>
                   </motion.tr>)}

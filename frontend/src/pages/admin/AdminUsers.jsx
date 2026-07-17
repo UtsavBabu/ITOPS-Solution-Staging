@@ -381,6 +381,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Organization</th>
                 <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">MFA</th>
                 <th className="px-4 py-3">Joined</th>
                 <th className="px-4 py-3">Platform Admin</th>
                 <th className="px-4 py-3" />
@@ -408,6 +409,9 @@ export default function AdminUsers() {
                   <td className="px-4 py-3 text-white/50 light:text-slate-500">{u.organizationName ?? "—"}</td>
                   <td className="px-4 py-3">
                     <MemberOrgRoleControl u={u} canEdit={canEditOrgRoles} orgRoles={orgRoles} orgRoleLabel={orgRoleLabel} roleMutation={memberRoleMutation} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.hasMfa ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:bg-emerald-100 light:text-emerald-700">✓ Enabled</span> : <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/40 light:bg-slate-900/[0.05] light:text-slate-400">Off</span>}
                   </td>
                   <td className="px-4 py-3 text-white/50 light:text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">

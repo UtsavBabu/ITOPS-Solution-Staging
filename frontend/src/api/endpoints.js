@@ -264,7 +264,8 @@ export async function fetchOrganizationMembers() {
     departmentId: row.department_id ?? null,
     departmentName: row.department_name ?? null,
     teamId: row.team_id ?? null,
-    teamName: row.team_name ?? null
+    teamName: row.team_name ?? null,
+    hasMfa: Boolean(row.has_mfa)
   }));
 }
 

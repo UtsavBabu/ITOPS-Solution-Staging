@@ -10,6 +10,7 @@ import { AdminLayout } from "./components/AdminLayout";
 // page they landed on, not the whole admin panel and customer app with it.
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/Login"));
+const MfaChallenge = lazy(() => import("./pages/MfaChallenge"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -24,6 +25,7 @@ const AlertChannels = lazy(() => import("./pages/AlertChannels"));
 const Team = lazy(() => import("./pages/Team"));
 const Users = lazy(() => import("./pages/Users"));
 const CyberSachetTraining = lazy(() => import("./pages/CyberSachetTraining"));
+const Profile = lazy(() => import("./pages/Profile"));
 const Platform = lazy(() => import("./pages/Platform"));
 const Solutions = lazy(() => import("./pages/Solutions"));
 const SolutionDetail = lazy(() => import("./pages/SolutionDetail"));
@@ -139,6 +141,15 @@ function RequireConsoleAccess({ children }) {
   return <>{children}</>;
 }
 export default function App() {
+  const { mfaPending } = useAuth();
+  // Blocks every route, not just protected ones — a password/OAuth-verified
+  // session that hasn't cleared its second factor isn't "logged out" (so
+  // PublicOnlyRoute would wrongly show Login/Register again) but also isn't
+  // "logged in" (ProtectedRoute would bounce it to /login with no way to
+  // actually enter the code) without this short-circuit ahead of routing.
+  if (mfaPending) {
+    return <Suspense fallback={<BrandLoading />}><MfaChallenge /></Suspense>;
+  }
   return <>
     <CommandPalette />
     <Suspense fallback={<BrandLoading />}>
@@ -183,6 +194,7 @@ export default function App() {
           </ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardGate />} />
         <Route path="/training" element={<CyberSachetTraining />} />
+        <Route path="/profile" element={<Profile />} />
         {/* Operator-only routes — an Employee Portal member (no operational
             view access anywhere) is redirected back to /dashboard even on a
             direct URL, not just hidden from the sidebar. */}

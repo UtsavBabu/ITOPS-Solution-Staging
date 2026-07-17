@@ -18,6 +18,13 @@ async function loadProfile() {
   } = await supabase.auth.getSession();
   if (!session) return null;
 
+  // Stop here, before redeeming an invite or touching org membership, if
+  // this session hasn't cleared its second factor yet — none of that should
+  // happen on a not-yet-fully-authenticated session.
+  if (await needsMfaChallenge()) {
+    return { mfaPending: true };
+  }
+
   const pendingInviteToken = sessionStorage.getItem(PENDING_INVITE_STORAGE_KEY);
   if (pendingInviteToken) {
     sessionStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
@@ -63,6 +70,19 @@ async function loadProfile() {
     platformAdminRole: adminRole ?? null
   };
 }
+// Enrolling an MFA factor (see Profile.jsx) means nothing if a session with
+// a verified factor is still treated as fully logged in without ever being
+// challenged for it — Supabase issues an aal1 session on password/OAuth
+// sign-in regardless of enrolled factors; the app is responsible for
+// checking the assurance level and blocking access until a second factor
+// is verified. Checked on every session (initial load and auth-state
+// changes), not just at the login form, so a still-valid stored session
+// from before MFA was enrolled gets challenged too, not grandfathered in.
+async function needsMfaChallenge() {
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) return false;
+  return data.currentLevel === "aal1" && data.nextLevel === "aal2";
+}
 export function AuthProvider({
   children
 }) {
@@ -71,6 +91,7 @@ export function AuthProvider({
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminRole, setPlatformAdminRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaPending, setMfaPending] = useState(false);
   const queryClient = useQueryClient();
   // Every query in this app (fetchMyCybersachetStats, fetchPlanUsage,
   // fetchMyEnrollments, ...) is keyed by a static string, not a user id —
@@ -81,6 +102,15 @@ export function AuthProvider({
   // worst case) until an unrelated refetch happened to overwrite them.
   const lastUserIdRef = useRef(null);
   const applyProfile = useCallback(profile => {
+    if (profile?.mfaPending) {
+      setMfaPending(true);
+      setUser(null);
+      setOrganization(null);
+      setIsPlatformAdmin(false);
+      setPlatformAdminRole(null);
+      return;
+    }
+    setMfaPending(false);
     setUser(profile?.user ?? null);
     setOrganization(profile?.organization ?? null);
     setIsPlatformAdmin(profile?.isPlatformAdmin ?? false);
@@ -90,7 +120,7 @@ export function AuthProvider({
     let active = true;
     loadProfile().then(profile => {
       if (!active) return;
-      lastUserIdRef.current = profile?.user?.id ?? null;
+      lastUserIdRef.current = profile?.mfaPending ? null : (profile?.user?.id ?? null);
       applyProfile(profile);
       setIsLoading(false);
     });
@@ -110,8 +140,15 @@ export function AuthProvider({
       if (session.user.id !== lastUserIdRef.current) {
         queryClient.clear();
       }
-      lastUserIdRef.current = session.user.id;
-      loadProfile().then(profile => active && applyProfile(profile));
+      loadProfile().then(profile => {
+        if (!active) return;
+        // An MFA-pending session hasn't loaded a real profile yet — leave
+        // lastUserIdRef unset so the eventual post-challenge reload is
+        // treated as a fresh load (cache-clear included) rather than
+        // matching a ref that was set before authentication finished.
+        lastUserIdRef.current = profile?.mfaPending ? null : session.user.id;
+        applyProfile(profile);
+      });
     });
     return () => {
       active = false;
@@ -127,7 +164,13 @@ export function AuthProvider({
       options: captchaToken ? { captchaToken } : undefined
     });
     if (error) throw new Error(error.message);
-    applyProfile(await loadProfile());
+    const profile = await loadProfile();
+    applyProfile(profile);
+    // The caller (Login.jsx) needs this to decide whether to navigate to
+    // /dashboard — App.jsx's mfaPending gate already blocks real content
+    // either way, but navigating early leaves the address bar reading
+    // /dashboard while the person is still looking at the MFA prompt.
+    return { mfaPending: !!profile?.mfaPending };
   }, [applyProfile]);
   const loginWithGoogle = useCallback(async () => {
     const {
@@ -187,19 +230,43 @@ export function AuthProvider({
     queryClient.clear();
     applyProfile(null);
   }, [applyProfile, queryClient]);
+  // Verifies the 6-digit code from the user's authenticator app against
+  // their enrolled TOTP factor and, only on success, loads the real profile
+  // — this is the actual enforcement point; everything up to here has been
+  // a valid password/OAuth session that still isn't allowed into the app.
+  const resolveMfaChallenge = useCallback(async code => {
+    const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
+    if (listError) throw new Error(listError.message);
+    const factor = (factors?.totp ?? []).find(f => f.status === "verified");
+    if (!factor) throw new Error("No verified authenticator found on this account.");
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+    if (error) throw new Error(error.message);
+    applyProfile(await loadProfile());
+  }, [applyProfile]);
+  // The account has a verified factor but the person at the login screen
+  // can't produce a code for it (lost device, etc.) — signing out is the
+  // only safe option; there's no "skip MFA" path once a factor is enrolled.
+  const cancelMfaChallenge = useCallback(() => {
+    void supabase.auth.signOut();
+    lastUserIdRef.current = null;
+    applyProfile(null);
+  }, [applyProfile]);
   const value = useMemo(() => ({
     user,
     organization,
     isPlatformAdmin,
     platformAdminRole,
     isLoading,
+    mfaPending,
+    resolveMfaChallenge,
+    cancelMfaChallenge,
     login,
     loginWithGoogle,
     register,
     requestPasswordReset,
     updatePassword,
     logout
-  }), [user, organization, isPlatformAdmin, platformAdminRole, isLoading, login, loginWithGoogle, register, requestPasswordReset, updatePassword, logout]);
+  }), [user, organization, isPlatformAdmin, platformAdminRole, isLoading, mfaPending, resolveMfaChallenge, cancelMfaChallenge, login, loginWithGoogle, register, requestPasswordReset, updatePassword, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {

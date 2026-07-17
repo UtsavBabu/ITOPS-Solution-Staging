@@ -260,7 +260,7 @@ export function Layout() {
         {/* Footer */}
         <div className="border-t border-white/10 light:border-slate-900/10 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="truncate px-1 text-xs text-white/40 light:text-slate-500">{user?.email}</p>
+            <Link to="/profile" onClick={closeMobileNav} className="truncate px-1 text-xs text-white/40 light:text-slate-500 hover:text-white light:hover:text-slate-900" title="My Profile">{user?.email}</Link>
             <div className="flex shrink-0 items-center gap-2">
               <NotificationCenter scope="customer" />
               <ThemeToggle className="h-7 w-7 border-white/10 light:border-slate-900/10" />

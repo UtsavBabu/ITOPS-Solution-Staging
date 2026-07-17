@@ -363,7 +363,8 @@ export async function fetchAdminUsers() {
     role: row.role,
     isPlatformAdmin: Boolean(row.is_platform_admin),
     platformAdminRole: row.platform_admin_role ?? null,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    hasMfa: Boolean(row.has_mfa)
   }));
 }
 export async function fetchAdminPlanLimits() {
