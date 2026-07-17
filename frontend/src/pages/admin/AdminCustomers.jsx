@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { adminAssignCybersachetCourse, adminCreateUser, adminFetchCybersachetCourses, adminListCybersachetAssignments, adminUnassignCybersachetCourse, archiveOrganization, deleteOrganization, fetchAdminCustomers, fetchOrganizationDetail, fetchOrgProducts, renameOrganization, restoreOrganization, setOrgProduct, updateOrganizationPlan } from "../../api/adminEndpoints";
 import { Reveal, SpotlightCard } from "../../components/Animated";
+import { AdminStatCard } from "../../components/AdminStatCard";
 import { SkeletonRows } from "../../components/Skeleton";
 import { EmptyState } from "../../components/EmptyState";
 import { useConfirm } from "../../components/ConfirmDialog";
@@ -397,6 +398,18 @@ export default function AdminCustomers() {
     queryKey: ["admin-customers"],
     queryFn: fetchAdminCustomers
   });
+  // "Book of business" snapshot for a reseller — no fabricated dollar
+  // revenue (this platform doesn't mirror Stripe subscription amounts
+  // locally, only the plan/status/usage data these are built from), just
+  // the real aggregate counts across the customers they actually provisioned.
+  const resellerSummary = useMemo(() => {
+    if (!isResellerOnly || !customers) return null;
+    const active = customers.filter(c => c.status === "active").length;
+    const paid = customers.filter(c => c.plan !== "STARTER" && c.status === "active").length;
+    const totalMembers = customers.reduce((sum, c) => sum + c.memberCount, 0);
+    const totalMonitors = customers.reduce((sum, c) => sum + c.monitorsUsed, 0);
+    return { total: customers.length, active, paid, totalMembers, totalMonitors };
+  }, [isResellerOnly, customers]);
   const [savingId, setSavingId] = useState(null);
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("ALL");
@@ -499,12 +512,18 @@ export default function AdminCustomers() {
   const selectClass = "rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1.5 text-xs text-white light:text-slate-900";
   return <div className="space-y-6">
       <Reveal y={12}>
-        <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Customers</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">{isResellerOnly ? "My Customers" : "Customers"}</h1>
         <p className="text-sm text-white/50 light:text-slate-500">
-          Provision and manage customer accounts by package — like a reseller console. Change a package instantly;
-          usage below is capped by it.
+          {isResellerOnly ? "The organizations you've provisioned — only you can see or manage these. Change a package instantly; usage below is capped by it." : "Provision and manage customer accounts by package — like a reseller console. Change a package instantly; usage below is capped by it."}
         </p>
       </Reveal>
+
+      {resellerSummary && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <AdminStatCard label="My Customers" value={resellerSummary.total} icon="organizations" delay={0} />
+          <AdminStatCard label="Active" value={resellerSummary.active} icon="organizations" delay={0.03} />
+          <AdminStatCard label="On a paid package" value={resellerSummary.paid} icon="organizations" delay={0.06} />
+          <AdminStatCard label="Total seats used" value={resellerSummary.totalMembers} icon="users" delay={0.09} />
+        </div>}
 
       <Reveal delay={0.05}>
         <ProvisionForm />

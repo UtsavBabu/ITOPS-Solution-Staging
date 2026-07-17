@@ -133,12 +133,12 @@ export default function AdminOverview() {
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Platform Overview</h1>
-          <p className="text-sm text-white/50 light:text-slate-500">Real-time operational status across every organization on ITOps Monitor.</p>
+          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">{isResellerOnly ? "My Customers Overview" : "Platform Overview"}</h1>
+          <p className="text-sm text-white/50 light:text-slate-500">{isResellerOnly ? "Real-time status across the customers you've provisioned." : "Real-time operational status across every organization on ITOps Monitor."}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/admin/customers" className="rounded-full bg-amber-400 px-4 py-2 text-xs font-medium text-black transition-colors hover:bg-amber-300">
-            + Create organization
+            {isResellerOnly ? "+ Add customer" : "+ Create organization"}
           </Link>
           {!isResellerOnly && <Link to="/admin/resellers" className="relative rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 light:text-slate-600 transition-colors hover:text-white light:hover:text-slate-900">
             Reseller applications
@@ -153,7 +153,7 @@ export default function AdminOverview() {
       {isLoading ? <SkeletonStatGrid count={8} /> : isError ? <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white">
           <ErrorState message="Couldn't load platform stats." onRetry={() => refetch()} />
         </div> : <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-          <AdminStatCard label="Organizations" value={stats?.totalOrganizations ?? "—"} icon="organizations" delay={0} to="/admin/customers" />
+          <AdminStatCard label={isResellerOnly ? "My Customers" : "Organizations"} value={stats?.totalOrganizations ?? "—"} icon="organizations" delay={0} to="/admin/customers" />
           <AdminStatCard label="Licensed" value={stats?.totalLicensedOrganizations ?? "—"} icon="organizations" delay={0.03} to="/admin/customers" />
           <AdminStatCard label="Users" value={stats?.totalUsers ?? "—"} icon="users" delay={0.06} to={isResellerOnly ? undefined : "/admin/users"} />
           <AdminStatCard label="Monitors up" value={stats?.totalMonitorsUp ?? "—"} icon="monitors" delay={0.09} to={isResellerOnly ? undefined : "/admin/monitors"} />
@@ -197,7 +197,7 @@ export default function AdminOverview() {
         {/* Recent customers */}
         <SpotlightCard className="overflow-hidden" delay={0.14} tint="amber" scan>
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
-            <h2 className="text-sm font-medium text-white light:text-slate-900">Newest customers</h2>
+            <h2 className="text-sm font-medium text-white light:text-slate-900">{isResellerOnly ? "Your newest customers" : "Newest customers"}</h2>
             <Link to="/admin/customers" className="text-xs text-white/50 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900">
               View all →
             </Link>

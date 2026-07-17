@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useExpandedNavGroups } from "../hooks/useExpandedNavGroups";
-const EASE = [0.16, 1, 0.3, 1];
 import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { AppSearch } from "./AppSearch";
 import { NotificationCenter } from "./NotificationCenter";
+const EASE = [0.16, 1, 0.3, 1];
 // `roles` omitted = visible to every admin role. Purely a UX affordance —
 // the real authorization boundary is the RLS/SECURITY DEFINER checks added
 // in migration 0030, not this list.
@@ -59,7 +59,11 @@ const NAV_GROUPS = [{
   }, {
     to: "/admin/audit-log",
     label: "Audit Log",
-    icon: "☰"
+    icon: "☰",
+    // A reseller's own actions already surface in My Customers — the
+    // global cross-tenant action feed (every admin, every organization)
+    // isn't theirs to see. Enforced server-side too (migration 0062).
+    roles: ["super_admin", "platform_administrator", "support", "billing", "content_editor"]
   }]
 }, {
   // Cross-org monitoring views — excluded for reseller the same way the
@@ -138,9 +142,13 @@ export function AdminLayout() {
     logout,
     platformAdminRole
   } = useAuth();
+  const isResellerOnly = platformAdminRole === "reseller";
   const visibleGroups = NAV_GROUPS.filter(g => visibleFor(platformAdminRole, g)).map(g => ({
     ...g,
-    items: g.items.filter(item => visibleFor(platformAdminRole, item))
+    // A reseller's "Customers" page only ever shows organizations they
+    // themselves provisioned (migration 0031/0062) — "My Customers" says
+    // that plainly instead of implying it's the platform's full customer list.
+    items: g.items.filter(item => visibleFor(platformAdminRole, item)).map(item => isResellerOnly && item.to === "/admin/customers" ? { ...item, label: "My Customers" } : item)
   })).filter(g => g.items.length > 0);
   const navItems = visibleGroups.flatMap(group => group.items.map(item => ({ label: item.label, to: item.to })));
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
