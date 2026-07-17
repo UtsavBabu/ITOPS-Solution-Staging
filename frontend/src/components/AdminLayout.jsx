@@ -29,27 +29,36 @@ const NAV_GROUPS = [{
     icon: "◈"
     // No per-item roles — reseller sees this page too (scoped server-side
     // to the customers they provisioned, see migration 0031). Org lifecycle
-    // and billing, not identity/access, which is why Resellers/All Users/
-    // Roles/Audit Log live in their own group below instead of here.
-    // (Organizations was a duplicate of this page and was folded in — same
-    // rename/archive/delete/plan actions, nothing lost.)
+    // and billing, not identity/access or partner management, which is why
+    // Resellers and All Users/Roles/Audit Log each live in their own group
+    // below instead of here. (Organizations was a duplicate of this page
+    // and was folded in — same rename/archive/delete/plan actions, nothing
+    // lost.)
   }]
 }, {
-  // Every "who can do what" screen in one place — platform users, resellers,
-  // role/permission definitions, and the audit trail of access changes.
-  // No group-level `roles` here (unlike Customers/Monitoring): each item
-  // keeps exactly the individual restriction it already had, so this is a
-  // pure regrouping, not a visibility change.
+  // A reseller is a business/partner relationship, not an identity or
+  // permission concept — it doesn't belong grouped with All Users/Roles/
+  // Audit Log any more than Customers does. Its own top-level entry, same
+  // as the mega-scope IA request explicitly listed it separately from
+  // "Platform Users".
+  label: "Resellers",
+  roles: ["super_admin", "platform_administrator", "support"],
+  items: [{
+    to: "/admin/resellers",
+    label: "Resellers",
+    icon: "🤝"
+  }]
+}, {
+  // "Who can do what" — platform users, role/permission definitions, and
+  // the audit trail of access changes. No group-level `roles` here (unlike
+  // Customers/Monitoring): each item keeps exactly the individual
+  // restriction it already had, so this is a pure regrouping, not a
+  // visibility change.
   label: "Identity & Access",
   items: [{
     to: "/admin/users",
     label: "All Users",
     icon: "◉",
-    roles: ["super_admin", "platform_administrator", "support"]
-  }, {
-    to: "/admin/resellers",
-    label: "Resellers",
-    icon: "🤝",
     roles: ["super_admin", "platform_administrator", "support"]
   }, {
     to: "/admin/roles",
@@ -89,13 +98,19 @@ const NAV_GROUPS = [{
     icon: "🔒"
   }]
 }, {
-  label: "Platform",
+  // Was "Platform" — a catch-all label that gave no hint whether Plan
+  // Limits (billing) or Content Manager (marketing site) lived inside it.
+  // Split by actual concern instead.
+  label: "Billing",
   items: [{
     to: "/admin/plans",
     label: "Plan Limits",
     icon: "◎",
     roles: ["super_admin", "billing"]
-  }, {
+  }]
+}, {
+  label: "Website & Content",
+  items: [{
     to: "/admin/content",
     label: "Content Manager",
     icon: "◫",
