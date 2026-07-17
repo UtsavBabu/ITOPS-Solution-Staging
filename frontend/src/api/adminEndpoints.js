@@ -275,6 +275,23 @@ export async function adminCreateUser(input) {
   return { userId: data?.userId ?? null };
 }
 
+// Adds a person to an *existing* customer organization, instead of
+// creating a brand-new one — via the same real invite-and-accept flow
+// (/invite/:token) the organization's own Team & Plan page uses. Returns
+// a real, shareable invite link rather than logging the person in
+// directly, since the admin is provisioning access for someone else, not
+// themselves.
+export async function adminInviteUserToOrganization(organizationId, email, role) {
+  const { data, error } = await supabase.rpc("admin_invite_user_to_organization", {
+    p_organization_id: organizationId,
+    p_email: email,
+    p_role: role
+  });
+  if (error) throw new Error(error.message);
+  const row = data?.[0];
+  return { id: row?.id, inviteLink: row?.token ? `${window.location.origin}/invite/${row.token}` : null };
+}
+
 // Uploads an image to the public-assets bucket (platform admins only, enforced
 // by storage RLS) and returns its permanent public URL.
 export async function uploadPublicImage(file, folder = "team") {

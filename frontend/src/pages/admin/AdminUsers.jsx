@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { adminCreateUser, adminDeleteUser, adminResetPassword, adminUpdateMemberRole, adminUpdateUserName, fetchAdminUsers, fetchRoles, setUserPlatformAdmin } from "../../api/adminEndpoints";
+import { adminCreateUser, adminDeleteUser, adminInviteUserToOrganization, adminResetPassword, adminUpdateMemberRole, adminUpdateUserName, fetchAdminCustomers, fetchAdminUsers, fetchRoles, setUserPlatformAdmin } from "../../api/adminEndpoints";
 import { fetchOrgRoles } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
 import { Reveal, SpotlightCard } from "../../components/Animated";
@@ -21,38 +21,78 @@ const FALLBACK_ADMIN_ROLES = [
   { key: "content_editor", name: "Content Editor" },
   { key: "reseller", name: "Reseller Admin" }
 ];
+function NewOrgFields({ email, setEmail, password, setPassword, organizationName, setOrganizationName, fullName, setFullName, inputClass }) {
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
+      <input type="text" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (min 8 chars)" className={inputClass} />
+      <input value={organizationName} onChange={e => setOrganizationName(e.target.value)} placeholder="Organization name" className={inputClass} />
+      <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full name (optional)" className={inputClass} />
+    </div>;
+}
+
+function ExistingOrgFields({ email, setEmail, organizationId, setOrganizationId, role, setRole, inputClass }) {
+  const { data: customers } = useQuery({ queryKey: ["admin-customers-picker"], queryFn: fetchAdminCustomers });
+  const { data: orgRoles } = useQuery({ queryKey: ["org-roles"], queryFn: fetchOrgRoles });
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
+      <select required value={organizationId} onChange={e => setOrganizationId(e.target.value)} className={inputClass}>
+        <option value="">Select organization…</option>
+        {(customers ?? []).map(c => <option key={c.organizationId} value={c.organizationId}>{c.name}</option>)}
+      </select>
+      <select required value={role} onChange={e => setRole(e.target.value)} className={inputClass}>
+        <option value="">Select role…</option>
+        {(orgRoles ?? []).map(r => <option key={r.key} value={r.key}>{r.name}</option>)}
+      </select>
+    </div>;
+}
+
 function CreateUserForm() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState("new"); // "new" | "existing"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [fullName, setFullName] = useState("");
+  const [organizationId, setOrganizationId] = useState("");
+  const [role, setRole] = useState("");
   const [error, setError] = useState(null);
-  const mutation = useMutation({
-    mutationFn: () => adminCreateUser({
-      email,
-      password,
-      organizationName,
-      fullName
-    }),
+  const [inviteLink, setInviteLink] = useState(null);
+
+  function resetFields() {
+    setEmail("");
+    setPassword("");
+    setOrganizationName("");
+    setFullName("");
+    setOrganizationId("");
+    setRole("");
+  }
+
+  const createMutation = useMutation({
+    mutationFn: () => adminCreateUser({ email, password, organizationName, fullName }),
     onSuccess: () => {
-      setEmail("");
-      setPassword("");
-      setOrganizationName("");
-      setFullName("");
+      resetFields();
       setOpen(false);
       setError(null);
-      queryClient.invalidateQueries({
-        queryKey: ["admin-users"]
-      });
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: err => setError(err instanceof Error ? err.message : "Failed to create user")
   });
+  const inviteMutation = useMutation({
+    mutationFn: () => adminInviteUserToOrganization(organizationId, email, role),
+    onSuccess: result => {
+      setError(null);
+      setInviteLink(result.inviteLink);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: err => setError(err instanceof Error ? err.message : "Failed to create invite")
+  });
+
   function handleSubmit(event) {
     event.preventDefault();
     setError(null);
-    mutation.mutate();
+    if (mode === "new") createMutation.mutate(); else inviteMutation.mutate();
   }
   const inputClass = "w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-amber-400/40 focus:outline-none";
   if (!open) {
@@ -60,21 +100,38 @@ function CreateUserForm() {
         + Add user
       </button>;
   }
+  if (inviteLink) {
+    return <div className="space-y-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-5">
+        <p className="text-sm font-medium text-white light:text-slate-900">Invite created.</p>
+        <p className="text-xs text-white/50 light:text-slate-400">Send this link to {email} — they'll create their own account and land directly in the organization.</p>
+        <div className="flex items-center gap-2">
+          <input readOnly value={inviteLink} className={`${inputClass} font-mono text-xs`} onFocus={e => e.target.select()} />
+          <button type="button" onClick={async () => { await navigator.clipboard.writeText(inviteLink); toast.success("Link copied."); }} className="shrink-0 rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 light:text-slate-600 hover:text-white light:hover:text-slate-900">
+            Copy
+          </button>
+        </div>
+        <button type="button" onClick={() => { setInviteLink(null); resetFields(); setOpen(false); }} className="text-sm text-white/50 light:text-slate-500 hover:text-white light:hover:text-slate-900">
+          Done
+        </button>
+      </div>;
+  }
   return <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-amber-400/20 light:border-amber-500/30 bg-neutral-900/60 light:bg-amber-50/40 p-5">
-      <p className="text-sm font-medium text-white light:text-slate-900">Create a new user</p>
-      <p className="text-xs text-white/45 light:text-slate-400">
-        Creates a confirmed account with its own organization. They can log in immediately with this password.
-      </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className={inputClass} />
-        <input type="text" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (min 8 chars)" className={inputClass} />
-        <input value={organizationName} onChange={e => setOrganizationName(e.target.value)} placeholder="Organization name" className={inputClass} />
-        <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full name (optional)" className={inputClass} />
+      <div className="flex items-center gap-2">
+        {[["new", "New organization"], ["existing", "Add to existing organization"]].map(([key, label]) => <button key={key} type="button" onClick={() => { setMode(key); setError(null); }} className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${mode === key ? "bg-amber-400 text-black" : "border border-white/15 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+            {label}
+          </button>)}
       </div>
+      <p className="text-xs text-white/45 light:text-slate-400">
+        {mode === "new" ? "Creates a confirmed account with its own organization. They can log in immediately with this password."
+          : "Sends a real invite link — they create their own account and land directly in the selected organization, same as that org inviting them itself."}
+      </p>
+      {mode === "new"
+        ? <NewOrgFields email={email} setEmail={setEmail} password={password} setPassword={setPassword} organizationName={organizationName} setOrganizationName={setOrganizationName} fullName={fullName} setFullName={setFullName} inputClass={inputClass} />
+        : <ExistingOrgFields email={email} setEmail={setEmail} organizationId={organizationId} setOrganizationId={setOrganizationId} role={role} setRole={setRole} inputClass={inputClass} />}
       {error && <p className="text-sm text-red-300">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={mutation.isPending} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-300 disabled:opacity-60">
-          {mutation.isPending ? "Creating…" : "Create user"}
+        <button type="submit" disabled={createMutation.isPending || inviteMutation.isPending} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-amber-300 disabled:opacity-60">
+          {mode === "new" ? (createMutation.isPending ? "Creating…" : "Create user") : (inviteMutation.isPending ? "Sending…" : "Send invite")}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="text-sm text-white/50 light:text-slate-500 hover:text-white light:hover:text-slate-900">
           Cancel

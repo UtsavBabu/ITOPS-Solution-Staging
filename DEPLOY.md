@@ -425,6 +425,38 @@ match the nav's actual intent — `platform_administrator` gets a real
 can read it either. No other platform RPC audited had this gap — the
 mutation paths were already correctly scoped throughout.
 
+## Live-tested role editing end-to-end + a real Platform Admin gap (migrations 0058–0059)
+
+A "changing a member's role doesn't save" report couldn't be reproduced
+against current code: ran the actual flow live — real invite → real
+signup → change the new member's role → **reload the page from scratch**
+to confirm it wasn't just local UI state — on both Team & Plan (the
+org's own console) and Platform Admin's All Users. Both persisted
+correctly. Given none of this session's other fixes are live yet either
+(the push to `main` is still pending on your end), this was very likely
+tested against the stale deployment.
+
+**Real gap found while validating the adjacent claim** ("admin must have
+proper visibility of adding... the user"): Platform Admin's "+ Add user"
+only ever created a **brand-new organization** — there was no way to add
+someone to an **existing** customer's org from the admin side, only from
+that org's own Team & Plan page. Added `admin_invite_user_to_organization()`,
+reusing the exact same real invite-and-accept mechanism (same seat-limit
+enforcement, same `/invite/:token` flow) — the admin now picks "Add to
+existing organization," an org, a role, and gets a real shareable invite
+link. Apply the same way:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> SUPABASE_DB_PASSWORD='<db password>' ./scripts/deploy.sh
+```
+
+Live end-to-end test (real invite created for an existing org, real
+accept-page load confirming the right organization) caught a real bug on
+first run — `RETURNS TABLE (id uuid, ...)` implicitly declares `id` as a
+plpgsql variable, and an unqualified `where id = p_organization_id` check
+collided with it ("column reference \"id\" is ambiguous"). Fixed in 0059
+by qualifying it; re-ran the same live test to confirm.
+
 ## CyberSachet Training & Certification (migrations 0037, 0040–0044)
 
 Turns the CyberSachet product page from a roadmap into a real, licensed
