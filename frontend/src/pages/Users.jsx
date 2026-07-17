@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreDepartment, restoreTeam, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
@@ -591,6 +591,7 @@ function TrainingManagementPanel({ members, canManage }) {
 
 function MemberRoleControl({ member, isSelf, canManage, orgRoles, roleLabel, mutation }) {
   const [pendingRole, setPendingRole] = useState(member.role);
+  useEffect(() => setPendingRole(member.role), [member.role]);
   if (isSelf || !canManage) {
     return <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70 light:text-slate-600">{roleLabel[member.role] ?? member.role}</span>;
   }
@@ -606,6 +607,10 @@ function MemberRoleControl({ member, isSelf, canManage, orgRoles, roleLabel, mut
 
 function DepartmentControl({ member, canManage, departments, mutation }) {
   const [pending, setPending] = useState(member.departmentId ?? "");
+  // Re-sync after a refetch, not just on mount — assigning a team also
+  // changes department_id server-side (assign_member_team), a mutation this
+  // control doesn't itself trigger, so it has to notice the prop changed.
+  useEffect(() => setPending(member.departmentId ?? ""), [member.departmentId]);
   if (!canManage) {
     return <span className="text-xs text-white/50 light:text-slate-500">{member.departmentName ?? "—"}</span>;
   }
@@ -622,6 +627,7 @@ function DepartmentControl({ member, canManage, departments, mutation }) {
 
 function TeamControl({ member, canManage, teams, mutation }) {
   const [pending, setPending] = useState(member.teamId ?? "");
+  useEffect(() => setPending(member.teamId ?? ""), [member.teamId]);
   if (!canManage) {
     return <span className="text-xs text-white/50 light:text-slate-500">{member.teamName ?? "—"}</span>;
   }
