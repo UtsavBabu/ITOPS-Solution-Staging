@@ -13,11 +13,11 @@ import { fetchAdminCustomers, fetchAdminUsers } from "../api/adminEndpoints";
  * assets; "admin" searches organizations/users the current admin role can
  * already see via fetchAdminCustomers/fetchAdminUsers.
  */
-function useCustomerResults(query) {
-  const { data: monitors } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000 });
-  const { data: incidents } = useQuery({ queryKey: ["incidents", "ALL"], queryFn: () => fetchIncidents(), staleTime: 30_000 });
-  const { data: hosts } = useQuery({ queryKey: ["host-agents"], queryFn: listHostAgents, staleTime: 30_000 });
-  const { data: assets } = useQuery({ queryKey: ["assets"], queryFn: fetchAssets, staleTime: 30_000 });
+function useCustomerResults(query, active) {
+  const { data: monitors } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000, enabled: active });
+  const { data: incidents } = useQuery({ queryKey: ["incidents", "ALL"], queryFn: () => fetchIncidents(), staleTime: 30_000, enabled: active });
+  const { data: hosts } = useQuery({ queryKey: ["host-agents"], queryFn: listHostAgents, staleTime: 30_000, enabled: active });
+  const { data: assets } = useQuery({ queryKey: ["assets"], queryFn: fetchAssets, staleTime: 30_000, enabled: active });
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     const groups = [];
@@ -40,9 +40,9 @@ function useCustomerResults(query) {
     return groups;
   }, [query, monitors, incidents, hosts, assets]);
 }
-function useAdminResults(query) {
-  const { data: customers } = useQuery({ queryKey: ["admin-customers"], queryFn: fetchAdminCustomers, staleTime: 30_000 });
-  const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: fetchAdminUsers, staleTime: 30_000, retry: false });
+function useAdminResults(query, active) {
+  const { data: customers } = useQuery({ queryKey: ["admin-customers"], queryFn: fetchAdminCustomers, staleTime: 30_000, enabled: active });
+  const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: fetchAdminUsers, staleTime: 30_000, retry: false, enabled: active });
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     const groups = [];
@@ -65,8 +65,8 @@ export function AppSearch({ scope, navItems }) {
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
-  const customerResults = useCustomerResults(scope === "customer" ? query : "");
-  const adminResults = useAdminResults(scope === "admin" ? query : "");
+  const customerResults = useCustomerResults(scope === "customer" ? query : "", scope === "customer");
+  const adminResults = useAdminResults(scope === "admin" ? query : "", scope === "admin");
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();

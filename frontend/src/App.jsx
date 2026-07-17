@@ -22,6 +22,7 @@ const Incidents = lazy(() => import("./pages/Incidents"));
 const Assets = lazy(() => import("./pages/Assets"));
 const AlertChannels = lazy(() => import("./pages/AlertChannels"));
 const Team = lazy(() => import("./pages/Team"));
+const Users = lazy(() => import("./pages/Users"));
 const CyberSachetTraining = lazy(() => import("./pages/CyberSachetTraining"));
 const Platform = lazy(() => import("./pages/Platform"));
 const Solutions = lazy(() => import("./pages/Solutions"));
@@ -193,6 +194,7 @@ export default function App() {
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/settings/alerts" element={<AlertChannels />} />
+          <Route path="/users" element={<Users />} />
           <Route path="/team" element={<Team />} />
         </Route>
       </Route>

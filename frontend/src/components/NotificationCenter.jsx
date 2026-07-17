@@ -12,10 +12,10 @@ import { fetchAdminOpenIncidents, fetchResellerApplications, fetchSecurityHighli
  * types like "failed backups" or "vulnerabilities" that nothing in this
  * codebase actually tracks yet.
  */
-function useCustomerNotifications() {
-  const { data: incidents } = useQuery({ queryKey: ["incidents", "OPEN"], queryFn: () => fetchIncidents("OPEN"), staleTime: 30_000 });
-  const { data: monitors } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000 });
-  const { data: usage } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 30_000 });
+function useCustomerNotifications(active) {
+  const { data: incidents } = useQuery({ queryKey: ["incidents", "OPEN"], queryFn: () => fetchIncidents("OPEN"), staleTime: 30_000, enabled: active });
+  const { data: monitors } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000, enabled: active });
+  const { data: usage } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 30_000, enabled: active });
   const items = [];
   for (const i of incidents ?? []) {
     items.push({ id: `incident-${i.id}`, tone: "danger", title: i.monitor?.name ?? "Incident", detail: i.cause ?? "Open incident", to: i.monitor?.id ? `/monitors/${i.monitor.id}` : "/incidents", at: i.startedAt });
@@ -31,10 +31,10 @@ function useCustomerNotifications() {
   }
   return items;
 }
-function useAdminNotifications() {
-  const { data: incidents } = useQuery({ queryKey: ["admin-open-incidents"], queryFn: fetchAdminOpenIncidents, staleTime: 30_000, retry: false });
-  const { data: securityHighlights } = useQuery({ queryKey: ["admin-security-highlights"], queryFn: () => fetchSecurityHighlights(6), staleTime: 30_000, retry: false });
-  const { data: resellerApps } = useQuery({ queryKey: ["reseller-applications"], queryFn: fetchResellerApplications, staleTime: 30_000, retry: false });
+function useAdminNotifications(active) {
+  const { data: incidents } = useQuery({ queryKey: ["admin-open-incidents"], queryFn: fetchAdminOpenIncidents, staleTime: 30_000, retry: false, enabled: active });
+  const { data: securityHighlights } = useQuery({ queryKey: ["admin-security-highlights"], queryFn: () => fetchSecurityHighlights(6), staleTime: 30_000, retry: false, enabled: active });
+  const { data: resellerApps } = useQuery({ queryKey: ["reseller-applications"], queryFn: fetchResellerApplications, staleTime: 30_000, retry: false, enabled: active });
   const items = [];
   for (const i of (incidents ?? []).slice(0, 6)) {
     items.push({ id: `incident-${i.id}`, tone: "danger", title: i.monitorName ?? "Incident", detail: `${i.organizationName} · ${i.cause ?? "Open incident"}`, to: "/admin/incidents", at: i.startedAt });
@@ -53,8 +53,8 @@ const TONE_TEXT = { danger: "text-red-300 light:text-red-700", warning: "text-am
 export function NotificationCenter({ scope }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
-  const customerItems = useCustomerNotifications();
-  const adminItems = useAdminNotifications();
+  const customerItems = useCustomerNotifications(scope !== "admin");
+  const adminItems = useAdminNotifications(scope === "admin");
   const items = scope === "admin" ? adminItems : customerItems;
   const urgentCount = items.filter(i => i.tone === "danger" || i.tone === "warning").length;
 

@@ -75,6 +75,11 @@ const NAV_GROUPS = [{
     icon: "◎",
     module: "alert_channels"
   }, {
+    to: "/users",
+    label: "Users",
+    icon: "◒",
+    module: "team"
+  }, {
     to: "/team",
     label: "Team & Plan",
     icon: "◉",

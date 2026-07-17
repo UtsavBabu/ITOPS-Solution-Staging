@@ -223,7 +223,7 @@ export default function Dashboard() {
         </Reveal>}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[{
         label: "Add Monitor",
         to: "/monitors",
@@ -235,6 +235,10 @@ export default function Dashboard() {
       }, {
         label: "Alert Channels",
         to: "/settings/alerts",
+        color: "border-white/15 light:border-slate-900/15 hover:bg-white/5 light:hover:bg-slate-900/[0.04]"
+      }, {
+        label: "Users",
+        to: "/users",
         color: "border-white/15 light:border-slate-900/15 hover:bg-white/5 light:hover:bg-slate-900/[0.04]"
       }, {
         label: "Team & Plan",
