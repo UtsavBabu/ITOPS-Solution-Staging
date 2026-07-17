@@ -11,6 +11,15 @@ import { useToast } from "../../components/Toast";
 
 const EASE = [0.16, 1, 0.3, 1];
 const ACTION_LABEL = { view: "View", create: "Create", edit: "Edit", delete: "Delete", configure: "Configure", export: "Export", manage: "Manage" };
+const ACTION_DESCRIPTION = {
+  view: "See this section and its data",
+  create: "Add new items",
+  edit: "Change existing items",
+  delete: "Remove items permanently",
+  configure: "Change settings for this section",
+  export: "Download or export its data",
+  manage: "Full control, including sensitive actions"
+};
 const EMPTY_ACTIONS = Object.fromEntries(PERMISSION_ACTIONS.map(a => [a, false]));
 // Predate the named organization roles (organization_administrator, it_manager,
 // ...) and have been fully retired since migration 0055 — no account holds
@@ -23,53 +32,103 @@ function slugify(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
-function Checkbox({ checked, onChange, disabled }) {
+function ToggleSwitch({ checked, onChange, disabled }) {
   return (
     <button
       type="button"
       onClick={() => onChange(!checked)}
       disabled={disabled}
       aria-pressed={checked}
-      className={`grid h-5 w-5 place-items-center rounded border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-cyan-400/60 bg-cyan-400/20 light:bg-cyan-100 text-cyan-300 light:text-cyan-700" : "border-white/15 light:border-slate-900/15 bg-black/30 light:bg-slate-900/[0.04] text-transparent hover:border-white/30"}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "bg-cyan-400" : "bg-white/15 light:bg-slate-900/15"}`}
     >
-      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
     </button>
   );
 }
 
-function PermissionGrid({ modules, permissions, onChange, readOnly }) {
+function grantedCount(permissions, moduleKey) {
+  const row = permissions[moduleKey] ?? EMPTY_ACTIONS;
+  return PERMISSION_ACTIONS.filter(a => row[a]).length;
+}
+
+// Step 2 of the guided flow: pick a Category (module) to focus on, instead
+// of scanning a single table with every module's row at once. A count badge
+// shows how much of each category is already granted without opening it.
+function CategoryRail({ modules, permissions, selected, onSelect }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
-          <tr>
-            <th className="px-3 py-2">Module</th>
-            {PERMISSION_ACTIONS.map(a => <th key={a} className="px-3 py-2 text-center">{ACTION_LABEL[a]}</th>)}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
-          {modules.map(m => {
-            const row = permissions[m.key] ?? EMPTY_ACTIONS;
-            return (
-              <tr key={m.key}>
-                <td className="px-3 py-2.5 font-medium text-white/80 light:text-slate-700">{m.label}</td>
-                {PERMISSION_ACTIONS.map(action => (
-                  <td key={action} className="px-3 py-2.5 text-center">
-                    <div className="flex justify-center">
-                      <Checkbox
-                        checked={!!row[action]}
-                        disabled={readOnly}
-                        onChange={next => onChange(m.key, action, next)}
-                      />
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="flex flex-wrap gap-1.5">
+      {modules.map(m => {
+        const count = grantedCount(permissions, m.key);
+        const isSelected = selected === m.key;
+        return (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => onSelect(m.key)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${isSelected ? "border-cyan-400/50 bg-cyan-400/15 text-cyan-300" : count > 0 ? "border-white/15 light:border-slate-900/15 text-white/80 light:text-slate-700 hover:border-white/30" : "border-white/10 light:border-slate-900/10 text-white/40 light:text-slate-400 hover:border-white/25"}`}
+          >
+            {m.label}
+            <span className={`rounded-full px-1.5 text-[10px] ${count > 0 ? "bg-white/10 text-white/60 light:text-slate-500" : "text-white/25 light:text-slate-300"}`}>{count}/{PERMISSION_ACTIONS.length}</span>
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+// Step 3: Permission — the selected category's 7 actions as labeled
+// switches with a one-line plain-English description each, instead of bare
+// checkboxes in a cramped grid cell.
+function CategoryEditor({ module, permissions, onChange, readOnly }) {
+  const row = permissions[module.key] ?? EMPTY_ACTIONS;
+  return (
+    <div className="space-y-1">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-medium text-white light:text-slate-900">{module.label}</p>
+        {!readOnly && <div className="flex gap-3 text-[11px]">
+          <button onClick={() => PERMISSION_ACTIONS.forEach(a => onChange(module.key, a, true))} className="text-cyan-300 light:text-cyan-600 hover:underline">Grant all</button>
+          <button onClick={() => PERMISSION_ACTIONS.forEach(a => onChange(module.key, a, false))} className="text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Clear</button>
+        </div>}
+      </div>
+      <div className="divide-y divide-white/[0.06] light:divide-slate-900/[0.06]">
+        {PERMISSION_ACTIONS.map(action => (
+          <div key={action} className="flex items-center justify-between gap-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm text-white/85 light:text-slate-700">{ACTION_LABEL[action]}</p>
+              <p className="text-xs text-white/40 light:text-slate-400">{ACTION_DESCRIPTION[action]}</p>
+            </div>
+            <ToggleSwitch checked={!!row[action]} disabled={readOnly} onChange={next => onChange(module.key, action, next)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Step 4: Preview — a live, plain-language summary of everything this role
+// grants across every category, so an admin can review the whole role
+// without clicking back through each category individually.
+function PermissionPreview({ modules, permissions }) {
+  const summarized = modules.map(m => {
+    const row = permissions[m.key] ?? EMPTY_ACTIONS;
+    const granted = PERMISSION_ACTIONS.filter(a => row[a]);
+    return { module: m, granted };
+  }).filter(s => s.granted.length > 0);
+
+  if (summarized.length === 0) {
+    return <p className="text-sm text-white/40 light:text-slate-400">No permissions granted yet — this role can't do anything until you turn something on above.</p>;
+  }
+  return (
+    <ul className="space-y-2">
+      {summarized.map(({ module, granted }) => (
+        <li key={module.key} className="rounded-lg border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] px-3 py-2">
+          <p className="text-xs font-medium text-white/85 light:text-slate-700">{module.label}</p>
+          <p className="mt-0.5 text-xs text-white/45 light:text-slate-500">
+            {granted.length === PERMISSION_ACTIONS.length ? "Full access" : granted.map(a => ACTION_LABEL[a]).join(", ")}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -81,6 +140,8 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
   const [scope, setScope] = useState(role?.scope ?? cloneFrom?.scope ?? "organization");
   const [permissions, setPermissions] = useState({});
   const [loadingGrid, setLoadingGrid] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const sourceKey = role?.key ?? cloneFrom?.key ?? null;
 
@@ -103,6 +164,12 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
   }, [sourceKey, modules]);
 
   const scopedModules = useMemo(() => modules.filter(m => m.scope === scope), [modules, scope]);
+
+  useEffect(() => {
+    if (scopedModules.length && !scopedModules.some(m => m.key === activeCategory)) {
+      setActiveCategory(scopedModules[0].key);
+    }
+  }, [scopedModules, activeCategory]);
 
   const saveMutation = useMutation({
     mutationFn: () => upsertRole({
@@ -147,7 +214,7 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
             className="w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-xs text-white/70 light:text-slate-600 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-cyan-400/40 focus:outline-none"
           />
           {isNew && (
-            <div className="flex items-center gap-2 text-xs text-white/50 light:text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-white/50 light:text-slate-500">
               <span>Scope:</span>
               <select value={scope} onChange={e => setScope(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-white light:text-slate-900">
                 <option value="platform">Platform (ITOps Solution admin)</option>
@@ -155,6 +222,11 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
               </select>
               <span className="text-white/30 light:text-slate-400">Key: {slugify(name) || "—"}</span>
             </div>
+          )}
+          {cloneFrom && (
+            <p className="text-xs text-cyan-300/80">
+              Inherited from <span className="font-medium">{cloneFrom.name}</span> — this copies its permissions once as a starting point; it won't stay in sync if {cloneFrom.name} changes later.
+            </p>
           )}
         </div>
         <div className="flex gap-2">
@@ -169,18 +241,36 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
         </div>
       </div>
 
-      <div className="mt-5 rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.03] p-2">
-        {loadingGrid ? <SkeletonRows count={4} /> : (
-          <>
-            <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
-              <span className="text-[11px] uppercase tracking-wide text-white/35 light:text-slate-400">Quick fill:</span>
-              <button onClick={() => scopedModules.forEach(m => toggleRow(m.key, true))} className="text-[11px] text-cyan-300 light:text-cyan-600 hover:underline">Grant everything</button>
-              <button onClick={() => scopedModules.forEach(m => toggleRow(m.key, false))} className="text-[11px] text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Clear all</button>
+      {loadingGrid ? <div className="mt-5 rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.03] p-4"><SkeletonRows count={4} /></div> : (
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+          <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.03] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-white/35 light:text-slate-400">Category</p>
+              <div className="flex gap-3 text-[11px]">
+                <button onClick={() => scopedModules.forEach(m => toggleRow(m.key, true))} className="text-cyan-300 light:text-cyan-600 hover:underline">Grant everything</button>
+                <button onClick={() => scopedModules.forEach(m => toggleRow(m.key, false))} className="text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Clear all</button>
+              </div>
             </div>
-            <PermissionGrid modules={scopedModules} permissions={permissions} onChange={setCell} />
-          </>
-        )}
-      </div>
+            <CategoryRail modules={scopedModules} permissions={permissions} selected={activeCategory} onSelect={setActiveCategory} />
+            {activeCategory && scopedModules.find(m => m.key === activeCategory) && (
+              <div className="mt-4 border-t border-white/10 light:border-slate-900/10 pt-4">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-white/35 light:text-slate-400">Permission</p>
+                <CategoryEditor module={scopedModules.find(m => m.key === activeCategory)} permissions={permissions} onChange={setCell} />
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.03] p-4 lg:sticky lg:top-4 lg:self-start">
+            <button type="button" onClick={() => setShowPreview(v => !v)} className="flex w-full items-center justify-between text-[11px] font-medium uppercase tracking-wide text-white/35 light:text-slate-400 lg:pointer-events-none">
+              <span>Preview — what this role can do</span>
+              <span className="lg:hidden">{showPreview ? "▾" : "▸"}</span>
+            </button>
+            <div className={`mt-3 ${showPreview ? "block" : "hidden"} lg:block`}>
+              <PermissionPreview modules={scopedModules} permissions={permissions} />
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -306,7 +396,7 @@ export default function AdminRoles() {
               </div>
             </div>
           ) : creating ? (
-            !modulesLoading && <RoleEditor modules={modules ?? []} cloneFrom={creating.cloneFrom} onClose={() => setCreating(null)} onSaved={handleSaved} />
+            !modulesLoading && <RoleEditor key={`new-${creating.cloneFrom?.key ?? "blank"}`} modules={modules ?? []} cloneFrom={creating.cloneFrom} onClose={() => setCreating(null)} onSaved={handleSaved} />
           ) : selectedRole ? (
             <div>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -325,7 +415,7 @@ export default function AdminRoles() {
                   )}
                 </div>
               </div>
-              {!modulesLoading && <RoleEditor role={selectedRole} modules={modules ?? []} onClose={() => setSelectedKey(null)} onSaved={handleSaved} />}
+              {!modulesLoading && <RoleEditor key={selectedRole.key} role={selectedRole} modules={modules ?? []} onClose={() => setSelectedKey(null)} onSaved={handleSaved} />}
             </div>
           ) : (
             <EmptyState title="Select a role" description="Pick a role on the left to view or edit its permissions, or check two roles to compare them." />
