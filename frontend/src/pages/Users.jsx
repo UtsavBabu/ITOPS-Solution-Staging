@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreDepartment, restoreTeam, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
+import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
@@ -614,6 +614,79 @@ function TrainingManagementPanel({ members, canManage }) {
     </SpotlightCard>;
 }
 
+function CertificateRow({ cert, canManage, onChanged }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const revoke = useMutation({
+    mutationFn: () => revokeCertificate(cert.certificateNo),
+    onSuccess: () => { toast.success("Certificate revoked."); onChanged(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to revoke certificate")
+  });
+  const restore = useMutation({
+    mutationFn: () => restoreCertificate(cert.certificateNo),
+    onSuccess: () => { toast.success("Certificate restored."); onChanged(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to restore certificate")
+  });
+  const expired = new Date(cert.expiresAt).getTime() < Date.now();
+  const status = cert.revokedAt ? "Revoked" : expired ? "Expired" : "Valid";
+  const statusColor = cert.revokedAt ? "bg-red-400/10 text-red-300 light:bg-red-100 light:text-red-700" : expired ? "bg-white/10 text-white/50 light:bg-slate-900/[0.05] light:text-slate-400" : "bg-emerald-400/10 text-emerald-300 light:bg-emerald-100 light:text-emerald-700";
+  return <tr>
+      <td className="px-3 py-2.5 text-white light:text-slate-900">{cert.holderName || cert.holderEmail}</td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{cert.courseTitle ?? `${cert.levelCode} (full certification)`}</td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{cert.averageScore}%</td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{new Date(cert.issuedAt).toLocaleDateString()}</td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{new Date(cert.expiresAt).toLocaleDateString()}</td>
+      <td className="px-3 py-2.5">
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor}`}>{status}</span>
+      </td>
+      <td className="px-3 py-2.5 text-right space-x-3 whitespace-nowrap">
+        <a href={`/verify/${cert.certificateNo}`} target="_blank" rel="noreferrer" className="text-xs text-cyan-300 light:text-cyan-600 hover:underline">Verify</a>
+        {canManage && (cert.revokedAt
+          ? <button onClick={() => restore.mutate()} disabled={restore.isPending} className="text-xs text-emerald-300 light:text-emerald-600 hover:underline disabled:opacity-50">Restore</button>
+          : <button onClick={async () => { if (await confirm({ title: "Revoke this certificate?", description: `${cert.certificateNo} will show as revoked on the public verification page.`, confirmLabel: "Revoke", danger: true })) revoke.mutate(); }} disabled={revoke.isPending} className="text-xs text-red-300 light:text-red-600 hover:underline disabled:opacity-50">Revoke</button>)}
+      </td>
+    </tr>;
+}
+
+function CertificateCenterPanel({ canManage }) {
+  const [search, setSearch] = useState("");
+  const { data: certificates, isLoading, isError, refetch } = useQuery({ queryKey: ["organization-certificates"], queryFn: fetchOrganizationCertificates });
+  const filtered = (certificates ?? []).filter(c => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return c.holderEmail.toLowerCase().includes(q) || (c.holderName ?? "").toLowerCase().includes(q) || (c.courseTitle ?? "").toLowerCase().includes(q) || c.certificateNo.toLowerCase().includes(q);
+  });
+  if (!isLoading && !isError && (certificates ?? []).length === 0) return null;
+
+  return <SpotlightCard className="overflow-hidden" delay={0.18}>
+      <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Certificate Center</h2>
+        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">Every certificate issued to your team — real QR-verifiable credentials with a SHA-256 document hash. Anyone can check one at <span className="text-white/60 light:text-slate-600">/verify</span>.</p>
+      </div>
+      {(certificates ?? []).length > 5 && <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-2.5">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, course, or certificate #…" className="w-72 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-3 py-1.5 text-xs text-white light:text-slate-900 placeholder:text-white/30" />
+        </div>}
+      {isError ? <ErrorState message="Couldn't load certificates." onRetry={refetch} /> : isLoading ? <SkeletonRows count={2} /> : filtered.length === 0 ? <p className="p-4 text-sm text-white/40 light:text-slate-400">No certificates match your search.</p> : <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Holder</th>
+                  <th className="px-3 py-2">Credential</th>
+                  <th className="px-3 py-2">Score</th>
+                  <th className="px-3 py-2">Issued</th>
+                  <th className="px-3 py-2">Expires</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
+                {filtered.map(cert => <CertificateRow key={cert.certificateNo} cert={cert} canManage={canManage} onChanged={refetch} />)}
+              </tbody>
+            </table>
+          </div>}
+    </SpotlightCard>;
+}
+
 function MemberRoleControl({ member, isSelf, canManage, orgRoles, roleLabel, mutation }) {
   if (isSelf) {
     return <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70 light:text-slate-600">{roleLabel[member.role] ?? member.role}</span>;
@@ -761,5 +834,7 @@ export default function Users() {
       {members && <TeamsPanel members={members} departments={departments ?? []} canManage={canManageTeam} />}
 
       {cybersachetLicensed && canViewTraining && members && <TrainingManagementPanel members={members} canManage={canManageTraining} />}
+
+      {cybersachetLicensed && canViewTraining && <CertificateCenterPanel canManage={canManageTraining} />}
     </div>;
 }

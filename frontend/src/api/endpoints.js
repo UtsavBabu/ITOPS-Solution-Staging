@@ -855,6 +855,33 @@ export async function verifyCertificate(certificateNo) {
   };
 }
 
+export async function fetchOrganizationCertificates() {
+  const { data, error } = await supabase.rpc("list_organization_certificates");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    certificateNo: row.certificate_no,
+    userId: row.user_id,
+    holderEmail: row.holder_email,
+    holderName: row.holder_name ?? null,
+    levelCode: row.level_code,
+    courseTitle: row.course_title ?? null,
+    averageScore: row.average_score,
+    hoursTrained: Number(row.hours_trained),
+    issuedAt: row.issued_at,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at ?? null,
+    certificateHash: row.certificate_hash ?? null
+  }));
+}
+export async function revokeCertificate(certificateNo) {
+  const { error } = await supabase.rpc("revoke_certificate", { p_certificate_no: certificateNo });
+  if (error) throw new Error(error.message);
+}
+export async function restoreCertificate(certificateNo) {
+  const { error } = await supabase.rpc("restore_certificate", { p_certificate_no: certificateNo });
+  if (error) throw new Error(error.message);
+}
+
 export async function enrollInCourse(courseId) {
   const { data, error } = await supabase.rpc("enroll_in_course", { p_course_id: courseId });
   if (error) throw new Error(error.message);
