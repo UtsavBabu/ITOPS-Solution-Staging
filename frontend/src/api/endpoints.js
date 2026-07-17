@@ -262,7 +262,9 @@ export async function fetchOrganizationMembers() {
     role: row.role,
     joinedAt: row.joined_at,
     departmentId: row.department_id ?? null,
-    departmentName: row.department_name ?? null
+    departmentName: row.department_name ?? null,
+    teamId: row.team_id ?? null,
+    teamName: row.team_name ?? null
   }));
 }
 
@@ -320,6 +322,66 @@ export async function assignDepartmentManager(departmentId, userId) {
 }
 export async function assignMemberDepartment(userId, departmentId) {
   const { error } = await supabase.rpc("assign_member_department", { p_user_id: userId, p_department_id: departmentId ?? null });
+  if (error) throw new Error(error.message);
+}
+
+// ── Teams (within Departments) ──────────────────────────────────────────────
+
+export async function fetchTeams(departmentId) {
+  const { data, error } = await supabase.rpc("list_teams", { p_department_id: departmentId ?? null });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    id: row.id,
+    departmentId: row.department_id,
+    departmentName: row.department_name,
+    name: row.name,
+    leadUserId: row.lead_user_id ?? null,
+    leadEmail: row.lead_email ?? null,
+    memberCount: Number(row.member_count),
+    archived: row.archived
+  }));
+}
+export async function fetchTeamTrainingReport() {
+  const { data, error } = await supabase.rpc("team_training_report");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    teamId: row.team_id,
+    teamName: row.team_name,
+    departmentName: row.department_name,
+    memberCount: Number(row.member_count),
+    assignedCount: Number(row.assigned_count),
+    completedCount: Number(row.completed_count),
+    completionPct: row.completion_pct,
+    avgScore: row.avg_score
+  }));
+}
+export async function createTeam(departmentId, name) {
+  const { data, error } = await supabase.rpc("create_team", { p_department_id: departmentId, p_name: name });
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function renameTeam(teamId, name) {
+  const { error } = await supabase.rpc("rename_team", { p_team_id: teamId, p_name: name });
+  if (error) throw new Error(error.message);
+}
+export async function archiveTeam(teamId) {
+  const { error } = await supabase.rpc("archive_team", { p_team_id: teamId });
+  if (error) throw new Error(error.message);
+}
+export async function restoreTeam(teamId) {
+  const { error } = await supabase.rpc("restore_team", { p_team_id: teamId });
+  if (error) throw new Error(error.message);
+}
+export async function deleteTeam(teamId) {
+  const { error } = await supabase.rpc("delete_team", { p_team_id: teamId });
+  if (error) throw new Error(error.message);
+}
+export async function assignTeamLead(teamId, userId) {
+  const { error } = await supabase.rpc("assign_team_lead", { p_team_id: teamId, p_user_id: userId ?? null });
+  if (error) throw new Error(error.message);
+}
+export async function assignMemberTeam(userId, teamId) {
+  const { error } = await supabase.rpc("assign_member_team", { p_user_id: userId, p_team_id: teamId ?? null });
   if (error) throw new Error(error.message);
 }
 export async function fetchOrgInvites() {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { assignCybersachetCourseToMember, archiveDepartment, assignDepartmentManager, assignMemberDepartment, createDepartment, createOrgInvite, deleteDepartment, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, renameDepartment, resetCybersachetProgress, restoreDepartment, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
+import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreDepartment, restoreTeam, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
@@ -125,6 +125,140 @@ function DepartmentComplianceCard() {
       <div className="space-y-2">
         {rows.map(r => <div key={r.departmentId ?? "none"} className="flex items-center gap-3">
             <span className="w-32 shrink-0 truncate text-xs text-white/70 light:text-slate-600">{r.departmentName}</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10 light:bg-slate-900/8">
+              <div className="h-full rounded-full bg-emerald-400" style={{ width: `${r.completionPct}%` }} />
+            </div>
+            <span className="w-10 shrink-0 text-right text-xs font-medium text-white/70 light:text-slate-600">{r.completionPct}%</span>
+            <span className="w-24 shrink-0 text-right text-[11px] text-white/40 light:text-slate-400">{r.completedCount}/{r.assignedCount} done</span>
+          </div>)}
+      </div>
+    </div>;
+}
+
+function TeamRow({ team, members, canManage, onSaved }) {
+  const [name, setName] = useState(team.name);
+  const [leadId, setLeadId] = useState(team.leadUserId ?? "");
+  const toast = useToast();
+  const confirm = useConfirm();
+  const selectClass = "rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900";
+  const deptMembers = members.filter(m => m.departmentId === team.departmentId);
+  const rename = useMutation({
+    mutationFn: () => renameTeam(team.id, name),
+    onSuccess: () => { toast.success("Team renamed."); onSaved(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to rename team")
+  });
+  const setLead = useMutation({
+    mutationFn: () => assignTeamLead(team.id, leadId || null),
+    onSuccess: () => { toast.success("Team lead updated."); onSaved(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to assign team lead")
+  });
+  const archive = useMutation({
+    mutationFn: () => archiveTeam(team.id),
+    onSuccess: () => { toast.success("Team archived."); onSaved(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to archive team")
+  });
+  const restore = useMutation({
+    mutationFn: () => restoreTeam(team.id),
+    onSuccess: () => { toast.success("Team restored."); onSaved(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to restore team")
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteTeam(team.id),
+    onSuccess: () => { toast.success("Team deleted."); onSaved(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to delete team")
+  });
+
+  if (!canManage) {
+    return <tr>
+        <td className="px-3 py-2.5 text-white light:text-slate-900">{team.name}{team.archived && <span className="ml-2 text-[10px] text-white/35 light:text-slate-400">Archived</span>}</td>
+        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.departmentName}</td>
+        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.leadEmail ?? "—"}</td>
+        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.memberCount}</td>
+      </tr>;
+  }
+  return <tr>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <input value={name} onChange={e => setName(e.target.value)} className={`w-32 ${selectClass}`} />
+          {name !== team.name && <button onClick={() => rename.mutate()} disabled={rename.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
+          {team.archived && <span className="text-[10px] text-white/35 light:text-slate-400">Archived</span>}
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.departmentName}</td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <select value={leadId} onChange={e => setLeadId(e.target.value)} className={selectClass}>
+            <option value="">No lead</option>
+            {deptMembers.map(m => <option key={m.userId} value={m.userId}>{m.email}</option>)}
+          </select>
+          {leadId !== (team.leadUserId ?? "") && <button onClick={() => setLead.mutate()} disabled={setLead.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.memberCount}</td>
+      <td className="px-3 py-2.5 text-right space-x-3">
+        {team.archived ? <button onClick={() => restore.mutate()} className="text-xs text-emerald-300 light:text-emerald-600 hover:underline">Restore</button>
+          : <button onClick={() => archive.mutate()} className="text-xs text-amber-300 light:text-amber-600 hover:underline">Archive</button>}
+        <button onClick={async () => { if (await confirm({ title: "Delete team?", description: "Members keep their accounts and department — they just become unassigned from this team." })) remove.mutate(); }} className="text-xs text-red-300 light:text-red-600 hover:underline">Delete</button>
+      </td>
+    </tr>;
+}
+
+function TeamsPanel({ members, departments, canManage }) {
+  const toast = useToast();
+  const [newName, setNewName] = useState("");
+  const [newDeptId, setNewDeptId] = useState("");
+  const { data: teams, isLoading, isError, refetch } = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
+  const activeDepartments = (departments ?? []).filter(d => !d.archived);
+  const create = useMutation({
+    mutationFn: () => createTeam(newDeptId, newName),
+    onSuccess: () => { toast.success("Team created."); setNewName(""); refetch(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to create team")
+  });
+  if (activeDepartments.length === 0) return null;
+  const active = (teams ?? []).filter(t => !t.archived);
+  const archived = (teams ?? []).filter(t => t.archived);
+
+  return <SpotlightCard className="overflow-hidden" delay={0.13}>
+      <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Teams</h2>
+        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">Sub-groups within a department — Engineering → Backend, Frontend, DevOps. A team has its own lead, separate from the department manager.</p>
+      </div>
+      <div className="p-4 space-y-3">
+        {canManage && <div className="flex flex-wrap items-center gap-2">
+            <select value={newDeptId} onChange={e => setNewDeptId(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900">
+              <option value="">Choose department…</option>
+              {activeDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New team name" className="w-48 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900 placeholder:text-white/30" />
+            <button onClick={() => create.mutate()} disabled={!newName.trim() || !newDeptId || create.isPending} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-neutral-200 disabled:opacity-50">
+              {create.isPending ? "Creating…" : "+ Add team"}
+            </button>
+          </div>}
+        {isError ? <ErrorState message="Couldn't load teams." onRetry={refetch} /> : isLoading ? <SkeletonRows count={2} /> : (teams ?? []).length === 0 ? <p className="text-sm text-white/40 light:text-slate-400">No teams yet — create one within a department above.</p> : <div className="overflow-hidden rounded-xl border border-white/10 light:border-slate-900/10">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-white/10 light:border-slate-900/10 text-[11px] uppercase text-white/40 light:text-slate-400">
+                <tr><th className="px-3 py-2">Name</th><th className="px-3 py-2">Department</th><th className="px-3 py-2">Lead</th><th className="px-3 py-2">Members</th>{canManage && <th />}</tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
+                {[...active, ...archived].map(t => <TeamRow key={t.id} team={t} members={members} canManage={canManage} onSaved={refetch} />)}
+              </tbody>
+            </table>
+          </div>}
+      </div>
+    </SpotlightCard>;
+}
+
+function TeamComplianceCard() {
+  const { data: report, isLoading, isError, refetch } = useQuery({ queryKey: ["team-training-report"], queryFn: fetchTeamTrainingReport });
+  if (isLoading) return <SkeletonRows count={2} />;
+  if (isError) return <ErrorState message="Couldn't load team training report." onRetry={refetch} />;
+  const rows = (report ?? []).filter(r => r.assignedCount > 0 || r.memberCount > 0);
+  if (rows.length === 0) return null;
+  return <div className="border-t border-white/10 light:border-slate-900/10 p-4">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Team compliance</p>
+      <div className="space-y-2">
+        {rows.map(r => <div key={r.teamId} className="flex items-center gap-3">
+            <span className="w-40 shrink-0 truncate text-xs text-white/70 light:text-slate-600">{r.departmentName} / {r.teamName}</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10 light:bg-slate-900/8">
               <div className="h-full rounded-full bg-emerald-400" style={{ width: `${r.completionPct}%` }} />
             </div>
@@ -451,6 +585,7 @@ function TrainingManagementPanel({ members, canManage }) {
           </div>}
       </div>
       <DepartmentComplianceCard />
+      <TeamComplianceCard />
     </SpotlightCard>;
 }
 
@@ -480,6 +615,33 @@ function DepartmentControl({ member, canManage, departments, mutation }) {
         {departments.filter(d => !d.archived).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
       </select>
       {pending !== (member.departmentId ?? "") && <button onClick={() => mutation.mutate({ userId: member.userId, departmentId: pending || null })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
+          Save
+        </button>}
+    </div>;
+}
+
+function TeamControl({ member, canManage, teams, mutation }) {
+  const [pending, setPending] = useState(member.teamId ?? "");
+  if (!canManage) {
+    return <span className="text-xs text-white/50 light:text-slate-500">{member.teamName ?? "—"}</span>;
+  }
+  const activeTeams = teams.filter(t => !t.archived);
+  const byDepartment = new Map();
+  for (const t of activeTeams) {
+    if (!byDepartment.has(t.departmentName)) byDepartment.set(t.departmentName, []);
+    byDepartment.get(t.departmentName).push(t);
+  }
+  return <div className="flex items-center gap-1.5">
+      {/* Picking a team also moves the member into that team's department
+          (enforced server-side in assign_member_team) — a team member is a
+          department member by definition, so the two never drift apart. */}
+      <select value={pending} onChange={e => setPending(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-xs text-white light:text-slate-900">
+        <option value="">No team</option>
+        {[...byDepartment.entries()].map(([deptName, deptTeams]) => <optgroup key={deptName} label={deptName}>
+            {deptTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </optgroup>)}
+      </select>
+      {pending !== (member.teamId ?? "") && <button onClick={() => mutation.mutate({ userId: member.userId, teamId: pending || null })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
           Save
         </button>}
     </div>;
@@ -534,6 +696,19 @@ export default function Users() {
     },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to update department")
   });
+  const { data: teams } = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams(), retry: false });
+  const teamMutation = useMutation({
+    mutationFn: ({ userId, teamId }) => assignMemberTeam(userId, teamId),
+    onSuccess: () => {
+      toast.success("Team updated.");
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["department-training-report"] });
+      queryClient.invalidateQueries({ queryKey: ["team-training-report"] });
+    },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to update team")
+  });
 
   return <div className="space-y-6">
       <Reveal y={12}>
@@ -553,6 +728,7 @@ export default function Users() {
                   <th className="px-4 py-2">Email</th>
                   <th className="px-4 py-2">Role</th>
                   <th className="px-4 py-2">Department</th>
+                  <th className="px-4 py-2">Team</th>
                   <th className="px-4 py-2">Joined</th>
                 </tr>
               </thead>
@@ -573,6 +749,9 @@ export default function Users() {
                     <td className="px-4 py-3">
                       <DepartmentControl member={member} canManage={canManageTeam} departments={departments ?? []} mutation={departmentMutation} />
                     </td>
+                    <td className="px-4 py-3">
+                      <TeamControl member={member} canManage={canManageTeam} teams={teams ?? []} mutation={teamMutation} />
+                    </td>
                     <td className="px-4 py-3 text-white/50 light:text-slate-500">{new Date(member.joinedAt).toLocaleDateString()}</td>
                   </motion.tr>)}
               </tbody>
@@ -583,6 +762,8 @@ export default function Users() {
       {canManageTeam && <InvitesPanel orgRoles={orgRoles} canManage={canManageTeam} />}
 
       {members && <DepartmentsPanel members={members} canManage={canManageTeam} />}
+
+      {members && <TeamsPanel members={members} departments={departments ?? []} canManage={canManageTeam} />}
 
       {cybersachetLicensed && canViewTraining && members && <TrainingManagementPanel members={members} canManage={canManageTraining} />}
     </div>;
