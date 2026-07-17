@@ -419,6 +419,9 @@ export default function AdminCustomers() {
   const [detailId, setDetailId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkPlan, setBulkPlan] = useState(PLANS[0]);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const planMutation = useMutation({
     mutationFn: ({
       id,
@@ -478,6 +481,45 @@ export default function AdminCustomers() {
       danger: true
     });
     if (ok) deleteMutation.mutate(c.organizationId);
+  }
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll(rows) {
+    setSelectedIds(prev => prev.size === rows.length ? new Set() : new Set(rows.map(c => c.organizationId)));
+  }
+  // Reuses the same single-row mutations one at a time (not Promise.all) so
+  // seat/plan-limit style backend checks that could depend on prior calls
+  // in the batch stay correct, and one failure doesn't abort the rest.
+  async function runBulk(ids, fn) {
+    setBulkBusy(true);
+    let succeeded = 0;
+    for (const id of ids) {
+      try { await fn(id); succeeded++; } catch { /* toast already shown by the underlying mutation's onError */ }
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ["admin-customers"] });
+    if (succeeded > 0) toast.success(`${succeeded} of ${ids.length} organization${ids.length === 1 ? "" : "s"} updated.`);
+  }
+  async function handleBulkArchive() {
+    await runBulk([...selectedIds], id => archiveMutation.mutateAsync(id));
+  }
+  async function handleBulkDelete() {
+    const ok = await confirm({
+      title: `Delete ${selectedIds.size} organization${selectedIds.size === 1 ? "" : "s"}?`,
+      description: "This permanently removes each organization and all its monitors, incidents, assets, and hosts. User accounts remain but lose access. This cannot be undone.",
+      confirmLabel: "Delete permanently",
+      danger: true
+    });
+    if (ok) await runBulk([...selectedIds], id => deleteMutation.mutateAsync(id));
+  }
+  async function handleBulkPlanChange() {
+    await runBulk([...selectedIds], id => planMutation.mutateAsync({ id, plan: bulkPlan }));
   }
   const filtered = useMemo(() => {
     let rows = customers ?? [];
@@ -554,10 +596,30 @@ export default function AdminCustomers() {
         </span>
       </Reveal>
 
+      {selectedIds.size > 0 && <Reveal className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-2.5">
+          <span className="text-sm font-medium text-white light:text-slate-900">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-1.5">
+            <select value={bulkPlan} onChange={e => setBulkPlan(e.target.value)} disabled={bulkBusy} className={selectClass}>
+              {PLANS.map(p => <option key={p} value={p}>{titleCase(p)}</option>)}
+            </select>
+            <button onClick={handleBulkPlanChange} disabled={bulkBusy} className="rounded-full border border-white/15 light:border-slate-900/15 px-3 py-1.5 text-xs text-white/70 light:text-slate-600 hover:text-white light:hover:text-slate-900 disabled:opacity-50">
+              Change package
+            </button>
+          </div>
+          {!isResellerOnly && <>
+            <button onClick={handleBulkArchive} disabled={bulkBusy} className="text-xs text-amber-300 light:text-amber-600 hover:underline disabled:opacity-50">Archive</button>
+            <button onClick={handleBulkDelete} disabled={bulkBusy} className="text-xs text-red-300 light:text-red-600 hover:underline disabled:opacity-50">Delete</button>
+          </>}
+          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-white/40 light:text-slate-400 hover:text-white light:hover:text-slate-900">Clear selection</button>
+        </Reveal>}
+
       <SpotlightCard className="overflow-x-auto" delay={0.1} tint="amber" scan>
         {isLoading ? <SkeletonRows count={5} /> : !customers || customers.length === 0 ? <EmptyState title="No customers yet." description="Provision one above." /> : filtered.length === 0 ? <EmptyState title="No customers match your filters." /> : <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
               <tr>
+                <th className="w-8 px-4 py-3">
+                  <input type="checkbox" aria-label="Select all" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={() => toggleSelectAll(filtered)} className="h-3.5 w-3.5 accent-amber-400" />
+                </th>
                 <th className="px-4 py-3"><SortHeader label="Customer" k="name" /></th>
                 <th className="px-4 py-3">Admin</th>
                 <th className="px-4 py-3">Package</th>
@@ -581,6 +643,9 @@ export default function AdminCustomers() {
             delay: Math.min(i, 15) * 0.02,
             ease: EASE
           }}>
+                  <td className="px-4 py-3">
+                    <input type="checkbox" aria-label={`Select ${c.name}`} checked={selectedIds.has(c.organizationId)} onChange={() => toggleSelect(c.organizationId)} className="h-3.5 w-3.5 accent-amber-400" />
+                  </td>
                   <td className="px-4 py-3 font-medium text-white light:text-slate-900">
                     {renamingId === c.organizationId ? <form onSubmit={e => {
                 e.preventDefault();

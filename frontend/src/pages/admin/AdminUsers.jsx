@@ -319,6 +319,36 @@ export default function AdminUsers() {
       });
     }
   }
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const selectableUsers = filteredUsers.filter(u => u.userId !== currentUser?.id);
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll() {
+    setSelectedIds(prev => prev.size === selectableUsers.length ? new Set() : new Set(selectableUsers.map(u => u.userId)));
+  }
+  async function handleBulkDelete() {
+    const ok = await confirm({
+      title: `Delete ${selectedIds.size} user${selectedIds.size === 1 ? "" : "s"}?`,
+      description: "This permanently removes each account. This cannot be undone.",
+      confirmLabel: "Delete permanently",
+      danger: true
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    let succeeded = 0;
+    for (const id of selectedIds) {
+      try { await deleteMutation.mutateAsync(id); succeeded++; } catch { /* toast already shown by the mutation's onError */ }
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    if (succeeded > 0) toast.success(`Deleted ${succeeded} of ${selectedIds.size} user${selectedIds.size === 1 ? "" : "s"}.`);
+  }
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -335,10 +365,19 @@ export default function AdminUsers() {
         </span>
       </Reveal>
 
+      {selectedIds.size > 0 && <Reveal className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-2.5">
+          <span className="text-sm font-medium text-white light:text-slate-900">{selectedIds.size} selected</span>
+          <button onClick={handleBulkDelete} disabled={bulkBusy} className="text-xs text-red-300 light:text-red-600 hover:underline disabled:opacity-50">Delete</button>
+          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-white/40 light:text-slate-400 hover:text-white light:hover:text-slate-900">Clear selection</button>
+        </Reveal>}
+
       <SpotlightCard className="overflow-hidden" delay={0.05} tint="amber" scan>
         {isLoading ? <SkeletonRows count={4} /> : !users || users.length === 0 ? <EmptyState title="No users yet." /> : filteredUsers.length === 0 ? <EmptyState title="No users match your search." /> : <table className="w-full text-left text-sm">
             <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
               <tr>
+                <th className="w-8 px-4 py-3">
+                  <input type="checkbox" aria-label="Select all" checked={selectableUsers.length > 0 && selectedIds.size === selectableUsers.length} onChange={toggleSelectAll} className="h-3.5 w-3.5 accent-amber-400" />
+                </th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Organization</th>
                 <th className="px-4 py-3">Role</th>
@@ -359,6 +398,9 @@ export default function AdminUsers() {
             delay: Math.min(i, 15) * 0.02,
             ease: EASE
           }}>
+                  <td className="px-4 py-3">
+                    {u.userId !== currentUser?.id && <input type="checkbox" aria-label={`Select ${u.email}`} checked={selectedIds.has(u.userId)} onChange={() => toggleSelect(u.userId)} className="h-3.5 w-3.5 accent-amber-400" />}
+                  </td>
                   <td className="px-4 py-3 font-medium text-white light:text-slate-900">
                     {u.email}
                     <NameCell u={u} canEdit={canResetPasswords} />
