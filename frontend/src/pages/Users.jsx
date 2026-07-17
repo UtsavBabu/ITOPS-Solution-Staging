@@ -10,20 +10,75 @@ import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useToast } from "../components/Toast";
 import { useConfirm } from "../components/ConfirmDialog";
 const EASE = [0.16, 1, 0.3, 1];
+const INLINE_INPUT_CLASS = "w-36 rounded-lg border border-cyan-400/40 bg-black/40 light:bg-white px-2 py-1 text-xs text-white light:text-slate-900 focus:outline-none";
+const INLINE_SELECT_CLASS = "rounded-lg border border-cyan-400/40 bg-black/40 light:bg-white px-2 py-1 text-xs text-white light:text-slate-900 focus:outline-none";
+
+// Read-mode by default (plain text + a pencil that appears on hover),
+// switching to an input only when clicked — matches the click-to-edit
+// pattern AdminUsers.jsx's name field and AdminCustomers.jsx's rename
+// already use elsewhere in this app, instead of every row permanently
+// showing a live input the moment you have edit rights.
+function EditableText({ value, onSave, disabled, pending, className = "", inputClassName = INLINE_INPUT_CLASS }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+  if (disabled) return <span className={className}>{value}</span>;
+  if (!editing) {
+    return <button type="button" onClick={() => setEditing(true)} className={`group inline-flex items-center gap-1.5 text-left ${className}`}>
+        <span>{value}</span>
+        <span className="text-white/25 light:text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden>✎</span>
+      </button>;
+  }
+  return <form onSubmit={e => { e.preventDefault(); onSave(draft); setEditing(false); }} className="flex items-center gap-1.5">
+      <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} className={inputClassName} />
+      <button type="submit" disabled={pending} className="text-[11px] text-emerald-300 light:text-emerald-600 hover:underline disabled:opacity-50">Save</button>
+      <button type="button" onClick={() => setEditing(false)} className="text-[11px] text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Cancel</button>
+    </form>;
+}
+
+// Same read-mode-by-default pattern for assignment dropdowns (manager, lead,
+// role, department, team). `groups` (label + options) renders as <optgroup>
+// for the Team picker; flat `options` covers everything else.
+function EditableSelect({ value, options, groups, emptyLabel = "—", onSave, disabled, pending, className = "", selectClassName = INLINE_SELECT_CLASS, currentLabelOverride }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => { if (!editing) setDraft(value ?? ""); }, [value, editing]);
+  const flatOptions = groups ? groups.flatMap(g => g.options) : options;
+  // `options`/`groups` only ever list the currently-active choices (an
+  // archived department shouldn't be pickable), but the value assigned to
+  // this row might point at one anyway — currentLabelOverride lets the
+  // caller supply the real name in that case instead of falling back to
+  // emptyLabel just because it's missing from the active list.
+  const currentLabel = currentLabelOverride ?? flatOptions.find(o => o.value === (value ?? ""))?.label ?? emptyLabel;
+  if (disabled) return <span className={className}>{currentLabel}</span>;
+  if (!editing) {
+    return <button type="button" onClick={() => setEditing(true)} className={`group inline-flex items-center gap-1.5 text-left ${className}`}>
+        <span>{currentLabel}</span>
+        <span className="text-white/25 light:text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden>✎</span>
+      </button>;
+  }
+  return <div className="flex items-center gap-1.5">
+      <select autoFocus value={draft} onChange={e => setDraft(e.target.value)} className={selectClassName}>
+        <option value="">{emptyLabel}</option>
+        {groups
+        ? groups.map(g => <optgroup key={g.label} label={g.label}>{g.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>)
+        : options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <button type="button" onClick={() => { onSave(draft || null); setEditing(false); }} disabled={pending} className="text-[11px] text-emerald-300 light:text-emerald-600 hover:underline disabled:opacity-50">Save</button>
+      <button type="button" onClick={() => setEditing(false)} className="text-[11px] text-white/40 light:text-slate-400 hover:text-white/70 light:hover:text-slate-600">Cancel</button>
+    </div>;
+}
 
 function DepartmentRow({ dept, members, canManage, onSaved }) {
-  const [name, setName] = useState(dept.name);
-  const [managerId, setManagerId] = useState(dept.managerUserId ?? "");
   const toast = useToast();
   const confirm = useConfirm();
-  const selectClass = "rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900";
   const rename = useMutation({
-    mutationFn: () => renameDepartment(dept.id, name),
+    mutationFn: name => renameDepartment(dept.id, name),
     onSuccess: () => { toast.success("Department renamed."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to rename department")
   });
   const setManager = useMutation({
-    mutationFn: () => assignDepartmentManager(dept.id, managerId || null),
+    mutationFn: userId => assignDepartmentManager(dept.id, userId),
     onSuccess: () => { toast.success("Manager updated."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to assign manager")
   });
@@ -42,37 +97,24 @@ function DepartmentRow({ dept, members, canManage, onSaved }) {
     onSuccess: () => { toast.success("Department deleted."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to delete department")
   });
+  const managerOptions = members.map(m => ({ value: m.userId, label: m.email }));
 
-  if (!canManage) {
-    return <tr>
-        <td className="px-3 py-2.5 text-white light:text-slate-900">{dept.name}{dept.archived && <span className="ml-2 text-[10px] text-white/35 light:text-slate-400">Archived</span>}</td>
-        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{dept.managerEmail ?? "—"}</td>
-        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{dept.memberCount}</td>
-      </tr>;
-  }
   return <tr>
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2.5 text-white light:text-slate-900">
         <div className="flex items-center gap-1.5">
-          <input value={name} onChange={e => setName(e.target.value)} className={`w-36 ${selectClass}`} />
-          {name !== dept.name && <button onClick={() => rename.mutate()} disabled={rename.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
+          <EditableText value={dept.name} onSave={rename.mutate} disabled={!canManage} pending={rename.isPending} />
           {dept.archived && <span className="text-[10px] text-white/35 light:text-slate-400">Archived</span>}
         </div>
       </td>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <select value={managerId} onChange={e => setManagerId(e.target.value)} className={selectClass}>
-            <option value="">No manager</option>
-            {members.map(m => <option key={m.userId} value={m.userId}>{m.email}</option>)}
-          </select>
-          {managerId !== (dept.managerUserId ?? "") && <button onClick={() => setManager.mutate()} disabled={setManager.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
-        </div>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">
+        <EditableSelect value={dept.managerUserId} options={managerOptions} emptyLabel="No manager" onSave={setManager.mutate} disabled={!canManage} pending={setManager.isPending} />
       </td>
       <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{dept.memberCount}</td>
-      <td className="px-3 py-2.5 text-right space-x-3">
+      {canManage && <td className="px-3 py-2.5 text-right space-x-3">
         {dept.archived ? <button onClick={() => restore.mutate()} className="text-xs text-emerald-300 light:text-emerald-600 hover:underline">Restore</button>
           : <button onClick={() => archive.mutate()} className="text-xs text-amber-300 light:text-amber-600 hover:underline">Archive</button>}
         <button onClick={async () => { if (await confirm({ title: "Delete department?", description: "Members keep their accounts — they just become unassigned." })) remove.mutate(); }} className="text-xs text-red-300 light:text-red-600 hover:underline">Delete</button>
-      </td>
+      </td>}
     </tr>;
 }
 
@@ -136,19 +178,16 @@ function DepartmentComplianceCard() {
 }
 
 function TeamRow({ team, members, canManage, onSaved }) {
-  const [name, setName] = useState(team.name);
-  const [leadId, setLeadId] = useState(team.leadUserId ?? "");
   const toast = useToast();
   const confirm = useConfirm();
-  const selectClass = "rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900";
   const deptMembers = members.filter(m => m.departmentId === team.departmentId);
   const rename = useMutation({
-    mutationFn: () => renameTeam(team.id, name),
+    mutationFn: name => renameTeam(team.id, name),
     onSuccess: () => { toast.success("Team renamed."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to rename team")
   });
   const setLead = useMutation({
-    mutationFn: () => assignTeamLead(team.id, leadId || null),
+    mutationFn: userId => assignTeamLead(team.id, userId),
     onSuccess: () => { toast.success("Team lead updated."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to assign team lead")
   });
@@ -167,39 +206,25 @@ function TeamRow({ team, members, canManage, onSaved }) {
     onSuccess: () => { toast.success("Team deleted."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to delete team")
   });
+  const leadOptions = deptMembers.map(m => ({ value: m.userId, label: m.email }));
 
-  if (!canManage) {
-    return <tr>
-        <td className="px-3 py-2.5 text-white light:text-slate-900">{team.name}{team.archived && <span className="ml-2 text-[10px] text-white/35 light:text-slate-400">Archived</span>}</td>
-        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.departmentName}</td>
-        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.leadEmail ?? "—"}</td>
-        <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.memberCount}</td>
-      </tr>;
-  }
   return <tr>
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2.5 text-white light:text-slate-900">
         <div className="flex items-center gap-1.5">
-          <input value={name} onChange={e => setName(e.target.value)} className={`w-32 ${selectClass}`} />
-          {name !== team.name && <button onClick={() => rename.mutate()} disabled={rename.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
+          <EditableText value={team.name} onSave={rename.mutate} disabled={!canManage} pending={rename.isPending} inputClassName="w-32 rounded-lg border border-cyan-400/40 bg-black/40 light:bg-white px-2 py-1 text-xs text-white light:text-slate-900 focus:outline-none" />
           {team.archived && <span className="text-[10px] text-white/35 light:text-slate-400">Archived</span>}
         </div>
       </td>
       <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.departmentName}</td>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <select value={leadId} onChange={e => setLeadId(e.target.value)} className={selectClass}>
-            <option value="">No lead</option>
-            {deptMembers.map(m => <option key={m.userId} value={m.userId}>{m.email}</option>)}
-          </select>
-          {leadId !== (team.leadUserId ?? "") && <button onClick={() => setLead.mutate()} disabled={setLead.isPending} className="rounded-full border border-white/15 px-2 py-1 text-[11px] text-white/60 hover:text-white">Save</button>}
-        </div>
+      <td className="px-3 py-2.5 text-white/60 light:text-slate-600">
+        <EditableSelect value={team.leadUserId} options={leadOptions} emptyLabel="No lead" onSave={setLead.mutate} disabled={!canManage} pending={setLead.isPending} />
       </td>
       <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{team.memberCount}</td>
-      <td className="px-3 py-2.5 text-right space-x-3">
+      {canManage && <td className="px-3 py-2.5 text-right space-x-3">
         {team.archived ? <button onClick={() => restore.mutate()} className="text-xs text-emerald-300 light:text-emerald-600 hover:underline">Restore</button>
           : <button onClick={() => archive.mutate()} className="text-xs text-amber-300 light:text-amber-600 hover:underline">Archive</button>}
         <button onClick={async () => { if (await confirm({ title: "Delete team?", description: "Members keep their accounts and department — they just become unassigned from this team." })) remove.mutate(); }} className="text-xs text-red-300 light:text-red-600 hover:underline">Delete</button>
-      </td>
+      </td>}
     </tr>;
 }
 
@@ -590,67 +615,27 @@ function TrainingManagementPanel({ members, canManage }) {
 }
 
 function MemberRoleControl({ member, isSelf, canManage, orgRoles, roleLabel, mutation }) {
-  const [pendingRole, setPendingRole] = useState(member.role);
-  useEffect(() => setPendingRole(member.role), [member.role]);
-  if (isSelf || !canManage) {
+  if (isSelf) {
     return <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70 light:text-slate-600">{roleLabel[member.role] ?? member.role}</span>;
   }
-  return <div className="flex items-center gap-1.5">
-      <select value={pendingRole} onChange={e => setPendingRole(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-xs text-white light:text-slate-900">
-        {orgRoles.map(r => <option key={r.key} value={r.key}>{r.name}</option>)}
-      </select>
-      {pendingRole !== member.role && <button onClick={() => mutation.mutate({ userId: member.userId, role: pendingRole })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
-          Save
-        </button>}
-    </div>;
+  const roleOptions = orgRoles.map(r => ({ value: r.key, label: r.name }));
+  return <EditableSelect value={member.role} options={roleOptions} onSave={role => mutation.mutate({ userId: member.userId, role })} disabled={!canManage} pending={mutation.isPending} className="text-xs text-white/80 light:text-slate-700" />;
 }
 
 function DepartmentControl({ member, canManage, departments, mutation }) {
-  const [pending, setPending] = useState(member.departmentId ?? "");
-  // Re-sync after a refetch, not just on mount — assigning a team also
-  // changes department_id server-side (assign_member_team), a mutation this
-  // control doesn't itself trigger, so it has to notice the prop changed.
-  useEffect(() => setPending(member.departmentId ?? ""), [member.departmentId]);
-  if (!canManage) {
-    return <span className="text-xs text-white/50 light:text-slate-500">{member.departmentName ?? "—"}</span>;
-  }
-  return <div className="flex items-center gap-1.5">
-      <select value={pending} onChange={e => setPending(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-xs text-white light:text-slate-900">
-        <option value="">No department</option>
-        {departments.filter(d => !d.archived).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-      </select>
-      {pending !== (member.departmentId ?? "") && <button onClick={() => mutation.mutate({ userId: member.userId, departmentId: pending || null })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
-          Save
-        </button>}
-    </div>;
+  const deptOptions = departments.filter(d => !d.archived).map(d => ({ value: d.id, label: d.name }));
+  return <EditableSelect value={member.departmentId} options={deptOptions} emptyLabel="No department" currentLabelOverride={member.departmentId ? member.departmentName : null} onSave={departmentId => mutation.mutate({ userId: member.userId, departmentId })} disabled={!canManage} pending={mutation.isPending} className="text-xs text-white/70 light:text-slate-600" />;
 }
 
 function TeamControl({ member, canManage, teams, mutation }) {
-  const [pending, setPending] = useState(member.teamId ?? "");
-  useEffect(() => setPending(member.teamId ?? ""), [member.teamId]);
-  if (!canManage) {
-    return <span className="text-xs text-white/50 light:text-slate-500">{member.teamName ?? "—"}</span>;
-  }
-  const activeTeams = teams.filter(t => !t.archived);
-  const byDepartment = new Map();
-  for (const t of activeTeams) {
-    if (!byDepartment.has(t.departmentName)) byDepartment.set(t.departmentName, []);
-    byDepartment.get(t.departmentName).push(t);
-  }
-  return <div className="flex items-center gap-1.5">
-      {/* Picking a team also moves the member into that team's department
-          (enforced server-side in assign_member_team) — a team member is a
-          department member by definition, so the two never drift apart. */}
-      <select value={pending} onChange={e => setPending(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-xs text-white light:text-slate-900">
-        <option value="">No team</option>
-        {[...byDepartment.entries()].map(([deptName, deptTeams]) => <optgroup key={deptName} label={deptName}>
-            {deptTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </optgroup>)}
-      </select>
-      {pending !== (member.teamId ?? "") && <button onClick={() => mutation.mutate({ userId: member.userId, teamId: pending || null })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
-          Save
-        </button>}
-    </div>;
+  // Picking a team also moves the member into that team's department
+  // (enforced server-side in assign_member_team) — a team member is a
+  // department member by definition, so the two never drift apart.
+  const groups = [...new Map(teams.filter(t => !t.archived).map(t => [t.departmentName, true])).keys()].map(deptName => ({
+    label: deptName,
+    options: teams.filter(t => !t.archived && t.departmentName === deptName).map(t => ({ value: t.id, label: t.name }))
+  }));
+  return <EditableSelect value={member.teamId} groups={groups} emptyLabel="No team" currentLabelOverride={member.teamId ? member.teamName : null} onSave={teamId => mutation.mutate({ userId: member.userId, teamId })} disabled={!canManage} pending={mutation.isPending} className="text-xs text-white/70 light:text-slate-600" />;
 }
 
 export default function Users() {
