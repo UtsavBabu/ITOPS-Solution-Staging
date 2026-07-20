@@ -785,7 +785,37 @@ export default function Users() {
         <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
           <h2 className="text-sm font-medium text-white light:text-slate-900">Team Members</h2>
         </div>
-        {membersError ? <ErrorState message="Couldn't load team members." onRetry={() => refetchMembers()} /> : membersLoading ? <SkeletonRows count={2} /> : !members || members.length === 0 ? <EmptyState title="No members found." /> : <div className="overflow-x-auto">
+        {membersError ? <ErrorState message="Couldn't load team members." onRetry={() => refetchMembers()} /> : membersLoading ? <SkeletonRows count={2} /> : !members || members.length === 0 ? <EmptyState title="No members found." /> : <>
+            {/* 6 columns is real width even scrolled within its own
+                container — a card list below md reads better than
+                horizontal-scrolling a table on a phone. */}
+            <div className="divide-y divide-white/10 light:divide-slate-900/8 md:hidden">
+              {members.map((member, i) => <motion.div key={member.userId} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05, ease: EASE }} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 truncate font-medium text-white light:text-slate-900">{member.email}</p>
+                    {member.hasMfa ? <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:bg-emerald-100 light:text-emerald-700">✓ MFA</span> : <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/40 light:bg-slate-900/[0.05] light:text-slate-400">No MFA</span>}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Role</p>
+                      <div className="mt-1"><MemberRoleControl member={member} isSelf={member.userId === user?.id} canManage={canManageTeam} orgRoles={orgRoles} roleLabel={roleLabel} mutation={roleMutation} /></div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Joined</p>
+                      <p className="mt-1 text-white/50 light:text-slate-500">{new Date(member.joinedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Department</p>
+                      <div className="mt-1"><DepartmentControl member={member} canManage={canManageTeam} departments={departments ?? []} mutation={departmentMutation} /></div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Team</p>
+                      <div className="mt-1"><TeamControl member={member} canManage={canManageTeam} teams={teams ?? []} mutation={teamMutation} /></div>
+                    </div>
+                  </div>
+                </motion.div>)}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
                 <tr>
@@ -824,7 +854,8 @@ export default function Users() {
                   </motion.tr>)}
               </tbody>
             </table>
-          </div>}
+            </div>
+          </>}
       </SpotlightCard>
 
       {canManageTeam && <InvitesPanel orgRoles={orgRoles} canManage={canManageTeam} />}
