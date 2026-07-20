@@ -827,7 +827,7 @@ export async function fetchMyLessonProgress(courseId) {
 export async function fetchMyCybersachetAssignments() {
   const { data, error } = await supabase.rpc("my_cybersachet_assignments");
   if (error) throw new Error(error.message);
-  return (data ?? []).map(row => ({ courseId: row.course_id, assignedAt: row.assigned_at, dueAt: row.due_at ?? null }));
+  return (data ?? []).map(row => ({ courseId: row.course_id, courseTitle: row.course_title, assignedAt: row.assigned_at, dueAt: row.due_at ?? null }));
 }
 
 function mapCertificateRow(row) {

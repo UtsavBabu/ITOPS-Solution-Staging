@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { createMonitor, deleteMonitor, fetchMonitors, listHostAgents } from "../api/endpoints";
+import { createMonitor, deleteMonitor, fetchMonitors, fetchMyPermissions, listHostAgents } from "../api/endpoints";
 import { StatusBadge } from "../components/StatusBadge";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { SkeletonRows } from "../components/Skeleton";
@@ -10,6 +10,7 @@ import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
+import { useAuth } from "../context/AuthContext";
 const EASE = [0.16, 1, 0.3, 1];
 const INTERVAL_LABELS = {
   THIRTY_SECONDS: "30 seconds",
@@ -141,9 +142,9 @@ function MonitorCards({ monitors, onDelete }) {
             <span>Every {INTERVAL_LABELS[monitor.interval]}</span>
             <span>{monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}</span>
           </div>
-          <button onClick={() => onDelete(monitor)} className="mt-3 text-xs text-red-300 light:text-red-600 hover:underline">
+          {onDelete && <button onClick={() => onDelete(monitor)} className="mt-3 text-xs text-red-300 light:text-red-600 hover:underline">
             Delete
-          </button>
+          </button>}
         </motion.div>)}
     </div>;
 }
@@ -194,9 +195,9 @@ function MonitorTable({
               {monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}
             </td>
             <td className="px-4 py-3 text-right">
-              <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 transition-colors hover:underline">
+              {onDelete && <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 transition-colors hover:underline">
                 Delete
-              </button>
+              </button>}
             </td>
           </motion.tr>)}
       </tbody>
@@ -245,9 +246,9 @@ function DeviceCards({ monitors, onDelete, hostAgents }) {
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/70 light:text-slate-600">{CHECK_TYPE_LABELS[monitor.checkType]}</span>
               Every {INTERVAL_LABELS[monitor.interval]}
             </span>
-            <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 hover:underline">
+            {onDelete && <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 hover:underline">
               Delete
-            </button>
+            </button>}
           </div>
           <div className="mt-1 flex items-center justify-between">
             <p className="text-[11px] text-white/30 light:text-slate-400">
@@ -266,6 +267,15 @@ export default function Monitors({ mode = "web" }) {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const toast = useToast();
+  const { organization } = useAuth();
+  const { data: can } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canCreate = !!can && can("organization", "monitors", "create");
+  const canDelete = !!can && can("organization", "monitors", "delete");
   const {
     data: monitors,
     isLoading,
@@ -411,7 +421,13 @@ export default function Monitors({ mode = "web" }) {
           </div>
         </Reveal>}
 
-      <Reveal delay={0.05}>
+      {!canCreate && <Reveal delay={0.05}>
+          <p className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] px-4 py-3 text-sm text-white/50 light:text-slate-500">
+            Your role can view {mode === "web" ? "monitors" : "devices"} but not add new ones — ask an organization admin if you need one added.
+          </p>
+        </Reveal>}
+
+      {canCreate && <Reveal delay={0.05}>
       <form onSubmit={handleSubmit} className={`space-y-4 rounded-2xl border bg-neutral-900/60 light:bg-white p-5 ${mode === "web" ? "border-blue-400/15 light:border-blue-900/10" : "border-cyan-400/15 light:border-cyan-900/10"}`}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-sm">
@@ -513,13 +529,13 @@ export default function Monitors({ mode = "web" }) {
           {formError && <p className="text-sm text-red-300">{formError}</p>}
         </div>
       </form>
-      </Reveal>
+      </Reveal>}
 
       <SpotlightCard className={mode === "web" ? "overflow-x-auto" : "p-4"} delay={0.1} scan tint={mode === "web" ? "blue" : "cyan"}>
         {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={mode === "web" ? "No website monitors yet." : "No network devices yet."} description={mode === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : mode === "web" ? <>
-            <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />
-            <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={handleDelete} /></div>
-          </> : <DeviceCards monitors={shownMonitors} onDelete={handleDelete} hostAgents={hostAgents} />}
+            <MonitorTable monitors={shownMonitors} onDelete={canDelete ? handleDelete : null} />
+            <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={canDelete ? handleDelete : null} /></div>
+          </> : <DeviceCards monitors={shownMonitors} onDelete={canDelete ? handleDelete : null} hostAgents={hostAgents} />}
       </SpotlightCard>
     </div>;
 }

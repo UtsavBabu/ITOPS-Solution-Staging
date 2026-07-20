@@ -730,7 +730,11 @@ export default function CyberSachetTraining() {
 
       {!local && coursesLoading ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
-        </div> : !local && coursesError ? <ErrorState message="Couldn't load courses." onRetry={refetchCourses} /> : filteredVisible.length === 0 && filteredLocked.length === 0 ? <EmptyState title="No courses assigned yet." description="Course assignment is admin-only — ask your organization admin to assign training." /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        </div> : !local && coursesError ? <ErrorState message="Couldn't load courses." onRetry={refetchCourses} /> : filteredVisible.length === 0 && filteredLocked.length === 0 ? (
+        activeCategory ? <EmptyState title="No courses in this category." description="Try a different category, or clear the filter to see everything available to you." />
+        : canManageTraining && !local ? <EmptyState title="No courses in the catalog yet." description="Courses are managed by ITOps Solution — check back soon, or contact support if you expected to see some here." />
+        : <EmptyState title="No courses assigned yet." description="Course assignment is admin-only — ask your organization admin to assign training." />
+      ) : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredVisible.map((course, i) => <CourseCard key={course.id} course={course} index={i} enrollment={enrollmentByCourseId.get(course.id)} assignment={assignmentByCourseId.get(course.id)} onOpen={setOpenCourse} canManageTraining={canManageTraining && !local} members={members ?? []} />)}
           {filteredLocked.map((course, i) => <LockedCourseCard key={course.id} course={course} index={filteredVisible.length + i} />)}
         </div>}

@@ -24,13 +24,19 @@ const ROLE_LABELS = {
 export default function EmployeeDashboard() {
   const { user, organization } = useAuth();
   const { data: licensed, isLoading: licenseLoading } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
-  const { data: stats } = useQuery({ queryKey: ["cybersachet-my-stats"], queryFn: fetchMyCybersachetStats, enabled: !!licensed });
-  const { data: assignments } = useQuery({ queryKey: ["cybersachet-my-assignments"], queryFn: fetchMyCybersachetAssignments, enabled: !!licensed });
-  const { data: enrollments } = useQuery({ queryKey: ["cybersachet-enrollments"], queryFn: fetchMyEnrollments, enabled: !!licensed });
+  const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ["cybersachet-my-stats"], queryFn: fetchMyCybersachetStats, enabled: !!licensed });
+  const { data: assignments, isLoading: assignmentsLoading } = useQuery({ queryKey: ["cybersachet-my-assignments"], queryFn: fetchMyCybersachetAssignments, enabled: !!licensed });
+  const { data: enrollments, isLoading: enrollmentsLoading } = useQuery({ queryKey: ["cybersachet-enrollments"], queryFn: fetchMyEnrollments, enabled: !!licensed });
   const { data: certificate } = useQuery({ queryKey: ["cybersachet-my-certificate"], queryFn: fetchMyCertificate, enabled: !!licensed });
 
   const enrollmentByCourseId = new Map((enrollments ?? []).map(e => [e.courseId, e]));
   const upcoming = (assignments ?? []).filter(a => !enrollmentByCourseId.get(a.courseId)?.completedAt);
+  // These three queries only fire once `licensed` resolves true, so a plain
+  // `licenseLoading` gate isn't enough — without this, the stat tiles and
+  // "you're caught up" message flash their empty/zero state for everyone
+  // while these are still in flight, which reads as "nothing assigned" even
+  // when it isn't.
+  const dataLoading = statsLoading || assignmentsLoading || enrollmentsLoading;
 
   if (licenseLoading) {
     return <div className="space-y-4"><Skeleton className="h-32 rounded-3xl" /><Skeleton className="h-40 rounded-2xl" /></div>;
@@ -50,7 +56,12 @@ export default function EmployeeDashboard() {
             <p className="text-sm font-medium text-white light:text-slate-900">CyberSachet isn't licensed for your organization yet.</p>
             <p className="mt-1 text-xs text-white/45 light:text-slate-400">Ask your organization administrator to enable it from Team &amp; Plan.</p>
           </SpotlightCard>
-        </Reveal> : <>
+        </Reveal> : dataLoading ? <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+          </div>
+          <Skeleton className="h-40 rounded-2xl" />
+        </div> : <>
           <Reveal delay={0.05}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-white/10 light:border-sky-200 bg-white/[0.02] light:bg-white p-4">
@@ -88,7 +99,7 @@ export default function EmployeeDashboard() {
                   {upcoming.map(a => {
                 const e = enrollmentByCourseId.get(a.courseId);
                 return <li key={a.courseId} className="flex items-center justify-between rounded-xl border border-white/10 light:border-slate-900/10 px-3 py-2 text-sm">
-                        <span className="text-white/80 light:text-slate-700">{e?.courseTitle ?? "Course"}</span>
+                        <span className="text-white/80 light:text-slate-700">{a.courseTitle ?? e?.courseTitle ?? "Course"}</span>
                         <span className="text-xs text-white/40 light:text-slate-400">
                           {e?.enrolledAt ? "In progress" : "Not started"}{a.dueAt ? ` · due ${new Date(a.dueAt).toLocaleDateString()}` : ""}
                         </span>

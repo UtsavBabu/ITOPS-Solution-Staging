@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { createMonitor, deleteMonitor, fetchDnsMonitors } from "../api/endpoints";
+import { createMonitor, deleteMonitor, fetchDnsMonitors, fetchMyPermissions } from "../api/endpoints";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { SkeletonRows } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
@@ -11,6 +11,12 @@ import { DomainLookup } from "../components/DomainLookup";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
+import { useAuth } from "../context/AuthContext";
+
+// A bare hostname/domain: labels of letters/digits/hyphens separated by dots,
+// no protocol or path — rejects obvious garbage before it ever reaches a
+// resolver that will just fail silently later.
+const HOSTNAME_RE = /^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$|^(\d{1,3}\.){3}\d{1,3}$/;
 
 const EASE = [0.16, 1, 0.3, 1];
 const INTERVAL_LABELS = {
@@ -29,6 +35,15 @@ export default function DnsMonitoring() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const toast = useToast();
+  const { organization } = useAuth();
+  const { data: can } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canCreate = !!can && can("organization", "monitors", "create");
+  const canDelete = !!can && can("organization", "monitors", "delete");
   const { data: monitors, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["dns-monitors"],
     queryFn: fetchDnsMonitors,
@@ -94,6 +109,11 @@ export default function DnsMonitoring() {
   function handleSubmit(event) {
     event.preventDefault();
     setFormError(null);
+    const cleanHostname = hostname.replace(/^https?:\/\//, "").replace(/\/.*$/, "").trim();
+    if (!HOSTNAME_RE.test(cleanHostname)) {
+      setFormError("Enter a real hostname or IP (e.g. example.com or 203.0.113.1) — not a URL or free text.");
+      return;
+    }
     createMutation.mutate();
   }
 
@@ -112,7 +132,13 @@ export default function DnsMonitoring() {
         <DomainLookup onMonitor={handleMonitorFromLookup} />
       </Reveal>
 
-      <Reveal delay={0.08}>
+      {!canCreate && <Reveal delay={0.08}>
+          <p className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] px-4 py-3 text-sm text-white/50 light:text-slate-500">
+            Your role can view DNS monitors but not add new ones — ask an organization admin if you need one added.
+          </p>
+        </Reveal>}
+
+      {canCreate && <Reveal delay={0.08}>
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-cyan-400/15 light:border-cyan-900/10 bg-neutral-900/60 light:bg-white p-5">
           <div>
             <h2 className="text-sm font-medium text-white light:text-slate-900">Add a Scheduled Monitor</h2>
@@ -151,7 +177,7 @@ export default function DnsMonitoring() {
             {formError && <p className="text-sm text-red-300">{formError}</p>}
           </div>
         </form>
-      </Reveal>
+      </Reveal>}
 
       <Reveal delay={0.1}>
         <h2 className="text-sm font-medium text-white light:text-slate-900">Scheduled Monitors</h2>
@@ -168,9 +194,9 @@ export default function DnsMonitoring() {
                       Every {INTERVAL_LABELS[monitor.interval]} · {monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}
                     </p>
                   </div>
-                  <button onClick={() => handleDelete(monitor)} className="text-xs text-red-300 light:text-red-600 hover:underline">
+                  {canDelete && <button onClick={() => handleDelete(monitor)} className="text-xs text-red-300 light:text-red-600 hover:underline">
                     Delete
-                  </button>
+                  </button>}
                 </div>
                 <DnsRecordsPanel monitor={monitor} latestCheck={monitor.latestCheck} />
               </SpotlightCard>

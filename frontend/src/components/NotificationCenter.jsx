@@ -13,9 +13,10 @@ import { fetchAdminOpenIncidents, fetchResellerApplications, fetchSecurityHighli
  * codebase actually tracks yet.
  */
 function useCustomerNotifications(active) {
-  const { data: incidents } = useQuery({ queryKey: ["incidents", "OPEN"], queryFn: () => fetchIncidents("OPEN"), staleTime: 30_000, enabled: active });
-  const { data: monitors } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000, enabled: active });
-  const { data: usage } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 30_000, enabled: active });
+  const { data: incidents, isLoading: incidentsLoading } = useQuery({ queryKey: ["incidents", "OPEN"], queryFn: () => fetchIncidents("OPEN"), staleTime: 30_000, enabled: active });
+  const { data: monitors, isLoading: monitorsLoading } = useQuery({ queryKey: ["monitors"], queryFn: fetchMonitors, staleTime: 30_000, enabled: active });
+  const { data: usage, isLoading: usageLoading } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 30_000, enabled: active });
+  const isLoading = active && (incidentsLoading || monitorsLoading || usageLoading);
   const items = [];
   for (const i of incidents ?? []) {
     items.push({ id: `incident-${i.id}`, tone: "danger", title: i.monitor?.name ?? "Incident", detail: i.cause ?? "Open incident", to: i.monitor?.id ? `/monitors/${i.monitor.id}` : "/incidents", at: i.startedAt });
@@ -29,12 +30,13 @@ function useCustomerNotifications(active) {
   if (usage && usage.maxMonitors > 0 && usage.currentMonitors / usage.maxMonitors >= 0.9) {
     items.push({ id: "plan-usage", tone: "warning", title: "Approaching monitor limit", detail: `${usage.currentMonitors}/${usage.maxMonitors} monitors used on the ${usage.plan} plan`, to: "/team", at: null });
   }
-  return items;
+  return { items, isLoading };
 }
 function useAdminNotifications(active) {
-  const { data: incidents } = useQuery({ queryKey: ["admin-open-incidents"], queryFn: fetchAdminOpenIncidents, staleTime: 30_000, retry: false, enabled: active });
-  const { data: securityHighlights } = useQuery({ queryKey: ["admin-security-highlights"], queryFn: () => fetchSecurityHighlights(6), staleTime: 30_000, retry: false, enabled: active });
-  const { data: resellerApps } = useQuery({ queryKey: ["reseller-applications"], queryFn: fetchResellerApplications, staleTime: 30_000, retry: false, enabled: active });
+  const { data: incidents, isLoading: incidentsLoading } = useQuery({ queryKey: ["admin-open-incidents"], queryFn: fetchAdminOpenIncidents, staleTime: 30_000, retry: false, enabled: active });
+  const { data: securityHighlights, isLoading: securityLoading } = useQuery({ queryKey: ["admin-security-highlights"], queryFn: () => fetchSecurityHighlights(6), staleTime: 30_000, retry: false, enabled: active });
+  const { data: resellerApps, isLoading: resellerLoading } = useQuery({ queryKey: ["reseller-applications"], queryFn: fetchResellerApplications, staleTime: 30_000, retry: false, enabled: active });
+  const isLoading = active && (incidentsLoading || securityLoading || resellerLoading);
   const items = [];
   for (const i of (incidents ?? []).slice(0, 6)) {
     items.push({ id: `incident-${i.id}`, tone: "danger", title: i.monitorName ?? "Incident", detail: `${i.organizationName} · ${i.cause ?? "Open incident"}`, to: "/admin/incidents", at: i.startedAt });
@@ -45,7 +47,7 @@ function useAdminNotifications(active) {
   for (const a of (resellerApps ?? []).filter(a => a.status === "pending")) {
     items.push({ id: `reseller-${a.id}`, tone: "info", title: a.companyName, detail: "Reseller application pending review", to: "/admin/resellers", at: a.createdAt });
   }
-  return items;
+  return { items, isLoading };
 }
 const TONE_DOT = { danger: "bg-red-400", warning: "bg-amber-400", info: "bg-cyan-400" };
 const TONE_TEXT = { danger: "text-red-300 light:text-red-700", warning: "text-amber-300 light:text-amber-700", info: "text-cyan-300 light:text-cyan-700" };
@@ -53,10 +55,10 @@ const TONE_TEXT = { danger: "text-red-300 light:text-red-700", warning: "text-am
 export function NotificationCenter({ scope }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
-  const customerItems = useCustomerNotifications(scope !== "admin");
-  const adminItems = useAdminNotifications(scope === "admin");
-  const items = scope === "admin" ? adminItems : customerItems;
-  const urgentCount = items.filter(i => i.tone === "danger" || i.tone === "warning").length;
+  const customerNotifications = useCustomerNotifications(scope !== "admin");
+  const adminNotifications = useAdminNotifications(scope === "admin");
+  const { items, isLoading } = scope === "admin" ? adminNotifications : customerNotifications;
+  const urgentCount = isLoading ? 0 : items.filter(i => i.tone === "danger" || i.tone === "warning").length;
 
   useEffect(() => {
     function onClick(e) {
@@ -78,10 +80,10 @@ export function NotificationCenter({ scope }) {
         {open && <motion.div initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.98 }} transition={{ duration: 0.15 }} className="absolute bottom-full left-0 z-50 mb-2 w-80 overflow-hidden rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-950 light:bg-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] light:shadow-[0_30px_80px_-20px_rgba(15,23,42,0.25)]">
             <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
               <p className="text-sm font-medium text-white light:text-slate-900">Notifications</p>
-              <p className="text-xs text-white/40 light:text-slate-400">{items.length === 0 ? "Nothing needs attention." : `${items.length} item${items.length === 1 ? "" : "s"}`}</p>
+              <p className="text-xs text-white/40 light:text-slate-400">{isLoading ? "Checking…" : items.length === 0 ? "Nothing needs attention." : `${items.length} item${items.length === 1 ? "" : "s"}`}</p>
             </div>
             <div className="max-h-96 overflow-y-auto">
-              {items.length === 0 ? <p className="px-4 py-8 text-center text-sm text-white/40 light:text-slate-400">✓ All clear.</p> : <ul className="divide-y divide-white/[0.06] light:divide-slate-900/[0.06]">
+              {isLoading ? <p className="px-4 py-8 text-center text-sm text-white/40 light:text-slate-400">Checking for anything that needs attention…</p> : items.length === 0 ? <p className="px-4 py-8 text-center text-sm text-white/40 light:text-slate-400">✓ All clear.</p> : <ul className="divide-y divide-white/[0.06] light:divide-slate-900/[0.06]">
                   {items.map(item => <li key={item.id}>
                       <Link to={item.to} onClick={() => setOpen(false)} className="flex items-start gap-2.5 px-4 py-3 transition-colors hover:bg-white/[0.03] light:hover:bg-slate-900/[0.02]">
                         <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${TONE_DOT[item.tone]}`} />

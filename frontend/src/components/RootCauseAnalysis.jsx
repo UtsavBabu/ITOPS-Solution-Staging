@@ -564,7 +564,7 @@ export function RootCauseAnalysis({
                             <td className={`py-2 pr-3 ${RISK_TEXT[s.risk]}`}>{s.risk}</td>
                             <td className="py-2 pr-3 text-white/50 light:text-slate-500">{s.requiresApproval ? "Required" : "—"}</td>
                             <td className="py-2">
-                              {s.automatable ? <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Run via agent →</Link> : <span className="text-white/30 light:text-slate-400">Manual</span>}
+                              {s.automatable ? <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Open Server Agents →</Link> : <span className="text-white/30 light:text-slate-400">Manual</span>}
                             </td>
                           </tr>)}
                       </tbody>
@@ -576,9 +576,10 @@ export function RootCauseAnalysis({
     })()}
 
       <p className="border-t border-white/10 light:border-slate-900/10 px-4 py-2.5 text-[11px] text-white/30 light:text-slate-400">
-        Diagnosis is generated from collected check telemetry (status, errors, SSL, response times). Actions marked
-        “Run via agent” execute through an installed Kada Nigrani agent with approval and audit logging; the rest are
-        guidance. The platform never alters systems without an approved runbook.
+        Diagnosis is generated from collected check telemetry (status, errors, SSL, response times). A monitor isn't
+        linked to a specific host agent, so “Open Server Agents” takes you to pick the right one yourself and run it
+        from there (with approval and audit logging) — the rest are guidance. The platform never alters systems
+        without an approved runbook.
       </p>
     </section>;
 }

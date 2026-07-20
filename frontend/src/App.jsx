@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { usePortalType } from "./hooks/usePortalType";
 import { CommandPalette } from "./components/CommandPalette";
@@ -141,8 +141,17 @@ function RequireConsoleAccess({ children }) {
   if (portal === "employee") return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
+// Routes wrapped in Layout/AdminLayout mount their own AppSearch, which
+// already listens for Cmd+K — CommandPalette (aimed at marketing/public
+// pages) must not ALSO listen there, or Cmd+K opens two stacked overlays.
+// Kept next to the route definitions below so it stays in sync with them.
+const APP_SHELL_PATH_RE = /^\/(dashboard|training|profile|monitors|network|dns|hosts|incidents|assets|settings|users|team)(\/|$)/;
+function isAuthenticatedShellPath(pathname) {
+  return APP_SHELL_PATH_RE.test(pathname) || (pathname.startsWith("/admin") && pathname !== "/admin/login");
+}
 export default function App() {
   const { mfaPending } = useAuth();
+  const location = useLocation();
   // Blocks every route, not just protected ones — a password/OAuth-verified
   // session that hasn't cleared its second factor isn't "logged out" (so
   // PublicOnlyRoute would wrongly show Login/Register again) but also isn't
@@ -152,7 +161,7 @@ export default function App() {
     return <Suspense fallback={<BrandLoading />}><MfaChallenge /></Suspense>;
   }
   return <>
-    <CommandPalette />
+    <CommandPalette disabled={isAuthenticatedShellPath(location.pathname)} />
     <Suspense fallback={<BrandLoading />}>
     <Routes>
       <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />

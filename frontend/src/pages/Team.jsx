@@ -7,6 +7,7 @@ import { StatusPageCard } from "../components/StatusPageCard";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
 import { EmptyState, ErrorState } from "../components/EmptyState";
+import { Skeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 const EASE = [0.16, 1, 0.3, 1];
 const PLANS = [{
@@ -87,6 +88,7 @@ export default function Team() {
   } = useAuth();
   const {
     data: usage,
+    isLoading: usageLoading,
     isError: usageError,
     refetch: refetchUsage
   } = useQuery({
@@ -108,7 +110,11 @@ export default function Team() {
   const canViewBilling = !can || can("organization", "billing", "view");
   const [searchParams] = useSearchParams();
   const upgraded = searchParams.get("upgraded");
-  const currentPlan = usage?.plan ?? "STARTER";
+  // Null (not a default "STARTER") while usage is still loading — this feeds
+  // the "Current" badge on the plan-comparison grid below, and mislabeling
+  // a paying org as Starter for the load window is a real, visible billing
+  // mislabel, not just a cosmetic default.
+  const currentPlan = usage?.plan ?? (usageLoading ? null : "STARTER");
   if (!permsLoading && !canViewBilling) {
     return <div className="space-y-8">
         <Reveal y={12}>
@@ -126,7 +132,7 @@ export default function Team() {
       {/* Current usage */}
       {usageError ? <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white">
           <ErrorState message="Couldn't load your plan usage." onRetry={() => refetchUsage()} />
-        </div> : usage ? <SpotlightCard className="p-5" delay={0.05}>
+        </div> : usageLoading ? <Skeleton className="h-40 rounded-2xl" /> : usage ? <SpotlightCard className="p-5" delay={0.05}>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-medium text-white light:text-slate-900">Current Usage</h2>
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/70 light:text-slate-600">

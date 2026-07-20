@@ -132,7 +132,7 @@ function PermissionPreview({ modules, permissions }) {
   );
 }
 
-function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
+function RoleEditor({ role, modules, onClose, onSaved, cloneFrom, existingKeys = [] }) {
   const toast = useToast();
   const isNew = !role;
   const [name, setName] = useState(role?.name ?? (cloneFrom ? `${cloneFrom.name} (Copy)` : ""));
@@ -195,6 +195,10 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
   }
 
   const nameLocked = !!role; // renaming/rescoping an existing role isn't supported (key is the stable identifier)
+  const pendingKey = isNew ? slugify(name) : null;
+  // Upsert writes by key — a collision would silently overwrite whatever
+  // role already holds that key instead of creating a new one.
+  const keyCollision = isNew && pendingKey && existingKeys.includes(pendingKey);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
@@ -220,9 +224,12 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
                 <option value="platform">Platform (ITOps Solution admin)</option>
                 <option value="organization">Organization (a customer's own team)</option>
               </select>
-              <span className="text-white/30 light:text-slate-400">Key: {slugify(name) || "—"}</span>
+              <span className={keyCollision ? "text-red-300" : "text-white/30 light:text-slate-400"}>Key: {slugify(name) || "—"}</span>
             </div>
           )}
+          {keyCollision && <p className="text-xs text-red-300">
+              A role with key "{pendingKey}" already exists — saving would silently overwrite its permissions. Choose a different name.
+            </p>}
           {cloneFrom && (
             <p className="text-xs text-cyan-300/80">
               Inherited from <span className="font-medium">{cloneFrom.name}</span> — this copies its permissions once as a starting point; it won't stay in sync if {cloneFrom.name} changes later.
@@ -233,7 +240,7 @@ function RoleEditor({ role, modules, onClose, onSaved, cloneFrom }) {
           <button onClick={onClose} className="rounded-full border border-white/15 light:border-slate-900/15 px-4 py-2 text-xs text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900">Cancel</button>
           <button
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !name.trim()}
+            disabled={saveMutation.isPending || !name.trim() || keyCollision}
             className="rounded-full bg-amber-400 px-4 py-2 text-xs font-medium text-black transition-colors hover:bg-amber-300 disabled:opacity-50"
           >
             {saveMutation.isPending ? "Saving…" : "Save role"}
@@ -287,6 +294,11 @@ export default function AdminRoles() {
 
   const { data: modules, isLoading: modulesLoading } = useQuery({ queryKey: ["permission-modules"], queryFn: fetchPermissionModules });
   const { data: rolesRaw, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useQuery({ queryKey: ["admin-roles", scopeFilter], queryFn: () => fetchRoles(scopeFilter), retry: false });
+  // Unscoped, independent of the scopeFilter toggle above — a new role's key
+  // (slugified from its name) has to be unique across BOTH scopes, since
+  // `roles.key` is a single global primary key the upsert writes to. Only
+  // used to block a name that would silently overwrite an existing role.
+  const { data: allRoleKeys } = useQuery({ queryKey: ["admin-roles", "all-keys"], queryFn: () => fetchRoles(), retry: false, select: data => (data ?? []).map(r => r.key) });
   const legacyCount = (rolesRaw ?? []).filter(r => LEGACY_ROLE_KEYS.includes(r.key)).length;
   const roles = showLegacy ? rolesRaw : (rolesRaw ?? []).filter(r => !LEGACY_ROLE_KEYS.includes(r.key));
 
@@ -396,7 +408,7 @@ export default function AdminRoles() {
               </div>
             </div>
           ) : creating ? (
-            !modulesLoading && <RoleEditor key={`new-${creating.cloneFrom?.key ?? "blank"}`} modules={modules ?? []} cloneFrom={creating.cloneFrom} onClose={() => setCreating(null)} onSaved={handleSaved} />
+            !modulesLoading && <RoleEditor key={`new-${creating.cloneFrom?.key ?? "blank"}`} modules={modules ?? []} cloneFrom={creating.cloneFrom} existingKeys={allRoleKeys ?? []} onClose={() => setCreating(null)} onSaved={handleSaved} />
           ) : selectedRole ? (
             <div>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

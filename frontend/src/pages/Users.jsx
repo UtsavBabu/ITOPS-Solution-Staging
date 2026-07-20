@@ -473,6 +473,14 @@ function InvitesPanel({ orgRoles, canManage }) {
     onSuccess: () => { toast.success("Invite created."); setEmail(""); refetch(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to create invite")
   });
+  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  function handleSingleInvite() {
+    if (!emailValid) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
+    create.mutate();
+  }
 
   if (!canManage) return null;
 
@@ -491,10 +499,11 @@ function InvitesPanel({ orgRoles, canManage }) {
         <select value={role} onChange={e => setRole(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-2 py-1.5 text-xs text-white light:text-slate-900">
           {orgRoles.map(r => <option key={r.key} value={r.key}>{r.name}</option>)}
         </select>
-        <button onClick={() => create.mutate()} disabled={create.isPending || !email || !orgRoles.length} className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 disabled:opacity-50">
+        <button onClick={handleSingleInvite} disabled={create.isPending || !email || !emailValid || !orgRoles.length} className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 disabled:opacity-50">
           {create.isPending ? "Sending…" : "+ Send invite"}
         </button>
       </div>}
+      {!bulkOpen && email && !emailValid && <p className="px-4 pb-2 text-xs text-red-300">Enter a valid email address.</p>}
       {isError ? <ErrorState message="Couldn't load invites." onRetry={refetch} /> : isLoading ? <SkeletonRows count={2} /> : (invites ?? []).length === 0 ? <p className="p-4 text-sm text-white/40 light:text-slate-400">No invites sent yet.</p> : <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
@@ -516,6 +525,7 @@ function InvitesPanel({ orgRoles, canManage }) {
 
 function TrainingManagementPanel({ members, canManage }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: courses } = useQuery({ queryKey: ["cybersachet-courses"], queryFn: fetchCybersachetCourses });
   const { data: assignments, isLoading, isError, refetch } = useQuery({ queryKey: ["org-cybersachet-assignments"], queryFn: fetchOrgCybersachetAssignments });
   const [userId, setUserId] = useState("");
@@ -538,6 +548,26 @@ function TrainingManagementPanel({ members, canManage }) {
     onSuccess: () => { toast.success("Progress reset."); refetch(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to reset progress")
   });
+
+  async function handleReset(a) {
+    const ok = await confirm({
+      title: `Reset ${a.userEmail}'s progress on "${a.courseTitle}"?`,
+      description: "Their completion and quiz score for this course are wiped — they'll need to retake it. This cannot be undone.",
+      confirmLabel: "Reset progress",
+      danger: true
+    });
+    if (ok) reset.mutate({ uid: a.userId, cid: a.courseId });
+  }
+
+  async function handleUnassign(a) {
+    const ok = await confirm({
+      title: `Unassign "${a.courseTitle}" from ${a.userEmail}?`,
+      description: a.completedAt ? "Their completion record for this course is removed." : "This removes it from their required training.",
+      confirmLabel: "Unassign",
+      danger: true
+    });
+    if (ok) unassign.mutate({ uid: a.userId, cid: a.courseId });
+  }
 
   const now = Date.now();
   const total = assignments?.length ?? 0;
@@ -600,8 +630,8 @@ function TrainingManagementPanel({ members, canManage }) {
                       </span>
                     </td>
                     {canManage && <td className="px-3 py-2.5 text-right space-x-3">
-                        {a.completedAt && <button onClick={() => reset.mutate({ uid: a.userId, cid: a.courseId })} className="text-xs text-amber-300 light:text-amber-600 hover:underline">Reset</button>}
-                        <button onClick={() => unassign.mutate({ uid: a.userId, cid: a.courseId })} className="text-xs text-red-300 light:text-red-600 hover:underline">Unassign</button>
+                        {a.completedAt && <button onClick={() => handleReset(a)} className="text-xs text-amber-300 light:text-amber-600 hover:underline">Reset</button>}
+                        <button onClick={() => handleUnassign(a)} className="text-xs text-red-300 light:text-red-600 hover:underline">Unassign</button>
                       </td>}
                   </tr>;
             })}
@@ -688,11 +718,21 @@ function CertificateCenterPanel({ canManage }) {
 }
 
 function MemberRoleControl({ member, isSelf, canManage, orgRoles, roleLabel, mutation }) {
+  const confirm = useConfirm();
   if (isSelf) {
     return <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70 light:text-slate-600">{roleLabel[member.role] ?? member.role}</span>;
   }
   const roleOptions = orgRoles.map(r => ({ value: r.key, label: r.name }));
-  return <EditableSelect value={member.role} options={roleOptions} onSave={role => mutation.mutate({ userId: member.userId, role })} disabled={!canManage} pending={mutation.isPending} className="text-xs text-white/80 light:text-slate-700" />;
+  async function handleSave(role) {
+    const ok = await confirm({
+      title: `Change ${member.email}'s role to "${roleLabel[role] ?? role}"?`,
+      description: `They currently have the "${roleLabel[member.role] ?? member.role}" role — this changes what they can access immediately.`,
+      confirmLabel: "Change role",
+      danger: true
+    });
+    if (ok) mutation.mutate({ userId: member.userId, role });
+  }
+  return <EditableSelect value={member.role} options={roleOptions} onSave={handleSave} disabled={!canManage} pending={mutation.isPending} className="text-xs text-white/80 light:text-slate-700" />;
 }
 
 function DepartmentControl({ member, canManage, departments, mutation }) {

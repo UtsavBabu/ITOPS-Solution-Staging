@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { createHostAgent, deleteHostAgent, listHostAgents, regenerateHostAgentKey } from "../api/endpoints";
+import { createHostAgent, deleteHostAgent, fetchMyPermissions, listHostAgents, regenerateHostAgentKey } from "../api/endpoints";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 import { HostRunbooks } from "../components/HostRunbooks";
 import { HostDiagnosisPanel } from "../components/RootCauseAnalysis";
@@ -10,6 +10,7 @@ import { Skeleton } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
+import { useAuth } from "../context/AuthContext";
 const EASE = [0.16, 1, 0.3, 1];
 const INGEST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-metrics`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -99,7 +100,8 @@ function InstallSnippet({
 }
 function HostCard({
   host,
-  index
+  index,
+  canDelete
 }) {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -200,12 +202,12 @@ function HostCard({
         <button onClick={() => setShowInstall(v => !v)} className="text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900">
           {showInstall ? "Hide install" : "Install command"}
         </button>
-        <button onClick={handleRegen} className="text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900">
+        {canDelete && <button onClick={handleRegen} className="text-amber-300 light:text-amber-600 hover:text-amber-200 light:hover:text-amber-700">
           Regenerate key
-        </button>
-        <button onClick={handleDelete} className="ml-auto text-red-300 light:text-red-600 transition-colors hover:underline">
+        </button>}
+        {canDelete && <button onClick={handleDelete} className="ml-auto text-red-300 light:text-red-600 transition-colors hover:underline">
           Delete
-        </button>
+        </button>}
       </div>
 
       {showRunbooks && <HostRunbooks hostId={host.id} />}
@@ -215,6 +217,15 @@ function HostCard({
 export default function Hosts() {
   useRealtimeInvalidate(REALTIME_TABLES, REALTIME_KEYS);
   const queryClient = useQueryClient();
+  const { organization } = useAuth();
+  const { data: can } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canCreate = !!can && can("organization", "hosts", "create");
+  const canDelete = !!can && can("organization", "hosts", "delete");
   const {
     data: hosts,
     isLoading,
@@ -255,7 +266,13 @@ export default function Hosts() {
         </p>
       </Reveal>
 
-      <Reveal delay={0.05}>
+      {!canCreate && <Reveal delay={0.05}>
+          <p className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] px-4 py-3 text-sm text-white/50 light:text-slate-500">
+            Your role can view hosts but not add new ones — ask an organization admin if you need one added.
+          </p>
+        </Reveal>}
+
+      {canCreate && <Reveal delay={0.05}>
       <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white p-4">
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">
@@ -276,7 +293,7 @@ export default function Hosts() {
         </div>
         {formError && <p className="text-sm text-red-300">{formError}</p>}
       </form>
-      </Reveal>
+      </Reveal>}
 
       {isError ? <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white">
           <ErrorState message="Couldn't load hosts." onRetry={() => refetch()} />
@@ -287,7 +304,7 @@ export default function Hosts() {
         </div> : !hosts || hosts.length === 0 ? <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white">
           <EmptyState title="No hosts yet." description="Add one above, then run the install command on your server." />
         </div> : <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {hosts.map((host, i) => <HostCard key={host.id} host={host} index={i} />)}
+          {hosts.map((host, i) => <HostCard key={host.id} host={host} index={i} canDelete={canDelete} />)}
         </div>}
     </div>;
 }

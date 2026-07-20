@@ -90,7 +90,7 @@ const COMMANDS = [{
   to: "/admin/login",
   keywords: "platform admin cms customers"
 }];
-export function CommandPalette() {
+export function CommandPalette({ disabled = false }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -108,8 +108,12 @@ export function CommandPalette() {
     setActive(0);
   }, []);
 
-  // Global shortcut: Ctrl/Cmd+K toggles, Escape closes.
+  // Global shortcut: Ctrl/Cmd+K toggles, Escape closes. Suppressed inside the
+  // authenticated app/admin shell — those mount their own AppSearch, which
+  // already owns Cmd+K there, and this palette's targets are marketing pages
+  // that don't make sense mid-session anyway.
   useEffect(() => {
+    if (disabled) return;
     function onKey(e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -120,17 +124,24 @@ export function CommandPalette() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, [close, disabled]);
 
   // Lets a visible "Search" button elsewhere (e.g. the nav) open the same
   // palette without lifting its open state into a context.
   useEffect(() => {
+    if (disabled) return;
     function onOpenRequest() {
       setOpen(true);
     }
     window.addEventListener("open-command-palette", onOpenRequest);
     return () => window.removeEventListener("open-command-palette", onOpenRequest);
-  }, []);
+  }, [disabled]);
+
+  // Belt-and-suspenders: if navigation ever lands us in the app shell while
+  // the palette happens to be open, close it rather than leave it stuck open.
+  useEffect(() => {
+    if (disabled && open) close();
+  }, [disabled, open, close]);
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 30);
   }, [open]);

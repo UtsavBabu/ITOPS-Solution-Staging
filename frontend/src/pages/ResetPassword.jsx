@@ -30,7 +30,9 @@ export default function ResetPassword() {
   const { updatePassword } = useAuth();
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,12 +46,22 @@ export default function ResetPassword() {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
     });
-    return () => listener.subscription.unsubscribe();
+    // Supabase never fires a distinct "this link is invalid/expired" event —
+    // an already-used or expired recovery link just never raises
+    // PASSWORD_RECOVERY, which previously left this page reading "Verifying
+    // your reset link…" forever with no way out. If nothing's happened after
+    // a reasonable wait, treat it as expired and offer a real next step.
+    const timer = setTimeout(() => setLinkExpired(true), 8000);
+    return () => { listener.subscription.unsubscribe(); clearTimeout(timer); };
   }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Those passwords don't match.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await updatePassword(password);
@@ -76,7 +88,18 @@ export default function ResetPassword() {
           <span aria-hidden>←</span> <BrandMark size={20} /> <span>ITOps Solution</span>
         </Link>
 
-        {!ready ? (
+        {!ready && linkExpired ? (
+          <div className="py-6 text-center">
+            <SecurityLock size={44} />
+            <h1 className="mt-3 text-xl font-semibold tracking-tight text-white">This link no longer works</h1>
+            <p className="mt-2 text-sm leading-relaxed text-white/60">
+              It may have expired or already been used. Request a new reset link and try again.
+            </p>
+            <Link to="/forgot-password" className="mt-5 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition-colors hover:bg-neutral-200">
+              Request a new link
+            </Link>
+          </div>
+        ) : !ready ? (
           <div className="py-6 text-center">
             <SecurityLock size={44} />
             <p className="mt-4 text-sm text-white/50">Verifying your reset link…</p>
@@ -118,6 +141,15 @@ export default function ResetPassword() {
                 hint="At least 8 characters."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+              <Field
+                label="Confirm new password"
+                type="password"
+                icon={<LockIcon />}
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
               <Button type="submit" full loading={isSubmitting}>
                 {isSubmitting ? "Updating…" : "Update password"}

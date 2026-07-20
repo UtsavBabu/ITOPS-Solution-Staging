@@ -1,18 +1,31 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { createAsset, deleteAsset, fetchAssets } from "../api/endpoints";
+import { createAsset, deleteAsset, fetchAssets, fetchMyPermissions } from "../api/endpoints";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { SkeletonRows } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
+import { useAuth } from "../context/AuthContext";
 const EASE = [0.16, 1, 0.3, 1];
 const MANUAL_TYPES = ["SERVER", "DATABASE", "OTHER"];
+// A bare hostname/domain/IP: rejects free-text garbage before it's saved as
+// an identifier that will just never resolve to anything.
+const IDENTIFIER_RE = /^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$|^(\d{1,3}\.){3}\d{1,3}$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 export default function Assets() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const toast = useToast();
+  const { organization } = useAuth();
+  const { data: can } = useQuery({
+    queryKey: ["my-permissions", organization?.id],
+    queryFn: () => fetchMyPermissions(organization?.id),
+    enabled: !!organization?.id,
+    retry: false
+  });
+  const canCreate = !!can && can("organization", "assets", "create");
+  const canDelete = !!can && can("organization", "assets", "delete");
   const {
     data: assets,
     isLoading,
@@ -53,11 +66,16 @@ export default function Assets() {
   function handleSubmit(event) {
     event.preventDefault();
     setFormError(null);
+    if (!IDENTIFIER_RE.test(identifier.trim())) {
+      setFormError("Enter a real hostname, IP, or short host label (e.g. db-primary-01) — not free text.");
+      return;
+    }
     createMutation.mutate();
   }
   async function handleDelete(id, name) {
     const ok = await confirm({
       title: `Delete asset "${name}"?`,
+      description: "This removes it from inventory. This cannot be undone.",
       confirmLabel: "Delete",
       danger: true
     });
@@ -76,7 +94,13 @@ export default function Assets() {
         </p>
       </Reveal>
 
-      <Reveal delay={0.05}>
+      {!canCreate && <Reveal delay={0.05}>
+          <p className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] px-4 py-3 text-sm text-white/50 light:text-slate-500">
+            Your role can view assets but not add new ones — ask an organization admin if you need one added.
+          </p>
+        </Reveal>}
+
+      {canCreate && <Reveal delay={0.05}>
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white p-4">
         <label className="text-sm">
           <span className="mb-1.5 block text-white/70 light:text-slate-600">Type</span>
@@ -99,7 +123,7 @@ export default function Assets() {
         </button>
         {formError && <p className="w-full text-sm text-red-300">{formError}</p>}
       </form>
-      </Reveal>
+      </Reveal>}
 
       <SpotlightCard className="overflow-hidden" delay={0.1} scan tint="amber">
         {isError ? <ErrorState message="Couldn't load assets." onRetry={() => refetch()} /> : isLoading ? <SkeletonRows count={4} /> : !assets || assets.length === 0 ? <EmptyState title="No assets yet." description="Add infrastructure above, or connect a monitor to auto-track it." /> : <>
@@ -115,7 +139,7 @@ export default function Assets() {
                 <p className="mt-1 truncate text-xs text-white/50 light:text-slate-500">{asset.identifier}</p>
                 <div className="mt-2 flex items-center justify-between text-xs text-white/40 light:text-slate-400">
                   <span>Added {new Date(asset.createdAt).toLocaleDateString()}</span>
-                  {!asset.monitor && <button onClick={() => handleDelete(asset.id, asset.name)} className="text-red-300 light:text-red-600 hover:underline">Delete</button>}
+                  {!asset.monitor && canDelete && <button onClick={() => handleDelete(asset.id, asset.name)} className="text-red-300 light:text-red-600 hover:underline">Delete</button>}
                 </div>
               </motion.div>)}
           </div>
@@ -148,7 +172,7 @@ export default function Assets() {
                   <td className="px-4 py-3 text-right">
                     {/* Monitor-backed assets are managed from the Monitors page; only
                         manually-added infrastructure gets a delete button here. */}
-                    {!asset.monitor && <button onClick={() => handleDelete(asset.id, asset.name)} className="text-red-300 light:text-red-600 transition-colors hover:underline">
+                    {!asset.monitor && canDelete && <button onClick={() => handleDelete(asset.id, asset.name)} className="text-red-300 light:text-red-600 transition-colors hover:underline">
                         Delete
                       </button>}
                   </td>
