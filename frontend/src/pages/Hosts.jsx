@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { createHostAgent, deleteHostAgent, listHostAgents, regenerateHostAgentKey } from "../api/endpoints";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 import { HostRunbooks } from "../components/HostRunbooks";
+import { HostDiagnosisPanel } from "../components/RootCauseAnalysis";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { Skeleton } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
@@ -186,6 +187,11 @@ function HostCard({
             Last report {host.lastSeenAt ? new Date(host.lastSeenAt).toLocaleTimeString() : "—"}
           </p>
         </div> : <p className="mt-4 text-xs text-white/45 light:text-slate-400">No data yet. Install the agent below, then reports appear within a minute.</p>}
+
+      {/* What to do about it — only ever shows up when something's
+          actually wrong (offline, or CPU/mem/disk over 70%); a clean host
+          renders nothing here. */}
+      <HostDiagnosisPanel host={host} onOpenRunbooks={() => setShowRunbooks(true)} />
 
       <div className="mt-4 flex items-center gap-3 text-xs">
         <button onClick={() => setShowRunbooks(v => !v)} className={showRunbooks ? "text-cyan-300" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}>

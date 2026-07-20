@@ -320,6 +320,128 @@ function remediationFor(area) {
       return [];
   }
 }
+// Same honest-diagnosis discipline, applied to host agents instead of
+// website/API monitors — every finding comes from telemetry the agent
+// actually reported (CPU/mem/disk %, last report time), not guessed.
+export function analyzeHost(host) {
+  const findings = [];
+
+  if (!host.lastSeenAt) {
+    findings.push({
+      area: "Agent connectivity",
+      severity: "warning",
+      diagnosis: "No report has ever been received from this host.",
+      evidence: "No data since the host was added",
+      suggestion: "Confirm the install command ran on the host and the ingest key matches — a typo in the key or a firewall blocking outbound HTTPS are the usual causes."
+    });
+  } else if (!host.isOnline) {
+    const staleMinutes = Math.max(0, Math.round((Date.now() - new Date(host.lastSeenAt).getTime()) / 60000));
+    findings.push({
+      area: "Agent connectivity",
+      severity: "critical",
+      diagnosis: `The agent stopped reporting ${staleMinutes} minute${staleMinutes === 1 ? "" : "s"} ago.`,
+      evidence: `Last report: ${new Date(host.lastSeenAt).toLocaleString()}`,
+      suggestion: "Likely causes: the agent's cron job or process stopped, the host lost network egress to the ingest endpoint, the host was powered off or rebooted, or its ingest key was regenerated. Try a Ping runbook action first — if that doesn't respond either, the host itself needs a direct look."
+    });
+  } else {
+    findings.push({
+      area: "Agent connectivity",
+      severity: "healthy",
+      diagnosis: "The agent is reporting normally.",
+      evidence: `Last report: ${new Date(host.lastSeenAt).toLocaleString()}`,
+      suggestion: "No action needed."
+    });
+  }
+
+  if (host.isOnline) {
+    const resourceCheck = (label, value, area) => {
+      if (value == null) return;
+      if (value >= 90) {
+        findings.push({
+          area,
+          severity: "critical",
+          diagnosis: `${label} usage is critically high (${value.toFixed(0)}%).`,
+          evidence: `${value.toFixed(0)}% at last report`,
+          suggestion: area === "Disk" ? "Identify what's actually consuming space — large logs, old backups, unused Docker images. The agent's Clear Temp action only removes its own scratch files under /tmp, not a full fix on its own." : `Identify the top ${label.toLowerCase()}-consuming process on the host before deciding whether to restart the offending service or scale the host.`
+        });
+      } else if (value >= 70) {
+        findings.push({
+          area,
+          severity: "warning",
+          diagnosis: `${label} usage is elevated (${value.toFixed(0)}%).`,
+          evidence: `${value.toFixed(0)}% at last report`,
+          suggestion: "Worth investigating now, before it reaches critical."
+        });
+      }
+    };
+    resourceCheck("CPU", host.cpuPercent, "CPU");
+    resourceCheck("Memory", host.memPercent, "Memory");
+    resourceCheck("Disk", host.diskPercent, "Disk");
+  }
+
+  findings.sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]);
+  const overall = findings[0]?.severity ?? "healthy";
+  return { overall, findings };
+}
+// Remediation steps scoped to what a host agent can actually act on —
+// "automatable" here only ever means a runbook action that's genuinely
+// allowlisted (migration 0036: ping, clear_temp, restart_service, ...),
+// same honesty rule as remediationFor() above.
+function hostRemediationFor(area) {
+  switch (area) {
+    case "Agent connectivity":
+      return [{
+        action: "Run the Ping runbook action to confirm the agent is still alive",
+        estTime: "~10 sec",
+        risk: "Low",
+        requiresApproval: true,
+        automatable: true
+      }, {
+        action: "Check the agent's cron job / process directly on the host",
+        estTime: "2–5 min",
+        risk: "Low",
+        requiresApproval: false,
+        automatable: false
+      }, {
+        action: "Confirm outbound HTTPS to the ingest endpoint isn't blocked by a firewall",
+        estTime: "2–5 min",
+        risk: "Low",
+        requiresApproval: false,
+        automatable: false
+      }];
+    case "Disk":
+      return [{
+        action: "Clear the agent's own temp files",
+        estTime: "~1 min",
+        risk: "Low",
+        requiresApproval: true,
+        automatable: true
+      }, {
+        action: "Investigate and remove large logs, old backups, or unused Docker images",
+        estTime: "10–30 min",
+        risk: "Low",
+        requiresApproval: false,
+        automatable: false
+      }];
+    case "CPU":
+    case "Memory":
+      return [{
+        action: "Identify the top resource-consuming process on the host",
+        estTime: "5–10 min",
+        risk: "Low",
+        requiresApproval: false,
+        automatable: false
+      }, {
+        action: "Restart the offending service",
+        estTime: "~1 min",
+        risk: "Medium",
+        requiresApproval: true,
+        automatable: true
+      }];
+    default:
+      return [];
+  }
+}
 const RISK_TEXT = {
   Low: "text-emerald-300 light:text-emerald-700",
   Medium: "text-amber-300 light:text-amber-700",
@@ -400,37 +522,48 @@ export function RootCauseAnalysis({
             </li>;
       })}
       </ul>
-      {/* Prioritized remediation steps for the top actionable finding */}
+      {/* Remediation for every actionable finding, not just the primary
+          one — a monitor can be down AND have an expiring certificate at
+          the same time, and both deserve their own "what to do" table. */}
       {(() => {
-      const target = analysis.findings.find(f => f.severity === "critical") ?? analysis.findings.find(f => f.severity === "warning");
-      const steps = target ? remediationFor(target.area) : [];
-      if (steps.length === 0) return null;
-      return <div className="border-t border-white/10 light:border-slate-900/10 px-4 py-4">
-            <p className="mb-2.5 text-[11px] font-medium uppercase tracking-wide text-white/45 light:text-slate-400">Recommended remediation · prioritized</p>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-xs">
-                <thead className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">
-                  <tr>
-                    <th className="pb-2 pr-3 font-medium">Action</th>
-                    <th className="pb-2 pr-3 font-medium">Est. time</th>
-                    <th className="pb-2 pr-3 font-medium">Risk</th>
-                    <th className="pb-2 pr-3 font-medium">Approval</th>
-                    <th className="pb-2 font-medium">Automation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.06]">
-                  {steps.map((s, i) => <tr key={i}>
-                      <td className="py-2 pr-3 text-white/75 light:text-slate-600">{s.action}</td>
-                      <td className="py-2 pr-3 text-white/50 light:text-slate-500">{s.estTime}</td>
-                      <td className={`py-2 pr-3 ${RISK_TEXT[s.risk]}`}>{s.risk}</td>
-                      <td className="py-2 pr-3 text-white/50 light:text-slate-500">{s.requiresApproval ? "Required" : "—"}</td>
-                      <td className="py-2">
-                        {s.automatable ? <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Run via agent →</Link> : <span className="text-white/30 light:text-slate-400">Manual</span>}
-                      </td>
-                    </tr>)}
-                </tbody>
-              </table>
-            </div>
+      const actionable = analysis.findings.filter(f => f.severity === "critical" || f.severity === "warning");
+      if (actionable.length === 0) return null;
+      return <div className="divide-y divide-white/10 light:divide-slate-900/10 border-t border-white/10 light:border-slate-900/10">
+            {actionable.map((target, ti) => {
+          const steps = remediationFor(target.area);
+          if (steps.length === 0) return null;
+          const st = SEV_STYLE[target.severity];
+          return <div key={`${target.area}-${ti}`} className="px-4 py-4">
+                  <p className="mb-2.5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-white/45 light:text-slate-400">
+                    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                    Remediation · {target.area}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-left text-xs">
+                      <thead className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">
+                        <tr>
+                          <th className="pb-2 pr-3 font-medium">Action</th>
+                          <th className="pb-2 pr-3 font-medium">Est. time</th>
+                          <th className="pb-2 pr-3 font-medium">Risk</th>
+                          <th className="pb-2 pr-3 font-medium">Approval</th>
+                          <th className="pb-2 font-medium">Automation</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.06]">
+                        {steps.map((s, i) => <tr key={i}>
+                            <td className="py-2 pr-3 text-white/75 light:text-slate-600">{s.action}</td>
+                            <td className="py-2 pr-3 text-white/50 light:text-slate-500">{s.estTime}</td>
+                            <td className={`py-2 pr-3 ${RISK_TEXT[s.risk]}`}>{s.risk}</td>
+                            <td className="py-2 pr-3 text-white/50 light:text-slate-500">{s.requiresApproval ? "Required" : "—"}</td>
+                            <td className="py-2">
+                              {s.automatable ? <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Run via agent →</Link> : <span className="text-white/30 light:text-slate-400">Manual</span>}
+                            </td>
+                          </tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>;
+        })}
           </div>;
     })()}
 
@@ -440,4 +573,35 @@ export function RootCauseAnalysis({
         guidance. The platform never alters systems without an approved runbook.
       </p>
     </section>;
+}
+
+// Compact variant for a HostCard on the Hosts grid — same honest-diagnosis
+// engine as above (analyzeHost), just fitted to a card instead of a full
+// detail page. Only rendered when there's something to say (never for a
+// clean, online, low-usage host — see the `hasIssue` gate at the call site).
+export function HostDiagnosisPanel({ host, onOpenRunbooks }) {
+  const analysis = useMemo(() => analyzeHost(host), [host]);
+  const actionable = analysis.findings.filter(f => f.severity !== "healthy");
+  if (actionable.length === 0) return null;
+  return <div className="mt-3 space-y-2.5 rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.03] p-3">
+      {actionable.map((f, i) => {
+      const st = SEV_STYLE[f.severity];
+      const steps = hostRemediationFor(f.area);
+      return <div key={`${f.area}-${i}`} className={i > 0 ? "border-t border-white/[0.06] pt-2.5" : ""}>
+            <div className="flex items-center gap-2">
+              <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+              <span className="text-xs font-medium text-white light:text-slate-900">{f.area}</span>
+              <span className={`ml-auto rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${st.ring} ${st.text}`}>{st.label}</span>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-white/60 light:text-slate-600">{f.diagnosis}</p>
+            {steps.length > 0 && <ul className="mt-1.5 space-y-1">
+                {steps.map((s, si) => <li key={si} className="flex items-center gap-1.5 text-[11px] text-white/50 light:text-slate-500">
+                    <span className={`shrink-0 ${RISK_TEXT[s.risk]}`} aria-hidden>●</span>
+                    <span className="flex-1">{s.action} <span className="text-white/30 light:text-slate-400">· {s.estTime}</span></span>
+                    {s.automatable ? <button type="button" onClick={onOpenRunbooks} className="shrink-0 text-cyan-300 light:text-cyan-600 hover:underline">Run via agent →</button> : null}
+                  </li>)}
+              </ul>}
+          </div>;
+    })}
+    </div>;
 }
