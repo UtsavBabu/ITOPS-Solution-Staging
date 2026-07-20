@@ -9,6 +9,7 @@ import { SkeletonRows } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 import { useAuth } from "../context/AuthContext";
+import { GettingStartedChecklist } from "../components/GettingStartedChecklist";
 const REALTIME_TABLES = ["monitors", "incidents", "check_results"];
 const REALTIME_KEYS = [["dashboard-summary"], ["monitors"], ["incidents", "OPEN"]];
 const EASE = [0.16, 1, 0.3, 1];
@@ -160,6 +161,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </Reveal>
+
+      <GettingStartedChecklist monitors={monitors} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
