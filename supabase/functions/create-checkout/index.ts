@@ -25,15 +25,27 @@ const SELF_SERVE_PLANS: Record<string, string> = {
   BUSINESS: "STRIPE_PRICE_BUSINESS",
 };
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS, "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  // Without this, the browser's preflight OPTIONS request for this
+  // cross-origin POST (custom Authorization/apikey headers) gets a bare 405
+  // with no CORS headers, so the browser blocks the real request before it
+  // ever reaches this function — every "Upgrade with Card" click failed with
+  // a generic "Failed to send a request to the Edge Function" client error.
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
   if (!authHeader) return json({ error: "Missing bearer token" }, 401);
