@@ -114,15 +114,34 @@ if [ "${AGENT_ALLOW_ACTIONS:-0}" = "1" ] && [ -n "${COMMANDS_URL:-}" ]; then
     rm -f /tmp/kada-nigrani-tcp-err
   }
 
+  # Real ICMP ping via the system `ping` binary — present on every Linux host
+  # this agent already targets. One echo request, bounded by timeout_s.
+  check_ping() {
+    local target_host="$1" timeout_s="${2:-5}"
+    local out
+    if out=$(ping -c 1 -W "$timeout_s" "$target_host" 2>&1); then
+      local rtt_ms
+      rtt_ms=$(echo "$out" | grep -oE 'time[=<][0-9.]+' | grep -oE '[0-9.]+' | head -1)
+      rtt_ms=${rtt_ms%.*}
+      echo "UP|${rtt_ms:-0}|"
+    else
+      echo "DOWN|0|${target_host} did not respond to ping"
+    fi
+  }
+
   device_checks=$(curl -fsS -X POST "$COMMANDS_URL" \
     -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
     -H "X-Agent-Key: $AGENT_KEY" -H "Content-Type: application/json" \
     -d '{"action":"fetch_checks"}' 2>/dev/null || echo '{"checks":[]}')
 
-  echo "$device_checks" | python3 -c "import sys,json;[print(c['id']+'|'+c['host']+'|'+str(c['port'])) for c in json.load(sys.stdin).get('checks',[])]" 2>/dev/null | \
-  while IFS='|' read -r mon_id mon_host mon_port; do
+  echo "$device_checks" | python3 -c "import sys,json;[print(c['id']+'|'+c['host']+'|'+str(c['port'])+'|'+c['checkType']) for c in json.load(sys.stdin).get('checks',[])]" 2>/dev/null | \
+  while IFS='|' read -r mon_id mon_host mon_port mon_type; do
     [ -z "$mon_id" ] && continue
-    result=$(check_tcp "$mon_host" "$mon_port" 5)
+    if [ "$mon_type" = "PING" ]; then
+      result=$(check_ping "$mon_host" 5)
+    else
+      result=$(check_tcp "$mon_host" "$mon_port" 5)
+    fi
     chk_status=$(echo "$result" | cut -d'|' -f1)
     chk_ms=$(echo "$result" | cut -d'|' -f2)
     chk_err=$(echo "$result" | cut -d'|' -f3-)

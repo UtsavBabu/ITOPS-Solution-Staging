@@ -108,6 +108,14 @@ export function analyzeMonitor(monitor, history) {
         evidence: latest.errorMessage ?? "Connection failed",
         suggestion: monitor.viaHostAgentId ? "Confirm the device is powered on and the port is open on its LAN — this check runs from the Kada Nigrani agent on that network, not the cloud, so internet routing/NAT isn't the cause here." : "Confirm the device/service is powered on and the port is open; check firewall rules and any NAT/port-forwarding in front of it. If this device was never meant to have a public port (a home router, office switch, etc.), the cloud may simply be unable to reach it at all — relay this check through a Kada Nigrani agent on the same network instead of checking from outside."
       });
+    } else if (monitor.checkType === "PING") {
+      findings.push({
+        area: "Network reachability",
+        severity: "critical",
+        diagnosis: `${monitor.url} is not responding to ICMP ping.`,
+        evidence: latest.errorMessage ?? "No ping response",
+        suggestion: "Confirm the device is powered on and reachable on its LAN from the agent relaying this check; some devices/firewalls are configured to drop ICMP entirely even when otherwise healthy — if that's expected for this device, a TCP check against a known-open port may be a more reliable signal."
+      });
     } else if (monitor.checkType === "DNS") {
       findings.push({
         area: "DNS",

@@ -22,17 +22,20 @@ const CHECK_TYPE_LABELS = {
   KEYWORD: "Keyword",
   STATUS_CODE: "Status code",
   DNS: "DNS",
-  TCP: "TCP port"
+  TCP: "TCP port",
+  PING: "ICMP ping"
 };
 
 // The two product surfaces of this page. Websites speak HTTP; network
 // devices (routers, switches, firewalls, printers) are checked at the
-// transport layer — TCP connects. DNS record monitoring lives on its own
-// page (/dns) since it's a different kind of check with its own rich result
-// display, not a device with a port.
+// transport layer — TCP connects, or a real ICMP ping relayed through an
+// installed agent (the cloud has no raw sockets, so ping only exists via an
+// agent — there's no "ping from the cloud" fallback). DNS record monitoring
+// lives on its own page (/dns) since it's a different kind of check with its
+// own rich result display, not a device with a port.
 
 const WEB_TYPES = ["HTTP", "KEYWORD", "STATUS_CODE"];
-const NETWORK_TYPES = ["TCP"];
+const NETWORK_TYPES = ["TCP", "PING"];
 const WEB_CHECKS = [{
   value: "HTTP",
   label: "Website / API uptime",
@@ -50,6 +53,10 @@ const NETWORK_CHECKS = [{
   value: "TCP",
   label: "Device / TCP port",
   blurb: "Connects to a port on the device and alerts when it stops accepting connections — like Nagios check_tcp."
+}, {
+  value: "PING",
+  label: "ICMP ping (via agent)",
+  blurb: "A real ping sent from an installed agent on the device's own network — measures reachability and latency without needing an open port. Requires picking an agent under \"Check via\" below."
 }];
 const PORT_PRESETS = [{
   label: "HTTPS · 443",
@@ -208,8 +215,9 @@ const PORT_ICONS = {
   445: "💾",
   9100: "🖨️"
 };
-function deviceIcon(port) {
-  return PORT_ICONS[port] ?? "🔌";
+function deviceIcon(monitor) {
+  if (monitor.checkType === "PING") return "📡";
+  return PORT_ICONS[monitor.tcpPort] ?? "🔌";
 }
 // Network devices get a card grid, not the website table — these are
 // physical things you'd recognize by icon, not rows in an endpoint list.
@@ -221,7 +229,7 @@ function DeviceCards({ monitors, onDelete, hostAgents }) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-400/10 text-base" aria-hidden>
-                {deviceIcon(monitor.tcpPort)}
+                {deviceIcon(monitor)}
               </span>
               <div className="min-w-0">
                 <Link to={`/monitors/${monitor.id}`} className="block truncate font-medium text-white light:text-slate-900 hover:underline">
@@ -233,7 +241,10 @@ function DeviceCards({ monitors, onDelete, hostAgents }) {
             <StatusBadge status={monitor.lastStatus} />
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-white/40 light:text-slate-400">
-            <span>Every {INTERVAL_LABELS[monitor.interval]}</span>
+            <span className="flex items-center gap-2">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/70 light:text-slate-600">{CHECK_TYPE_LABELS[monitor.checkType]}</span>
+              Every {INTERVAL_LABELS[monitor.interval]}
+            </span>
             <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 hover:underline">
               Delete
             </button>
@@ -284,6 +295,7 @@ export default function Monitors({ mode = "web" }) {
   const [viaHostAgentId, setViaHostAgentId] = useState("");
   const [formError, setFormError] = useState(null);
   const isTcp = checkType === "TCP";
+  const isPing = checkType === "PING";
   const activeChecks = mode === "web" ? WEB_CHECKS : NETWORK_CHECKS;
   const activeType = activeChecks.find(t => t.value === checkType) ?? activeChecks[0];
   // Only network devices can be relayed through an agent (a device on the
@@ -315,7 +327,7 @@ export default function Monitors({ mode = "web" }) {
       keywordMatchMode: checkType === "KEYWORD" ? keywordMatchMode : undefined,
       expectedStatusCode: checkType === "STATUS_CODE" ? Number(expectedStatusCode) : undefined,
       tcpPort: isTcp ? Number(tcpPort) : undefined,
-      viaHostAgentId: isTcp && viaHostAgentId ? viaHostAgentId : undefined
+      viaHostAgentId: (isTcp || isPing) && viaHostAgentId ? viaHostAgentId : undefined
     }),
     onSuccess: () => {
       setName("");
@@ -382,7 +394,8 @@ export default function Monitors({ mode = "web" }) {
             <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">
               Kada Nigrani agent
             </Link>{" "}
-            when it isn't (pick "Check via" below). Watching a domain's DNS records instead of a device port? See{" "}
+            when it isn't. Need a device that has no open port at all? Pick "ICMP ping" as the check type — the
+            agent sends a real ping instead. Watching a domain's DNS records instead of a device port? See{" "}
             <Link to="/dns" className="text-cyan-300 light:text-cyan-600 hover:underline">
               DNS Monitoring
             </Link>.
@@ -390,10 +403,10 @@ export default function Monitors({ mode = "web" }) {
           <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/90">On the roadmap</p>
             <p className="mt-1 text-xs leading-relaxed text-white/55 light:text-slate-500">
-              <span className="text-white/80 light:text-slate-700">ICMP ping</span> (latency & packet loss) and{" "}
-              <span className="text-white/80 light:text-slate-700">SNMP</span> (interface traffic, CPU, memory, uptime) polling for deeper
-              router/switch health — these need raw sockets the edge runtime and the agent's polling model don't
-              provide yet. TCP relay via the agent (above) is real and works today.
+              <span className="text-white/80 light:text-slate-700">SNMP</span> polling (interface traffic, CPU, memory, uptime) for deeper
+              router/switch health — this needs a fundamentally different agent (SNMP's binary protocol isn't
+              something a bash script can speak) rather than a raw-socket limitation. TCP relay and ICMP ping via
+              the agent (above) are both real and work today.
             </p>
           </div>
         </Reveal>}
@@ -414,8 +427,8 @@ export default function Monitors({ mode = "web" }) {
             <input required value={name} onChange={e => setName(e.target.value)} placeholder={mode === "web" ? "Marketing site" : "Office router"} className={`w-full ${inputClass}`} />
           </label>
           <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">{isTcp ? "Hostname / IP" : "URL"}</span>
-            <input required type={isTcp ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isTcp ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
+            <span className="mb-1.5 block text-white/70 light:text-slate-600">{isTcp || isPing ? "Hostname / IP" : "URL"}</span>
+            <input required type={isTcp || isPing ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isTcp || isPing ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
           </label>
           <label className="text-sm">
             <span className="mb-1.5 block text-white/70 light:text-slate-600">Check every</span>
@@ -448,15 +461,22 @@ export default function Monitors({ mode = "web" }) {
                 <input required type="number" min={1} max={65535} value={tcpPort} onChange={e => setTcpPort(e.target.value)} aria-label="Custom port" className={`w-28 ${inputClass}`} />
               </div>
             </div>
-            <div className="space-y-2.5">
+          </div>}
+
+        {(isTcp || isPing) && <div className="space-y-2.5">
               <span className="block text-sm text-white/70 light:text-slate-600">Check via</span>
               <select value={viaHostAgentId} onChange={e => setViaHostAgentId(e.target.value)} className={`w-full max-w-xs ${inputClass}`}>
-                <option value="">Cloud (direct — device must have a public port)</option>
+                {isTcp && <option value="">Cloud (direct — device must have a public port)</option>}
+                {isPing && <option value="">Select an agent…</option>}
                 {(hostAgents ?? []).map(a => <option key={a.id} value={a.id}>
                     Agent: {a.name}{a.isOnline ? "" : " (offline)"}
                   </option>)}
               </select>
-              {!viaHostAgentId ? <p className="text-xs leading-relaxed text-white/45 light:text-slate-400">
+              {isPing && !viaHostAgentId ? <p className="text-xs leading-relaxed text-amber-300/90">
+                  ICMP ping always runs via an agent — the cloud has no way to send a raw ping. Pick one above to
+                  continue.{" "}
+                  {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
+                </p> : !viaHostAgentId ? <p className="text-xs leading-relaxed text-white/45 light:text-slate-400">
                   Works when this device's port is reachable from the internet. Behind a home router/office
                   firewall? Install the Kada Nigrani agent on any machine on the <em>same network</em> as this
                   device, then pick it here — the agent checks it locally and reports back.{" "}
@@ -465,7 +485,6 @@ export default function Monitors({ mode = "web" }) {
                   Checked from that agent's network every {INTERVAL_LABELS[interval]}, not from the cloud — works
                   even if this device has no public port.
                 </p>}
-            </div>
           </div>}
 
         {checkType === "KEYWORD" && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -488,7 +507,7 @@ export default function Monitors({ mode = "web" }) {
           </label>}
 
         <div className="flex items-center gap-3">
-          <button type="submit" disabled={createMutation.isPending} className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:opacity-60">
+          <button type="submit" disabled={createMutation.isPending || (isPing && !viaHostAgentId)} className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:opacity-60">
             {createMutation.isPending ? "Adding…" : mode === "web" ? "Add Monitor" : "Add Device"}
           </button>
           {formError && <p className="text-sm text-red-300">{formError}</p>}

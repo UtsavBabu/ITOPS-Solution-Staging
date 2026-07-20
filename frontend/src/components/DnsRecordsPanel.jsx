@@ -8,14 +8,36 @@ function formatTtl(seconds) {
   return `${seconds}s`;
 }
 
+function signatureOf(answers) {
+  if (!answers || answers.length === 0) return null;
+  return answers.map(a => a.data).sort().join(", ");
+}
+
+// Walks the check history (newest first) and returns only the points where
+// the resolved value set actually changed from the check right before it —
+// real signal for "did this record change," not every identical poll.
+function changeEvents(history) {
+  if (!history || history.length === 0) return [];
+  const events = [];
+  for (let i = 0; i < history.length; i++) {
+    const current = signatureOf(history[i].dnsAnswers);
+    const previous = i + 1 < history.length ? signatureOf(history[i + 1].dnsAnswers) : undefined;
+    if (current !== undefined && current !== previous) {
+      events.push({ checkedAt: history[i].checkedAt, signature: current });
+    }
+  }
+  return events;
+}
+
 // The "MXToolbox-style" result set: the record type actually queried, the
 // real values a public resolver returned for it (not just pass/fail), and
 // their TTLs. Reused on both the DNS Monitoring list and the monitor detail
 // page so a resolved value looks the same wherever it's shown.
-export function DnsRecordsPanel({ monitor, latestCheck }) {
+export function DnsRecordsPanel({ monitor, latestCheck, history }) {
   const recordType = monitor.dnsRecordType ?? "A";
   const answers = latestCheck?.dnsAnswers ?? null;
   const expected = (monitor.dnsExpectedValue ?? "").trim();
+  const events = history ? changeEvents(history) : [];
 
   return <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -50,5 +72,21 @@ export function DnsRecordsPanel({ monitor, latestCheck }) {
         </p> : <p className="text-sm text-amber-300/90">{latestCheck.errorMessage ?? `No ${recordType} record found for ${monitor.url}.`}</p>}
 
       {expected && <p className="text-xs text-white/40 light:text-slate-400">Expected value must include: <span className="font-mono text-white/70 light:text-slate-600">{expected}</span></p>}
+
+      {history && <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-white/40 light:text-slate-400">
+            Change history {events.length > 0 && `(${events.length})`}
+          </p>
+          {events.length === 0 ? <p className="mt-1 text-xs text-white/40 light:text-slate-400">
+              {history.length === 0 ? "No history yet." : `No changes across the last ${history.length} check${history.length === 1 ? "" : "s"} — stable.`}
+            </p> : <ul className="mt-1.5 space-y-1 text-xs">
+              {events.slice(0, 8).map((e, i) => <li key={e.checkedAt} className="flex items-start gap-2">
+                  <span className="mt-0.5 text-white/30 light:text-slate-400 shrink-0">{new Date(e.checkedAt).toLocaleString()}</span>
+                  <span className={`font-mono ${i === 0 ? "text-white/80 light:text-slate-700" : "text-white/40 light:text-slate-400"}`}>
+                    {e.signature ?? "no record found"}
+                  </span>
+                </li>)}
+            </ul>}
+        </div>}
     </div>;
 }

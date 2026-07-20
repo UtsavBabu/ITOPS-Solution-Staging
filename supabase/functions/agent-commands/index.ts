@@ -91,10 +91,10 @@ Deno.serve(async (req) => {
   if (action === "fetch_checks") {
     const { data: due, error } = await supabase
       .from("monitors")
-      .select("id, url, tcp_port, interval")
+      .select("id, url, tcp_port, interval, check_type")
       .eq("via_host_agent_id", host.id)
       .eq("is_active", true)
-      .eq("check_type", "TCP")
+      .in("check_type", ["TCP", "PING"])
       .lte("next_check_at", new Date().toISOString())
       .limit(10);
     if (error) return json({ error: error.message }, 500);
@@ -117,7 +117,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    return json({ checks: (due ?? []).map((m) => ({ id: m.id, host: m.url, port: m.tcp_port })) });
+    return json({
+      checks: (due ?? []).map((m) => ({ id: m.id, host: m.url, port: m.tcp_port, checkType: m.check_type })),
+    });
   }
 
   if (action === "submit_check_result") {

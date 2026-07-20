@@ -203,7 +203,7 @@ export default function MonitorDetail() {
           on the most recent check, not just resolves-or-doesn't. */}
       {monitor.checkType === "DNS" && <SpotlightCard className="p-4" delay={0.08} scan tint="cyan">
           <h2 className="mb-3 text-sm font-medium text-white light:text-slate-900">Resolved Records</h2>
-          <DnsRecordsPanel monitor={monitor} latestCheck={history && history.length > 0 ? history[0] : null} />
+          <DnsRecordsPanel monitor={monitor} latestCheck={history && history.length > 0 ? history[0] : null} history={history ?? []} />
         </SpotlightCard>}
 
       {/* Root cause analysis — evidence-based diagnosis over real telemetry.
