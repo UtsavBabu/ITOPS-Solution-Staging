@@ -457,3 +457,110 @@ export function analyzeHeaders(headers: Record<string, string>, setCookies: stri
 
   return { score, missingHeaders, cookieIssues, serverHeaderLeak, headers: lowerHeaders };
 }
+
+// ---------------------------------------------------------------------------
+// Content & SEO analysis — parsed from the page's own already-fetched HTML.
+// Plain regex, not a DOM parser: this runtime has no layout engine anyway
+// (no Core Web Vitals, no rendered screenshots — those would need a real
+// browser), so a lightweight string scan is honest about what it actually
+// checks: the markup, not the rendered page.
+// ---------------------------------------------------------------------------
+
+export interface SeoAnalysis {
+  title: string | null;
+  titleLength: number | null;
+  metaDescription: string | null;
+  metaDescriptionLength: number | null;
+  h1Count: number;
+  canonicalUrl: string | null;
+  hasViewportMeta: boolean;
+  hasOgTitle: boolean;
+  hasOgDescription: boolean;
+  hasOgImage: boolean;
+  imageCount: number;
+  imagesMissingAlt: number;
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
+function extractAttr(tag: string, attr: string): string | null {
+  const match = tag.match(new RegExp(`${attr}\\s*=\\s*["']([^"']*)["']`, "i"));
+  return match ? decodeHtmlEntities(match[1]) : null;
+}
+
+export function analyzeSeo(html: string): SeoAnalysis {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? decodeHtmlEntities(titleMatch[1]) : null;
+
+  const metaDescTag = html.match(/<meta\s+[^>]*name\s*=\s*["']description["'][^>]*>/i)?.[0] ?? null;
+  const metaDescription = metaDescTag ? extractAttr(metaDescTag, "content") : null;
+
+  const h1Count = (html.match(/<h1[\s>]/gi) ?? []).length;
+
+  const canonicalTag = html.match(/<link\s+[^>]*rel\s*=\s*["']canonical["'][^>]*>/i)?.[0] ?? null;
+  const canonicalUrl = canonicalTag ? extractAttr(canonicalTag, "href") : null;
+
+  const hasViewportMeta = /<meta\s+[^>]*name\s*=\s*["']viewport["']/i.test(html);
+  const hasOgTitle = /<meta\s+[^>]*property\s*=\s*["']og:title["']/i.test(html);
+  const hasOgDescription = /<meta\s+[^>]*property\s*=\s*["']og:description["']/i.test(html);
+  const hasOgImage = /<meta\s+[^>]*property\s*=\s*["']og:image["']/i.test(html);
+
+  const imgTags = html.match(/<img\s[^>]*>/gi) ?? [];
+  const imagesMissingAlt = imgTags.filter((tag) => {
+    const alt = extractAttr(tag, "alt");
+    return alt === null || alt.trim() === "";
+  }).length;
+
+  return {
+    title,
+    titleLength: title ? title.length : null,
+    metaDescription,
+    metaDescriptionLength: metaDescription ? metaDescription.length : null,
+    h1Count,
+    canonicalUrl,
+    hasViewportMeta,
+    hasOgTitle,
+    hasOgDescription,
+    hasOgImage,
+    imageCount: imgTags.length,
+    imagesMissingAlt,
+  };
+}
+
+async function urlRespondsOk(url: string, timeoutMs: number): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal, headers: { "User-Agent": USER_AGENT } });
+    await res.body?.cancel();
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// robots.txt/sitemap.xml are checked at the site's origin, independent of the
+// monitor's exact path — a monitor on /login still cares whether the site
+// overall has these.
+export async function checkRobotsAndSitemap(
+  pageUrl: string,
+  timeoutMs: number,
+): Promise<{ hasRobotsTxt: boolean; hasSitemapXml: boolean }> {
+  const origin = new URL(pageUrl).origin;
+  const [hasRobotsTxt, hasSitemapXml] = await Promise.all([
+    urlRespondsOk(`${origin}/robots.txt`, timeoutMs),
+    urlRespondsOk(`${origin}/sitemap.xml`, timeoutMs),
+  ]);
+  return { hasRobotsTxt, hasSitemapXml };
+}

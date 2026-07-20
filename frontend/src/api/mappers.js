@@ -55,6 +55,26 @@ export function mapSecuritySnapshot(row) {
     checkedAt: row.checked_at
   };
 }
+export function mapContentAnalysis(row) {
+  if (!row) return null;
+  return {
+    title: row.title,
+    titleLength: row.title_length,
+    metaDescription: row.meta_description,
+    metaDescriptionLength: row.meta_description_length,
+    h1Count: row.h1_count,
+    canonicalUrl: row.canonical_url,
+    hasViewportMeta: row.has_viewport_meta,
+    hasOgTitle: row.has_og_title,
+    hasOgDescription: row.has_og_description,
+    hasOgImage: row.has_og_image,
+    imageCount: row.image_count,
+    imagesMissingAlt: row.images_missing_alt,
+    hasRobotsTxt: row.has_robots_txt,
+    hasSitemapXml: row.has_sitemap_xml,
+    checkedAt: row.checked_at
+  };
+}
 export function mapIncident(row) {
   return {
     id: row.id,
@@ -92,6 +112,7 @@ export function mapMonitor(row) {
     asset: mapAsset(row.asset),
     sslInfo: mapSslInfo(row.sslInfo ?? row.ssl_info ?? null),
     securitySnapshot: mapSecuritySnapshot(row.securitySnapshot ?? (Array.isArray(row.security_snapshots) ? row.security_snapshots[0] ?? null : row.security_snapshots) ?? null),
+    contentAnalysis: mapContentAnalysis(row.contentAnalysis ?? (Array.isArray(row.content_analysis) ? row.content_analysis[0] ?? null : row.content_analysis) ?? null),
     incidents: Array.isArray(row.incidents) ? row.incidents.map(mapIncident) : undefined
   };
 }

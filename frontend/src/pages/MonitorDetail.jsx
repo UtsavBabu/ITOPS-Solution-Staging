@@ -290,6 +290,42 @@ export default function MonitorDetail() {
           </SpotlightCard>
         </div>}
 
+      {/* Content & SEO — parsed from the page's own markup, not a rendered
+          Lighthouse pass (this runtime has no browser/layout engine), so it's
+          scoped honestly to what's actually checkable: title/meta/headings/
+          alt text/canonical/OG tags/robots.txt/sitemap.xml. */}
+      {monitor.checkType !== "DNS" && monitor.checkType !== "TCP" && <SpotlightCard className="p-4" delay={0.19} scan tint="amber">
+          <h2 className="mb-3 text-sm font-medium text-white light:text-slate-900">Content &amp; SEO</h2>
+          {!monitor.contentAnalysis ? <p className="text-sm text-white/50 light:text-slate-500">Not yet checked.</p> : <div className="space-y-3 text-sm">
+              <div>
+                <div className="flex items-center justify-between text-xs text-white/50 light:text-slate-500">
+                  <span>Title</span>
+                  {monitor.contentAnalysis.titleLength != null && <span className={monitor.contentAnalysis.titleLength >= 10 && monitor.contentAnalysis.titleLength <= 60 ? "text-emerald-300" : "text-amber-300"}>
+                      {monitor.contentAnalysis.titleLength} chars
+                    </span>}
+                </div>
+                <p className="mt-0.5 truncate text-white light:text-slate-900">{monitor.contentAnalysis.title || "— missing —"}</p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-xs text-white/50 light:text-slate-500">
+                  <span>Meta description</span>
+                  {monitor.contentAnalysis.metaDescriptionLength != null && <span className={monitor.contentAnalysis.metaDescriptionLength >= 50 && monitor.contentAnalysis.metaDescriptionLength <= 160 ? "text-emerald-300" : "text-amber-300"}>
+                      {monitor.contentAnalysis.metaDescriptionLength} chars
+                    </span>}
+                </div>
+                <p className="mt-0.5 truncate text-white light:text-slate-900">{monitor.contentAnalysis.metaDescription || "— missing —"}</p>
+              </div>
+              <Row label="H1 headings" value={monitor.contentAnalysis.h1Count === 1 ? "1 ✓" : `${monitor.contentAnalysis.h1Count} ${monitor.contentAnalysis.h1Count === 0 ? "(none found)" : "(should be exactly 1)"}`} />
+              <Row label="Canonical URL" value={monitor.contentAnalysis.canonicalUrl ?? "Not set"} />
+              <Row label="Images missing alt text" value={monitor.contentAnalysis.imageCount === 0 ? "No images" : `${monitor.contentAnalysis.imagesMissingAlt} of ${monitor.contentAnalysis.imageCount}`} />
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs">
+                {[["Mobile viewport tag", monitor.contentAnalysis.hasViewportMeta], ["Open Graph title", monitor.contentAnalysis.hasOgTitle], ["Open Graph description", monitor.contentAnalysis.hasOgDescription], ["Open Graph image", monitor.contentAnalysis.hasOgImage], ["robots.txt", monitor.contentAnalysis.hasRobotsTxt], ["sitemap.xml", monitor.contentAnalysis.hasSitemapXml]].map(([label, present]) => <span key={label} className={present ? "text-emerald-300" : "text-white/30 light:text-slate-400"}>
+                    {present ? "✓" : "✗"} {label}
+                  </span>)}
+              </div>
+            </div>}
+        </SpotlightCard>}
+
       {/* Incident history */}
       <SpotlightCard className="overflow-hidden" delay={0.2} scan>
         <div className="border-b border-white/10 px-4 py-3">

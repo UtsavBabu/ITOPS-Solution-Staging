@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { mapAlertChannel, mapAsset, mapCheckResult, mapContentItem, mapIncident, mapMonitor } from "./mappers";
+import { mapAlertChannel, mapAsset, mapCheckResult, mapContentAnalysis, mapContentItem, mapIncident, mapMonitor } from "./mappers";
 export async function fetchContentItems(pageSlug, sectionKey) {
   let query = supabase.from("content_items").select("*").eq("page_slug", pageSlug).order("sort_order", {
     ascending: true
@@ -114,7 +114,17 @@ export async function fetchMonitor(id) {
     referencedTable: "incidents"
   }).single();
   if (error) throw new Error(error.message);
-  return mapMonitor(data);
+  const monitor = mapMonitor(data);
+  // A separate, isolated query rather than embedding content_analysis in
+  // MONITOR_SELECT — that select is shared with the bulk monitors list, and
+  // PostgREST 400s the WHOLE query (not just this field) if it references a
+  // table/relationship that doesn't exist yet on this deployment.
+  const {
+    data: content,
+    error: contentError
+  } = await supabase.from("content_analysis").select("*").eq("monitor_id", id).maybeSingle();
+  monitor.contentAnalysis = contentError ? null : mapContentAnalysis(content ?? null);
+  return monitor;
 }
 export async function fetchMonitorHistory(id, limit = 100) {
   const {

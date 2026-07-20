@@ -3,7 +3,7 @@
 // writes results/incidents/alerts using the service role key (bypasses RLS
 // by design — this is a trusted backend job, not a user request).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { analyzeHeaders, runMonitorCheck, runSslCheck } from "../_shared/checks.ts";
+import { analyzeHeaders, analyzeSeo, checkRobotsAndSitemap, runHttpCheck, runMonitorCheck, runSslCheck } from "../_shared/checks.ts";
 import { dispatchAlert } from "../_shared/alerts.ts";
 import { recordCheckResult } from "../_shared/monitorResults.ts";
 
@@ -83,6 +83,54 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
       },
       { onConflict: "monitor_id" },
     );
+
+    const { data: existingContent } = await supabase
+      .from("content_analysis")
+      .select("checked_at")
+      .eq("monitor_id", monitor.id)
+      .maybeSingle();
+
+    // The page's markup doesn't change every 30 seconds either — same once/24h
+    // cadence as the SSL check, and it needs its own fetch since the plain
+    // uptime check above doesn't read the response body.
+    const dueForContentCheck =
+      !existingContent?.checked_at ||
+      Date.now() - new Date(existingContent.checked_at).getTime() > 24 * 60 * 60 * 1000;
+
+    if (dueForContentCheck) {
+      try {
+        const withBody = await runHttpCheck(monitor.url, CHECK_TIMEOUT_MS, { readBody: true });
+        if (withBody.status === "UP" && withBody.body) {
+          const seo = analyzeSeo(withBody.body);
+          const { hasRobotsTxt, hasSitemapXml } = await checkRobotsAndSitemap(monitor.url, CHECK_TIMEOUT_MS);
+          await supabase.from("content_analysis").upsert(
+            {
+              organization_id: monitor.organization_id,
+              monitor_id: monitor.id,
+              title: seo.title,
+              title_length: seo.titleLength,
+              meta_description: seo.metaDescription,
+              meta_description_length: seo.metaDescriptionLength,
+              h1_count: seo.h1Count,
+              canonical_url: seo.canonicalUrl,
+              has_viewport_meta: seo.hasViewportMeta,
+              has_og_title: seo.hasOgTitle,
+              has_og_description: seo.hasOgDescription,
+              has_og_image: seo.hasOgImage,
+              image_count: seo.imageCount,
+              images_missing_alt: seo.imagesMissingAlt,
+              has_robots_txt: hasRobotsTxt,
+              has_sitemap_xml: hasSitemapXml,
+              error_message: null,
+              checked_at: new Date().toISOString(),
+            },
+            { onConflict: "monitor_id" },
+          );
+        }
+      } catch (err) {
+        console.error(`Content analysis failed for monitor ${monitor.id} (${monitor.url}):`, err);
+      }
+    }
   }
 
   await recordCheckResult(supabase, monitor, {
