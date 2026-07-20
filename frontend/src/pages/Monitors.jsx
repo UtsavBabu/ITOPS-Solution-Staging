@@ -25,12 +25,14 @@ const CHECK_TYPE_LABELS = {
   TCP: "TCP port"
 };
 
-// The two product surfaces of the monitoring service. Websites speak HTTP;
-// network devices (routers, switches, firewalls, printers, DNS servers) are
-// checked at the transport layer — TCP connects and DNS resolution.
+// The two product surfaces of this page. Websites speak HTTP; network
+// devices (routers, switches, firewalls, printers) are checked at the
+// transport layer — TCP connects. DNS record monitoring lives on its own
+// page (/dns) since it's a different kind of check with its own rich result
+// display, not a device with a port.
 
 const WEB_TYPES = ["HTTP", "KEYWORD", "STATUS_CODE"];
-const NETWORK_TYPES = ["TCP", "DNS"];
+const NETWORK_TYPES = ["TCP"];
 const WEB_CHECKS = [{
   value: "HTTP",
   label: "Website / API uptime",
@@ -48,10 +50,6 @@ const NETWORK_CHECKS = [{
   value: "TCP",
   label: "Device / TCP port",
   blurb: "Connects to a port on the device and alerts when it stops accepting connections — like Nagios check_tcp."
-}, {
-  value: "DNS",
-  label: "DNS record",
-  blurb: "Alerts when a DNS record stops resolving (or changes value)."
 }];
 const PORT_PRESETS = [{
   label: "HTTPS · 443",
@@ -108,7 +106,6 @@ const DEVICE_PRESETS = [{
   port: 445,
   icon: "💾"
 }];
-const DNS_RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS"];
 const REALTIME_TABLES = ["monitors", "incidents", "check_results"];
 const REALTIME_KEYS = [["monitors"]];
 const inputClass = "rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-white/40 focus:outline-none";
@@ -214,7 +211,12 @@ export default function Monitors({ mode = "web" }) {
     queryFn: fetchMonitors,
     refetchInterval: 60_000
   });
-  const [tab, setTab] = useState(mode);
+  // `mode` (route-driven, via App.jsx's key={mode} on this route element) is
+  // the single source of truth for which section this is — there is no
+  // separate "tab" state to desync from it. Switching sections is a real
+  // route navigation (the toggle below renders <Link>s), which remounts this
+  // component fresh via the key, so checkType/name/url etc. always start
+  // clean for the section actually being viewed.
   const [checkType, setCheckType] = useState(mode === "web" ? "HTTP" : "TCP");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -222,14 +224,11 @@ export default function Monitors({ mode = "web" }) {
   const [expectedKeyword, setExpectedKeyword] = useState("");
   const [keywordMatchMode, setKeywordMatchMode] = useState("CONTAINS");
   const [expectedStatusCode, setExpectedStatusCode] = useState("200");
-  const [dnsRecordType, setDnsRecordType] = useState("A");
-  const [dnsExpectedValue, setDnsExpectedValue] = useState("");
   const [tcpPort, setTcpPort] = useState("443");
   const [devicePreset, setDevicePreset] = useState(null);
   const [formError, setFormError] = useState(null);
-  const isDns = checkType === "DNS";
   const isTcp = checkType === "TCP";
-  const activeChecks = tab === "web" ? WEB_CHECKS : NETWORK_CHECKS;
+  const activeChecks = mode === "web" ? WEB_CHECKS : NETWORK_CHECKS;
   const activeType = activeChecks.find(t => t.value === checkType) ?? activeChecks[0];
   const {
     webMonitors,
@@ -241,19 +240,6 @@ export default function Monitors({ mode = "web" }) {
       networkMonitors: all.filter(m => NETWORK_TYPES.includes(m.checkType))
     };
   }, [monitors]);
-  function switchTab(next) {
-    setTab(next);
-    setCheckType(next === "web" ? "HTTP" : "TCP");
-    setFormError(null);
-    // Website and Network are different forms — carrying a name/preset
-    // picked on one over to the other (e.g. clicking "Network Printer" then
-    // switching to Website & API) left stray, meaningless state behind.
-    setName("");
-    setUrl("");
-    setExpectedKeyword("");
-    setDnsExpectedValue("");
-    setDevicePreset(null);
-  }
   const createMutation = useMutation({
     mutationFn: () => createMonitor({
       name,
@@ -263,15 +249,12 @@ export default function Monitors({ mode = "web" }) {
       expectedKeyword: checkType === "KEYWORD" ? expectedKeyword : undefined,
       keywordMatchMode: checkType === "KEYWORD" ? keywordMatchMode : undefined,
       expectedStatusCode: checkType === "STATUS_CODE" ? Number(expectedStatusCode) : undefined,
-      dnsRecordType: isDns ? dnsRecordType : undefined,
-      dnsExpectedValue: isDns ? dnsExpectedValue : undefined,
       tcpPort: isTcp ? Number(tcpPort) : undefined
     }),
     onSuccess: () => {
       setName("");
       setUrl("");
       setExpectedKeyword("");
-      setDnsExpectedValue("");
       setDevicePreset(null);
       queryClient.invalidateQueries({
         queryKey: ["monitors"]
@@ -305,7 +288,7 @@ export default function Monitors({ mode = "web" }) {
     setFormError(null);
     createMutation.mutate();
   }
-  const shownMonitors = tab === "web" ? webMonitors : networkMonitors;
+  const shownMonitors = mode === "web" ? webMonitors : networkMonitors;
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -315,22 +298,24 @@ export default function Monitors({ mode = "web" }) {
           </p>
         </div>
         <div className="flex rounded-full border border-white/10 light:border-slate-900/10 bg-black/30 light:bg-slate-900/[0.03] p-1" role="tablist" aria-label="Monitor category">
-          {[["web", `Websites & APIs (${webMonitors.length})`], ["network", `Network Devices (${networkMonitors.length})`]].map(([value, label]) => <button key={value} role="tab" aria-selected={tab === value} onClick={() => switchTab(value)} className={`rounded-full px-4 py-1.5 text-sm transition-all ${tab === value ? "bg-white text-black" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+          {[["web", "/monitors", `Websites & APIs (${webMonitors.length})`], ["network", "/network", `Network Devices (${networkMonitors.length})`]].map(([value, to, label]) => <Link key={value} to={to} role="tab" aria-selected={mode === value} className={`rounded-full px-4 py-1.5 text-sm transition-all ${mode === value ? "bg-white text-black" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
               {label}
-            </button>)}
+            </Link>)}
         </div>
       </Reveal>
 
-      {tab === "network" && <Reveal className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] light:bg-slate-900/[0.03] px-4 py-3">
+      {mode === "network" && <Reveal className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] light:bg-slate-900/[0.03] px-4 py-3">
           <p className="text-xs leading-relaxed text-white/50 light:text-slate-500">
-            Agentless checks for home routers, GPON/fiber terminals (ONTs), switches, firewalls, printers, and DNS
-            servers — TCP connect with latency (Nagios <code className="text-white/70 light:text-slate-600">check_tcp</code> style) and DNS
-            resolution. The device's port must be reachable from where the check runs; for servers behind NAT, install
-            the{" "}
+            Agentless TCP connect checks with latency (Nagios <code className="text-white/70 light:text-slate-600">check_tcp</code> style) for home
+            routers, GPON/fiber terminals (ONTs), switches, firewalls, and printers. The device's port must be
+            reachable from where the check runs; for servers behind NAT, install the{" "}
             <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">
               Kada Nigrani agent
             </Link>{" "}
-            instead.
+            instead. Watching a domain's DNS records instead of a device port? See{" "}
+            <Link to="/dns" className="text-cyan-300 light:text-cyan-600 hover:underline">
+              DNS Monitoring
+            </Link>.
           </p>
           <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/90">On the roadmap</p>
@@ -356,11 +341,11 @@ export default function Monitors({ mode = "web" }) {
           </label>
           <label className="text-sm">
             <span className="mb-1.5 block text-white/70 light:text-slate-600">Name</span>
-            <input required value={name} onChange={e => setName(e.target.value)} placeholder={tab === "web" ? "Marketing site" : "Office router"} className={`w-full ${inputClass}`} />
+            <input required value={name} onChange={e => setName(e.target.value)} placeholder={mode === "web" ? "Marketing site" : "Office router"} className={`w-full ${inputClass}`} />
           </label>
           <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">{isDns || isTcp ? "Hostname / IP" : "URL"}</span>
-            <input required type={isDns || isTcp ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isDns || isTcp ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
+            <span className="mb-1.5 block text-white/70 light:text-slate-600">{isTcp ? "Hostname / IP" : "URL"}</span>
+            <input required type={isTcp ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isTcp ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
           </label>
           <label className="text-sm">
             <span className="mb-1.5 block text-white/70 light:text-slate-600">Check every</span>
@@ -414,24 +399,9 @@ export default function Monitors({ mode = "web" }) {
             <input required type="number" min={100} max={599} value={expectedStatusCode} onChange={e => setExpectedStatusCode(e.target.value)} placeholder="200" className={`w-full ${inputClass}`} />
           </label>}
 
-        {isDns && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="text-sm">
-              <span className="mb-1.5 block text-white/70 light:text-slate-600">Record type</span>
-              <select value={dnsRecordType} onChange={e => setDnsRecordType(e.target.value)} className={`w-full ${inputClass}`}>
-                {DNS_RECORD_TYPES.map(t => <option key={t} value={t}>
-                    {t}
-                  </option>)}
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="mb-1.5 block text-white/70 light:text-slate-600">Expected value (optional)</span>
-              <input value={dnsExpectedValue} onChange={e => setDnsExpectedValue(e.target.value)} placeholder="Leave blank to just check it resolves" className={`w-full ${inputClass}`} />
-            </label>
-          </div>}
-
         <div className="flex items-center gap-3">
           <button type="submit" disabled={createMutation.isPending} className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:opacity-60">
-            {createMutation.isPending ? "Adding…" : tab === "web" ? "Add Monitor" : "Add Device"}
+            {createMutation.isPending ? "Adding…" : mode === "web" ? "Add Monitor" : "Add Device"}
           </button>
           {formError && <p className="text-sm text-red-300">{formError}</p>}
         </div>
@@ -439,7 +409,7 @@ export default function Monitors({ mode = "web" }) {
       </Reveal>
 
       <SpotlightCard className="overflow-x-auto" delay={0.1} scan>
-        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={tab === "web" ? "No website monitors yet." : "No network devices yet."} description={tab === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : <>
+        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={mode === "web" ? "No website monitors yet." : "No network devices yet."} description={mode === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : <>
             <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />
             <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={handleDelete} /></div>
           </>}

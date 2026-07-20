@@ -17,6 +17,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EmployeeDashboard = lazy(() => import("./pages/EmployeeDashboard"));
 const Monitors = lazy(() => import("./pages/Monitors"));
+const DnsMonitoring = lazy(() => import("./pages/DnsMonitoring"));
 const MonitorDetail = lazy(() => import("./pages/MonitorDetail"));
 const Hosts = lazy(() => import("./pages/Hosts"));
 const Incidents = lazy(() => import("./pages/Incidents"));
@@ -199,8 +200,9 @@ export default function App() {
             view access anywhere) is redirected back to /dashboard even on a
             direct URL, not just hidden from the sidebar. */}
         <Route element={<RequireConsoleAccess><Outlet /></RequireConsoleAccess>}>
-          <Route path="/monitors" element={<Monitors mode="web" />} />
-          <Route path="/network" element={<Monitors mode="network" />} />
+          <Route path="/monitors" element={<Monitors key="web" mode="web" />} />
+          <Route path="/network" element={<Monitors key="network" mode="network" />} />
+          <Route path="/dns" element={<DnsMonitoring />} />
           <Route path="/monitors/:id" element={<MonitorDetail />} />
           <Route path="/hosts" element={<Hosts />} />
           <Route path="/incidents" element={<Incidents />} />

@@ -40,6 +40,11 @@ const NAV_GROUPS = [{
     icon: "◇",
     module: "monitors"
   }, {
+    to: "/dns",
+    label: "DNS Monitoring",
+    icon: "❖",
+    module: "monitors"
+  }, {
     to: "/hosts",
     label: "Server Agents",
     icon: "▣",

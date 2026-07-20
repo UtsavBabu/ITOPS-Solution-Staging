@@ -102,6 +102,7 @@ export function mapCheckResult(row) {
     responseTimeMs: row.response_time_ms,
     errorMessage: row.error_message,
     redirectChain: row.redirect_chain ?? [],
+    dnsAnswers: row.dns_answers ?? null,
     checkedAt: row.checked_at
   };
 }

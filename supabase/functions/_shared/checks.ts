@@ -3,6 +3,11 @@
 // the comment on runSslCheck.
 export type CheckStatus = "UP" | "DOWN" | "ERROR";
 
+export interface DnsAnswer {
+  data: string;
+  ttl: number;
+}
+
 export interface HttpCheckResult {
   status: CheckStatus;
   statusCode?: number;
@@ -12,6 +17,7 @@ export interface HttpCheckResult {
   headers: Record<string, string>;
   setCookies: string[];
   body?: string;
+  dnsAnswers?: DnsAnswer[];
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
@@ -297,6 +303,8 @@ async function runDnsCheck(
       );
     }
 
+    const dnsAnswers: DnsAnswer[] = matchingRecords.map((a) => ({ data: a.data, ttl: a.TTL }));
+
     const expected = (config.dnsExpectedValue ?? "").trim();
     if (expected) {
       const found = matchingRecords.some((a) => a.data.includes(expected));
@@ -307,11 +315,12 @@ async function runDnsCheck(
           `${recordType} record does not match expected value "${expected}" (got: ${matchingRecords
             .map((a) => a.data)
             .join(", ")})`,
+          dnsAnswers,
         );
       }
     }
 
-    return emptyResult("UP", responseTimeMs);
+    return emptyResult("UP", responseTimeMs, undefined, dnsAnswers);
   } catch (err) {
     clearTimeout(timer);
     const message =
@@ -320,8 +329,13 @@ async function runDnsCheck(
   }
 }
 
-function emptyResult(status: CheckStatus, responseTimeMs: number, errorMessage?: string): HttpCheckResult {
-  return { status, responseTimeMs, errorMessage, redirectChain: [], headers: {}, setCookies: [] };
+function emptyResult(
+  status: CheckStatus,
+  responseTimeMs: number,
+  errorMessage?: string,
+  dnsAnswers?: DnsAnswer[],
+): HttpCheckResult {
+  return { status, responseTimeMs, errorMessage, redirectChain: [], headers: {}, setCookies: [], dnsAnswers };
 }
 
 export interface SslCheckResult {

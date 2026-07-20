@@ -43,6 +43,7 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
     response_time_ms: http.responseTimeMs,
     error_message: http.errorMessage,
     redirect_chain: http.redirectChain,
+    dns_answers: http.dnsAnswers ?? null,
   });
 
   // SSL + security-header analysis only make sense for HTTPS website checks,

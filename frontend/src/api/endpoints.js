@@ -78,6 +78,31 @@ export async function fetchMonitors() {
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapMonitor);
 }
+const DNS_MONITOR_SELECT = "*, incidents(*), latestCheck:check_results(*)";
+
+// DNS monitors don't have SSL/security/asset data (those are HTTP-only), so
+// this uses a leaner select than fetchMonitors — but it does embed each
+// monitor's most recent check_results row so the DNS page can show the
+// actually-resolved records without a second round trip per monitor.
+export async function fetchDnsMonitors() {
+  const organizationId = await currentOrganizationId();
+  const {
+    data,
+    error
+  } = await supabase.from("monitors").select(DNS_MONITOR_SELECT).eq("organization_id", organizationId).eq("check_type", "DNS").eq("incidents.status", "OPEN").order("checked_at", {
+    referencedTable: "check_results",
+    ascending: false
+  }).limit(1, {
+    referencedTable: "check_results"
+  }).order("created_at", {
+    ascending: false
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    ...mapMonitor(row),
+    latestCheck: Array.isArray(row.latestCheck) && row.latestCheck[0] ? mapCheckResult(row.latestCheck[0]) : null
+  }));
+}
 export async function fetchMonitor(id) {
   const {
     data,

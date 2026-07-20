@@ -6,6 +6,7 @@ import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ResponseTimeChart } from "../components/ResponseTimeChart";
 import { RootCauseAnalysis } from "../components/RootCauseAnalysis";
+import { DnsRecordsPanel } from "../components/DnsRecordsPanel";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { Skeleton, SkeletonRows, SkeletonStatGrid } from "../components/Skeleton";
 import { ErrorState } from "../components/EmptyState";
@@ -188,6 +189,13 @@ export default function MonitorDetail() {
         <StatCard label="Security score" value={monitor.securitySnapshot ? `${monitor.securitySnapshot.score}/100` : "—"} tone={monitor.securitySnapshot ? monitor.securitySnapshot.score < 40 ? "danger" : monitor.securitySnapshot.score < 70 ? "warning" : "default" : "default"} delay={0.12} />
         <StatCard label="SSL expires in" value={monitor.sslInfo?.daysRemaining != null ? `${monitor.sslInfo.daysRemaining}d` : "—"} tone={monitor.sslInfo?.daysRemaining != null && monitor.sslInfo.daysRemaining <= 14 ? "warning" : "default"} delay={0.16} />
       </div>
+
+      {/* Resolved DNS records — the actual values a public resolver returned
+          on the most recent check, not just resolves-or-doesn't. */}
+      {monitor.checkType === "DNS" && <SpotlightCard className="p-4" delay={0.08} scan tint="cyan">
+          <h2 className="mb-3 text-sm font-medium text-white light:text-slate-900">Resolved Records</h2>
+          <DnsRecordsPanel monitor={monitor} latestCheck={history && history.length > 0 ? history[0] : null} />
+        </SpotlightCard>}
 
       {/* Root cause analysis — evidence-based diagnosis over real telemetry.
           Skipped on a history fetch error so a failed load never reads as
