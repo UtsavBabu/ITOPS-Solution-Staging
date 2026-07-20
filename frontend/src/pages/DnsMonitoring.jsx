@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
@@ -7,6 +7,7 @@ import { Reveal, SpotlightCard } from "../components/Animated";
 import { SkeletonRows } from "../components/Skeleton";
 import { EmptyState, ErrorState } from "../components/EmptyState";
 import { DnsRecordsPanel } from "../components/DnsRecordsPanel";
+import { DomainLookup } from "../components/DomainLookup";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
@@ -40,6 +41,14 @@ export default function DnsMonitoring() {
   const [dnsExpectedValue, setDnsExpectedValue] = useState("");
   const [interval, setInterval] = useState("FIVE_MINUTES");
   const [formError, setFormError] = useState(null);
+  const formRef = useRef(null);
+
+  function handleMonitorFromLookup(domain, recordType) {
+    setName(`${domain} ${recordType}`);
+    setHostname(domain);
+    setDnsRecordType(recordType);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   const createMutation = useMutation({
     mutationFn: () => createMonitor({
@@ -100,7 +109,15 @@ export default function DnsMonitoring() {
       </Reveal>
 
       <Reveal delay={0.05}>
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white p-5">
+        <DomainLookup onMonitor={handleMonitorFromLookup} />
+      </Reveal>
+
+      <Reveal delay={0.08}>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-cyan-400/15 light:border-cyan-900/10 bg-neutral-900/60 light:bg-white p-5">
+          <div>
+            <h2 className="text-sm font-medium text-white light:text-slate-900">Add a Scheduled Monitor</h2>
+            <p className="mt-1 text-xs text-white/45 light:text-slate-400">Checks one record type on a repeating schedule and alerts if it stops resolving or changes.</p>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <label className="text-sm">
               <span className="mb-1.5 block text-white/70 light:text-slate-600">Name</span>
@@ -136,6 +153,9 @@ export default function DnsMonitoring() {
         </form>
       </Reveal>
 
+      <Reveal delay={0.1}>
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Scheduled Monitors</h2>
+      </Reveal>
       {isLoading ? <SpotlightCard className="p-4" scan><SkeletonRows count={3} /></SpotlightCard> : isError ? <SpotlightCard className="p-4" scan><ErrorState message={`Couldn't load DNS monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /></SpotlightCard> : (monitors ?? []).length === 0 ? <SpotlightCard className="p-4" scan><EmptyState title="No DNS monitors yet." description="Add a hostname and record type above to start watching what it resolves to." /></SpotlightCard> : <div className="space-y-4">
           {monitors.map((monitor, i) => <motion.div key={monitor.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}>
               <SpotlightCard className="p-4" scan tint="cyan">

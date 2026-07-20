@@ -195,6 +195,53 @@ function MonitorTable({
       </tbody>
     </table>;
 }
+// A monitor only stores the port it checks, not which device preset (if any)
+// created it — so this is a best-effort icon from the port's well-known
+// service, not a claim about the actual hardware. Falls back to a plain plug.
+const PORT_ICONS = {
+  80: "🌐",
+  443: "🌐",
+  22: "🖥️",
+  3389: "🖥️",
+  53: "📡",
+  3306: "🗄️",
+  445: "💾",
+  9100: "🖨️"
+};
+function deviceIcon(port) {
+  return PORT_ICONS[port] ?? "🔌";
+}
+// Network devices get a card grid, not the website table — these are
+// physical things you'd recognize by icon, not rows in an endpoint list.
+function DeviceCards({ monitors, onDelete }) {
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {monitors.map((monitor, i) => <motion.div key={monitor.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }} className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-400/10 text-base" aria-hidden>
+                {deviceIcon(monitor.tcpPort)}
+              </span>
+              <div className="min-w-0">
+                <Link to={`/monitors/${monitor.id}`} className="block truncate font-medium text-white light:text-slate-900 hover:underline">
+                  {monitor.name}
+                </Link>
+                <p className="truncate font-mono text-xs text-white/45 light:text-slate-400">{targetLabel(monitor)}</p>
+              </div>
+            </div>
+            <StatusBadge status={monitor.lastStatus} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-white/40 light:text-slate-400">
+            <span>Every {INTERVAL_LABELS[monitor.interval]}</span>
+            <button onClick={() => onDelete(monitor)} className="text-red-300 light:text-red-600 hover:underline">
+              Delete
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] text-white/30 light:text-slate-400">
+            {monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}
+          </p>
+        </motion.div>)}
+    </div>;
+}
 export default function Monitors({ mode = "web" }) {
   useRealtimeInvalidate(REALTIME_TABLES, REALTIME_KEYS);
   const queryClient = useQueryClient();
@@ -291,17 +338,20 @@ export default function Monitors({ mode = "web" }) {
   const shownMonitors = mode === "web" ? webMonitors : networkMonitors;
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">{mode === "web" ? "Website & API Monitoring" : "Network Device Monitoring"}</h1>
-          <p className="mt-1 text-sm text-white/45 light:text-slate-400">
-            {mode === "web" ? "Uptime, keyword, and status-code checks for anything that speaks HTTP." : "Routers, GPON/fiber terminals, switches, firewalls, and printers — anything with a reachable port."}
-          </p>
+        <div className="flex items-center gap-3">
+          <span aria-hidden className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ${mode === "web" ? "bg-blue-400/10 text-blue-300 light:bg-blue-100 light:text-blue-700" : "bg-cyan-400/10 text-cyan-300 light:bg-cyan-100 light:text-cyan-700"}`}>
+            {mode === "web" ? "◈" : "◇"}
+          </span>
+          <div>
+            <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">{mode === "web" ? "Website & API Monitoring" : "Network Device Monitoring"}</h1>
+            <p className="mt-1 text-sm text-white/45 light:text-slate-400">
+              {mode === "web" ? "Uptime, keyword, and status-code checks for anything that speaks HTTP." : "Routers, GPON/fiber terminals, switches, firewalls, and printers — anything with a reachable port."}
+            </p>
+          </div>
         </div>
-        <div className="flex rounded-full border border-white/10 light:border-slate-900/10 bg-black/30 light:bg-slate-900/[0.03] p-1" role="tablist" aria-label="Monitor category">
-          {[["web", "/monitors", `Websites & APIs (${webMonitors.length})`], ["network", "/network", `Network Devices (${networkMonitors.length})`]].map(([value, to, label]) => <Link key={value} to={to} role="tab" aria-selected={mode === value} className={`rounded-full px-4 py-1.5 text-sm transition-all ${mode === value ? "bg-white text-black" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
-              {label}
-            </Link>)}
-        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${mode === "web" ? "bg-blue-400/10 text-blue-300 light:bg-blue-100 light:text-blue-700" : "bg-cyan-400/10 text-cyan-300 light:bg-cyan-100 light:text-cyan-700"}`}>
+          {mode === "web" ? `${webMonitors.length} monitor${webMonitors.length === 1 ? "" : "s"}` : `${networkMonitors.length} device${networkMonitors.length === 1 ? "" : "s"}`}
+        </span>
       </Reveal>
 
       {mode === "network" && <Reveal className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] light:bg-slate-900/[0.03] px-4 py-3">
@@ -329,7 +379,7 @@ export default function Monitors({ mode = "web" }) {
         </Reveal>}
 
       <Reveal delay={0.05}>
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white p-5">
+      <form onSubmit={handleSubmit} className={`space-y-4 rounded-2xl border bg-neutral-900/60 light:bg-white p-5 ${mode === "web" ? "border-blue-400/15 light:border-blue-900/10" : "border-cyan-400/15 light:border-cyan-900/10"}`}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-sm">
             <span className="mb-1.5 block text-white/70 light:text-slate-600">Check type</span>
@@ -408,11 +458,11 @@ export default function Monitors({ mode = "web" }) {
       </form>
       </Reveal>
 
-      <SpotlightCard className="overflow-x-auto" delay={0.1} scan>
-        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={mode === "web" ? "No website monitors yet." : "No network devices yet."} description={mode === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : <>
+      <SpotlightCard className={mode === "web" ? "overflow-x-auto" : "p-4"} delay={0.1} scan tint={mode === "web" ? "blue" : "cyan"}>
+        {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={mode === "web" ? "No website monitors yet." : "No network devices yet."} description={mode === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : mode === "web" ? <>
             <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />
             <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={handleDelete} /></div>
-          </>}
+          </> : <DeviceCards monitors={shownMonitors} onDelete={handleDelete} />}
       </SpotlightCard>
     </div>;
 }
