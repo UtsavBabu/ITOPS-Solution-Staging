@@ -118,7 +118,8 @@ const CATEGORY_ICONS = {
   "cybersecurity": "M12 2l8 3.5v5.4c0 5.2-3.4 9.8-8 11.1-4.6-1.3-8-5.9-8-11.1V5.5L12 2z",
   "endpoint-security": "M4 4h16v10H4zM9 20h6M12 14v6",
   "data-protection": "M12 3c4 0 7 1.3 7 3v10c0 1.7-3 3-7 3s-7-1.3-7-3V6c0-1.7 3-3 7-3z",
-  "physical-security": "M4 21v-9l8-6 8 6v9h-5v-6H9v6z"
+  "physical-security": "M4 21v-9l8-6 8 6v9h-5v-6H9v6z",
+  "soc": "M4 5h16v11H4zM9 20h6M12 16v4M8 9l2.5 2.5L8 14M13 14h3"
 };
 export function CategoryIcon({ category, size = 16 }) {
   const path = CATEGORY_ICONS[category] ?? CATEGORY_ICONS["cybersecurity"];

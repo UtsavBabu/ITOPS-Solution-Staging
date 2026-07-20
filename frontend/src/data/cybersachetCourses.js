@@ -404,6 +404,62 @@ const COURSES = [
       { id: "q3", questionType: "single", question: "What's the best defense against shoulder surfing in a public space?", choices: ["Working faster so less is visible", "A privacy screen filter and positioning your screen away from foot traffic", "Only checking email in public", "It's not a real risk outside the office"], correctIndex: 1 },
       { id: "q4", questionType: "single", question: "What's the safest way to dispose of an old company laptop?", choices: ["Throw it in the regular trash", "Use your organization's secure wipe/disposal process", "Give it away after deleting a few files", "Remove the sticker with the company logo only"], correctIndex: 1 }
     ]
+  },
+  {
+    id: "local-soc-fundamentals",
+    slug: "soc-fundamentals",
+    title: "SOC Fundamentals: Detecting & Responding to Threats",
+    description: "How a Security Operations Center actually works — the analyst tiers, triaging alerts under real time pressure, and the incident response lifecycle every SOC follows.",
+    level: "intermediate",
+    estimatedMinutes: 20,
+    category: "soc",
+    freeTier: false,
+    modules: [
+      { id: "m1", title: "How a SOC Operates" },
+      { id: "m2", title: "Triage & Response" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "What a SOC actually does",
+        body: "A Security Operations Center is the team and the workflow that watches an organization's systems around the clock and decides, for every alert that fires, whether it's noise or a real problem. The raw material is telemetry — logs from firewalls, endpoints, servers, cloud services, and identity systems — pulled into a SIEM (Security Information and Event Management platform) that correlates it and flags anything that matches a known bad pattern. A SOC's real output isn't \"alerts reviewed\"; it's incidents caught early enough that they were cheap to fix instead of a breach that made the news. Most of a SOC's day is spent proving that an alert is nothing — which is exactly the point, since the one time it isn't nothing is the one that matters.",
+        keyTakeaway: "A SOC's real job is deciding which of thousands of alerts is the one that actually matters — most of the work is proving something is nothing.",
+        check: { question: "What is the main output a SOC is actually judged on?", choices: ["The total number of alerts generated", "Incidents caught early, before they become expensive breaches", "How many logs are collected per day", "The number of firewalls installed"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Analyst tiers and when to escalate",
+        body: "Most SOCs split work across tiers so the right level of experience handles the right level of problem. Tier 1 analysts triage the incoming stream: is this alert a known false positive, or does it need a closer look? They handle volume, not depth. Tier 2 analysts investigate what Tier 1 escalates — pulling additional logs, confirming whether something malicious actually happened, and scoping how far it spread. Tier 3 (sometimes called threat hunters or incident responders) handle the serious cases: active intrusions, novel attack techniques nothing already caught, and leading the response when containment is required. The tiers exist so a Tier 1 analyst isn't expected to make a containment call alone, and a Tier 3 responder isn't stuck triaging routine noise instead of hunting for what the automated tools missed.",
+        keyTakeaway: "Tiers exist so triage volume and deep investigation are handled by the right level of experience — escalate rather than guess.",
+        check: { question: "What is a Tier 1 SOC analyst primarily responsible for?", choices: ["Leading incident containment during a breach", "Triaging the incoming alert stream and deciding what needs escalation", "Writing detection rules for the SIEM", "Managing the organization's firewall hardware"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Reading and prioritizing alerts",
+        body: "Not every alert deserves the same urgency, and treating them all equally is how real threats get buried under noise. A useful first question for any alert: what asset is involved, and how sensitive is it? An alert on a developer's test laptop and the same alert on a domain controller are not the same incident. The second question is context — has this exact alert fired before and turned out to be nothing, or is it new? A SIEM assigns a severity score, but that score is a starting point, not the final answer; an experienced analyst still checks whether the surrounding activity makes the alert more or less believable before deciding how fast to act.",
+        keyTakeaway: "Prioritize by asset sensitivity and context, not just the SIEM's severity score alone — the same alert means different things on different systems.",
+        check: { question: "Why shouldn't an analyst treat every alert with the same urgency?", choices: ["Because most alerts are automatically correct", "Because the same alert can mean very different things depending on which asset it involves", "Because low-severity alerts should always be ignored", "Because the SIEM's severity score is always final"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "The incident response lifecycle",
+        body: "Once an alert is confirmed as a real incident, response follows a repeatable sequence rather than improvisation: identify what's actually happening and how far it's spread, contain it to stop it from getting worse (isolating a device from the network is often the fastest first move), eradicate the actual cause (a malicious process, a compromised account, a vulnerable service), recover affected systems back to normal operation, and finally document what happened in a post-incident review. That last step is not paperwork for its own sake — it's how a SOC gets better after every real incident, feeding back into what the SIEM watches for next time.",
+        keyTakeaway: "Identify, contain, eradicate, recover, then review — skipping the review step means the SOC never gets better at catching the next one.",
+        check: { question: "What is the purpose of the post-incident review at the end of the response lifecycle?", choices: ["It's a formality required for compliance only", "It feeds back into what the SOC watches for and improves the response next time", "It replaces the need for containment", "It's only done if the incident became public"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "What is a SIEM primarily used for in a SOC?", choices: ["Physically securing server rooms", "Correlating logs and telemetry to flag activity that matches known bad patterns", "Managing employee passwords", "Running the organization's public website"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "A Tier 1 analyst finds an alert that looks like it could be a real intrusion, beyond routine triage. What should they do?", choices: ["Handle containment themselves immediately", "Escalate it to Tier 2/3 rather than guessing at the response", "Close the alert as a false positive to keep the queue moving", "Wait until their next shift to look at it again"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "The same alert fires on a test laptop and on a domain controller. How should an analyst treat these two events?", choices: ["Identically — the alert type is what matters", "Differently — the sensitivity of the affected asset changes the priority", "The domain controller alert should always be ignored as noise", "Only the test laptop alert needs investigation"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What is usually the fastest first containment move when a device is confirmed compromised?", choices: ["Reinstalling the operating system immediately", "Isolating the device from the network", "Rebooting the device and monitoring it", "Notifying customers before anything else"], correctIndex: 1 },
+      { id: "q5", questionType: "ordering", question: "Arrange the incident response lifecycle in the correct order:", choices: ["Recover affected systems", "Contain the incident", "Identify what's happening", "Post-incident review", "Eradicate the root cause"], correctOrder: [2, 1, 4, 0, 3] },
+      { id: "q6", questionType: "multiple", question: "Select every factor that should influence how an analyst prioritizes an alert (choose all that apply):", choices: ["The sensitivity of the asset involved", "Whether this exact alert has fired before and turned out to be nothing", "The SIEM's raw severity score alone, with nothing else considered", "The surrounding context and activity around the alert"], correctIndexes: [0, 1, 3] }
+    ]
   }
 ];
 
@@ -415,7 +471,8 @@ export const CATEGORY_LABELS = {
   "cybersecurity": "Cybersecurity",
   "endpoint-security": "Endpoint Security",
   "data-protection": "Data Protection",
-  "physical-security": "Physical Security"
+  "physical-security": "Physical Security",
+  "soc": "Security Operations"
 };
 
 // Public catalog shape — matches fetchCybersachetCourses() exactly.
