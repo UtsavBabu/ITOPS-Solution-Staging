@@ -5,6 +5,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { analyzeHeaders, runMonitorCheck, runSslCheck } from "../_shared/checks.ts";
 import { dispatchAlert } from "../_shared/alerts.ts";
+import { recordCheckResult } from "../_shared/monitorResults.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -13,13 +14,6 @@ const CHECK_TIMEOUT_MS = Number(Deno.env.get("CHECK_TIMEOUT_MS") ?? "10000");
 const CHECK_CONCURRENCY = Number(Deno.env.get("CHECK_CONCURRENCY") ?? "10");
 const FAILURE_THRESHOLD = Number(Deno.env.get("FAILURE_THRESHOLD") ?? "2");
 const SSL_EXPIRY_WARNING_DAYS = Number(Deno.env.get("SSL_EXPIRY_WARNING_DAYS") ?? "14");
-
-const INTERVAL_MS: Record<string, number> = {
-  THIRTY_SECONDS: 30_000,
-  ONE_MINUTE: 60_000,
-  FIVE_MINUTES: 5 * 60_000,
-  FIFTEEN_MINUTES: 15 * 60_000,
-};
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -33,17 +27,6 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
     dnsRecordType: monitor.dns_record_type,
     dnsExpectedValue: monitor.dns_expected_value,
     tcpPort: monitor.tcp_port,
-  });
-
-  await supabase.from("check_results").insert({
-    organization_id: monitor.organization_id,
-    monitor_id: monitor.id,
-    status: http.status,
-    status_code: http.statusCode,
-    response_time_ms: http.responseTimeMs,
-    error_message: http.errorMessage,
-    redirect_chain: http.redirectChain,
-    dns_answers: http.dnsAnswers ?? null,
   });
 
   // SSL + security-header analysis only make sense for HTTPS website checks,
@@ -102,62 +85,14 @@ async function executeMonitorCheck(monitor: any): Promise<void> {
     );
   }
 
-  await reconcileIncidentState(monitor, http.status, http.errorMessage);
-
-  const now = new Date();
-  const intervalMs = INTERVAL_MS[monitor.interval] ?? INTERVAL_MS.FIVE_MINUTES;
-  await supabase
-    .from("monitors")
-    .update({
-      last_checked_at: now.toISOString(),
-      last_status: http.status,
-      next_check_at: new Date(now.getTime() + intervalMs).toISOString(),
-      consecutive_fails: http.status === "UP" ? 0 : monitor.consecutive_fails + 1,
-    })
-    .eq("id", monitor.id);
-}
-
-// deno-lint-ignore no-explicit-any
-async function reconcileIncidentState(
-  monitor: any,
-  status: "UP" | "DOWN" | "ERROR",
-  errorMessage?: string,
-): Promise<void> {
-  const { data: openIncident } = await supabase
-    .from("incidents")
-    .select("*")
-    .eq("monitor_id", monitor.id)
-    .eq("status", "OPEN")
-    .maybeSingle();
-
-  if (status !== "UP") {
-    const willFailCount = monitor.consecutive_fails + 1;
-    if (!openIncident && willFailCount >= FAILURE_THRESHOLD) {
-      await supabase.from("incidents").insert({
-        organization_id: monitor.organization_id,
-        monitor_id: monitor.id,
-        cause: errorMessage ?? (status === "ERROR" ? "Connection error" : "Check assertion failed"),
-      });
-      await dispatchAlert(supabase, monitor.organization_id, {
-        type: "MONITOR_DOWN",
-        monitor,
-        message: `${monitor.name} (${monitor.url}) appears to be down.`,
-      });
-    }
-    return;
-  }
-
-  if (openIncident) {
-    await supabase.from("incidents").update({ status: "RESOLVED", resolved_at: new Date().toISOString() }).eq(
-      "id",
-      openIncident.id,
-    );
-    await dispatchAlert(supabase, monitor.organization_id, {
-      type: "MONITOR_UP",
-      monitor,
-      message: `${monitor.name} (${monitor.url}) has recovered.`,
-    });
-  }
+  await recordCheckResult(supabase, monitor, {
+    status: http.status,
+    statusCode: http.statusCode,
+    responseTimeMs: http.responseTimeMs,
+    errorMessage: http.errorMessage,
+    redirectChain: http.redirectChain,
+    dnsAnswers: http.dnsAnswers,
+  }, { failureThreshold: FAILURE_THRESHOLD });
 }
 
 async function maybeAlertOnSsl(
@@ -201,10 +136,14 @@ Deno.serve(async (req) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Monitors relayed via a Kada Nigrani agent (via_host_agent_id set) are the
+  // agent's job, not the cloud's — the whole point is that the cloud can't
+  // reach them directly. The agent picks those up itself via agent-commands.
   const { data: dueMonitors, error } = await supabase
     .from("monitors")
     .select("*")
     .eq("is_active", true)
+    .is("via_host_agent_id", null)
     .lte("next_check_at", new Date().toISOString())
     .limit(200);
 

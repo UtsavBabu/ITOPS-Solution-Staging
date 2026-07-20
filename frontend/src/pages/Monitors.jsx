@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { createMonitor, deleteMonitor, fetchMonitors } from "../api/endpoints";
+import { createMonitor, deleteMonitor, fetchMonitors, listHostAgents } from "../api/endpoints";
 import { StatusBadge } from "../components/StatusBadge";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { SkeletonRows } from "../components/Skeleton";
@@ -213,9 +213,11 @@ function deviceIcon(port) {
 }
 // Network devices get a card grid, not the website table — these are
 // physical things you'd recognize by icon, not rows in an endpoint list.
-function DeviceCards({ monitors, onDelete }) {
+function DeviceCards({ monitors, onDelete, hostAgents }) {
   return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {monitors.map((monitor, i) => <motion.div key={monitor.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }} className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-4">
+      {monitors.map((monitor, i) => {
+      const relayAgent = monitor.viaHostAgentId ? (hostAgents ?? []).find(a => a.id === monitor.viaHostAgentId) : null;
+      return <motion.div key={monitor.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }} className="rounded-xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-400/10 text-base" aria-hidden>
@@ -236,10 +238,16 @@ function DeviceCards({ monitors, onDelete }) {
               Delete
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-white/30 light:text-slate-400">
-            {monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}
-          </p>
-        </motion.div>)}
+          <div className="mt-1 flex items-center justify-between">
+            <p className="text-[11px] text-white/30 light:text-slate-400">
+              {monitor.lastCheckedAt ? new Date(monitor.lastCheckedAt).toLocaleString() : "Pending first check"}
+            </p>
+            {monitor.viaHostAgentId && <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 light:bg-violet-100 light:text-violet-700">
+                via {relayAgent?.name ?? "agent"}
+              </span>}
+          </div>
+        </motion.div>;
+    })}
     </div>;
 }
 export default function Monitors({ mode = "web" }) {
@@ -273,10 +281,20 @@ export default function Monitors({ mode = "web" }) {
   const [expectedStatusCode, setExpectedStatusCode] = useState("200");
   const [tcpPort, setTcpPort] = useState("443");
   const [devicePreset, setDevicePreset] = useState(null);
+  const [viaHostAgentId, setViaHostAgentId] = useState("");
   const [formError, setFormError] = useState(null);
   const isTcp = checkType === "TCP";
   const activeChecks = mode === "web" ? WEB_CHECKS : NETWORK_CHECKS;
   const activeType = activeChecks.find(t => t.value === checkType) ?? activeChecks[0];
+  // Only network devices can be relayed through an agent (a device on the
+  // agent's own LAN the cloud can't reach directly), so this only needs to
+  // fetch once you're actually on that page.
+  const { data: hostAgents } = useQuery({
+    queryKey: ["host-agents"],
+    queryFn: listHostAgents,
+    enabled: mode === "network",
+    staleTime: 30_000
+  });
   const {
     webMonitors,
     networkMonitors
@@ -296,13 +314,15 @@ export default function Monitors({ mode = "web" }) {
       expectedKeyword: checkType === "KEYWORD" ? expectedKeyword : undefined,
       keywordMatchMode: checkType === "KEYWORD" ? keywordMatchMode : undefined,
       expectedStatusCode: checkType === "STATUS_CODE" ? Number(expectedStatusCode) : undefined,
-      tcpPort: isTcp ? Number(tcpPort) : undefined
+      tcpPort: isTcp ? Number(tcpPort) : undefined,
+      viaHostAgentId: isTcp && viaHostAgentId ? viaHostAgentId : undefined
     }),
     onSuccess: () => {
       setName("");
       setUrl("");
       setExpectedKeyword("");
       setDevicePreset(null);
+      setViaHostAgentId("");
       queryClient.invalidateQueries({
         queryKey: ["monitors"]
       });
@@ -356,13 +376,13 @@ export default function Monitors({ mode = "web" }) {
 
       {mode === "network" && <Reveal className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] light:bg-slate-900/[0.03] px-4 py-3">
           <p className="text-xs leading-relaxed text-white/50 light:text-slate-500">
-            Agentless TCP connect checks with latency (Nagios <code className="text-white/70 light:text-slate-600">check_tcp</code> style) for home
-            routers, GPON/fiber terminals (ONTs), switches, firewalls, and printers. The device's port must be
-            reachable from where the check runs; for servers behind NAT, install the{" "}
+            TCP connect checks with latency (Nagios <code className="text-white/70 light:text-slate-600">check_tcp</code> style) for home
+            routers, GPON/fiber terminals (ONTs), switches, firewalls, and printers — from the cloud when the
+            device's port is reachable from the internet, or relayed through the{" "}
             <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">
               Kada Nigrani agent
             </Link>{" "}
-            instead. Watching a domain's DNS records instead of a device port? See{" "}
+            when it isn't (pick "Check via" below). Watching a domain's DNS records instead of a device port? See{" "}
             <Link to="/dns" className="text-cyan-300 light:text-cyan-600 hover:underline">
               DNS Monitoring
             </Link>.
@@ -372,8 +392,8 @@ export default function Monitors({ mode = "web" }) {
             <p className="mt-1 text-xs leading-relaxed text-white/55 light:text-slate-500">
               <span className="text-white/80 light:text-slate-700">ICMP ping</span> (latency & packet loss) and{" "}
               <span className="text-white/80 light:text-slate-700">SNMP</span> (interface traffic, CPU, memory, uptime) polling for deeper
-              router/switch health — these need raw sockets the edge runtime doesn't expose yet, so they'll arrive via
-              the lightweight Kada Nigrani collector rather than the cloud check.
+              router/switch health — these need raw sockets the edge runtime and the agent's polling model don't
+              provide yet. TCP relay via the agent (above) is real and works today.
             </p>
           </div>
         </Reveal>}
@@ -428,6 +448,24 @@ export default function Monitors({ mode = "web" }) {
                 <input required type="number" min={1} max={65535} value={tcpPort} onChange={e => setTcpPort(e.target.value)} aria-label="Custom port" className={`w-28 ${inputClass}`} />
               </div>
             </div>
+            <div className="space-y-2.5">
+              <span className="block text-sm text-white/70 light:text-slate-600">Check via</span>
+              <select value={viaHostAgentId} onChange={e => setViaHostAgentId(e.target.value)} className={`w-full max-w-xs ${inputClass}`}>
+                <option value="">Cloud (direct — device must have a public port)</option>
+                {(hostAgents ?? []).map(a => <option key={a.id} value={a.id}>
+                    Agent: {a.name}{a.isOnline ? "" : " (offline)"}
+                  </option>)}
+              </select>
+              {!viaHostAgentId ? <p className="text-xs leading-relaxed text-white/45 light:text-slate-400">
+                  Works when this device's port is reachable from the internet. Behind a home router/office
+                  firewall? Install the Kada Nigrani agent on any machine on the <em>same network</em> as this
+                  device, then pick it here — the agent checks it locally and reports back.{" "}
+                  {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
+                </p> : <p className="text-xs leading-relaxed text-cyan-200/70">
+                  Checked from that agent's network every {INTERVAL_LABELS[interval]}, not from the cloud — works
+                  even if this device has no public port.
+                </p>}
+            </div>
           </div>}
 
         {checkType === "KEYWORD" && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -462,7 +500,7 @@ export default function Monitors({ mode = "web" }) {
         {isLoading ? <SkeletonRows count={4} /> : isError ? <ErrorState message={`Couldn't load monitors: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : shownMonitors.length === 0 ? <EmptyState title={mode === "web" ? "No website monitors yet." : "No network devices yet."} description={mode === "web" ? "Add a check above to start monitoring." : "Add a router, switch, or any device with a reachable port above."} /> : mode === "web" ? <>
             <MonitorTable monitors={shownMonitors} onDelete={handleDelete} />
             <div className="md:hidden"><MonitorCards monitors={shownMonitors} onDelete={handleDelete} /></div>
-          </> : <DeviceCards monitors={shownMonitors} onDelete={handleDelete} />}
+          </> : <DeviceCards monitors={shownMonitors} onDelete={handleDelete} hostAgents={hostAgents} />}
       </SpotlightCard>
     </div>;
 }

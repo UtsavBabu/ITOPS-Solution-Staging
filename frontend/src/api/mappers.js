@@ -83,6 +83,7 @@ export function mapMonitor(row) {
     dnsRecordType: row.dns_record_type ?? "A",
     dnsExpectedValue: row.dns_expected_value,
     tcpPort: row.tcp_port,
+    viaHostAgentId: row.via_host_agent_id ?? null,
     lastStatus: row.last_status,
     lastCheckedAt: row.last_checked_at,
     nextCheckAt: row.next_check_at,

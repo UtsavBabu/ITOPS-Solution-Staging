@@ -106,7 +106,7 @@ export function analyzeMonitor(monitor, history) {
         severity: "critical",
         diagnosis: `Port ${monitor.tcpPort ?? "?"} on ${monitor.url} is not accepting TCP connections.`,
         evidence: latest.errorMessage ?? "Connection failed",
-        suggestion: "Confirm the device/service is powered on and the port is open; check firewall rules and any NAT/port-forwarding in front of it."
+        suggestion: monitor.viaHostAgentId ? "Confirm the device is powered on and the port is open on its LAN — this check runs from the Kada Nigrani agent on that network, not the cloud, so internet routing/NAT isn't the cause here." : "Confirm the device/service is powered on and the port is open; check firewall rules and any NAT/port-forwarding in front of it. If this device was never meant to have a public port (a home router, office switch, etc.), the cloud may simply be unable to reach it at all — relay this check through a Kada Nigrani agent on the same network instead of checking from outside."
       });
     } else if (monitor.checkType === "DNS") {
       findings.push({

@@ -139,7 +139,11 @@ export async function createMonitor(input) {
     p_expected_status_code: input.expectedStatusCode ?? null,
     p_dns_record_type: input.dnsRecordType ?? "A",
     p_dns_expected_value: input.dnsExpectedValue ?? null,
-    p_tcp_port: input.tcpPort ?? null
+    p_tcp_port: input.tcpPort ?? null,
+    // Omitted (not just null) unless actually set — PostgREST resolves RPC
+    // calls by exact named-parameter match, so sending this key at all 404s
+    // against the create_monitor overload deployed before migration 0067.
+    ...(input.viaHostAgentId ? { p_via_host_agent_id: input.viaHostAgentId } : {})
   });
   if (error) throw new Error(error.message);
 }

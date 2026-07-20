@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { fetchMonitor, fetchMonitorHistory } from "../api/endpoints";
+import { fetchMonitor, fetchMonitorHistory, listHostAgents } from "../api/endpoints";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { ResponseTimeChart } from "../components/ResponseTimeChart";
@@ -126,6 +126,12 @@ export default function MonitorDetail() {
     enabled: !!id,
     refetchInterval: 15_000
   });
+  const { data: hostAgents } = useQuery({
+    queryKey: ["host-agents"],
+    queryFn: listHostAgents,
+    enabled: !!monitor?.viaHostAgentId,
+    staleTime: 30_000
+  });
   if (monitorLoading) {
     return <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -164,6 +170,9 @@ export default function MonitorDetail() {
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70 light:text-slate-600">
             {CHECK_TYPE_LABELS[monitor.checkType]} check
           </span>
+          {monitor.viaHostAgentId && <span className="rounded-full bg-violet-400/10 px-2.5 py-0.5 text-[11px] font-medium text-violet-300 light:bg-violet-100 light:text-violet-700">
+              Relayed via {(hostAgents ?? []).find(a => a.id === monitor.viaHostAgentId)?.name ?? "agent"}
+            </span>}
           {!monitor.isActive && <span className="rounded-full bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300">
               Paused
             </span>}

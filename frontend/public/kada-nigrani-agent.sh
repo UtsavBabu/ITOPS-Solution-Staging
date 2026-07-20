@@ -9,6 +9,12 @@
 #
 # Example cron (every minute):
 #   * * * * * INGEST_URL=... ANON_KEY=... AGENT_KEY=... /opt/kada-nigrani-agent.sh >/dev/null 2>&1
+#
+# Opt-in remediation + network-device-check polling (AGENT_ALLOW_ACTIONS=1,
+# COMMANDS_URL set): also runs admin-approved runbook actions, and TCP-checks
+# any network device monitor relayed to this agent (Network Devices page,
+# "Check via: this agent") — for routers/switches/ONTs on this host's own LAN
+# that the cloud can't reach directly because they're behind NAT/firewall.
 set -euo pipefail
 
 AGENT_VERSION="1.0.0"
@@ -88,6 +94,54 @@ curl -fsS --retry 2 --retry-delay 1 -X POST "$INGEST_URL" \
 # Optionally restrict which services may be restarted with:
 #   AGENT_ALLOWED_SERVICES="nginx apache2 mysql docker"
 if [ "${AGENT_ALLOW_ACTIONS:-0}" = "1" ] && [ -n "${COMMANDS_URL:-}" ]; then
+  # TCP-connects to a device on this host's own network and reports UP/DOWN +
+  # latency — the same check the cloud runs, just from inside the LAN. Uses
+  # bash's /dev/tcp pseudo-device, no nc/curl dependency needed.
+  check_tcp() {
+    local target_host="$1" target_port="$2" timeout_s="${3:-5}"
+    local start_ms end_ms
+    start_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+    if timeout "$timeout_s" bash -c "exec 3<>/dev/tcp/${target_host}/${target_port}" 2>/tmp/kada-nigrani-tcp-err; then
+      exec 3>&- 2>/dev/null || true
+      end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+      echo "UP|$((end_ms - start_ms))|"
+    else
+      end_ms=$(date +%s%3N 2>/dev/null || echo "$(($(date +%s) * 1000))")
+      local err
+      err=$(tail -1 /tmp/kada-nigrani-tcp-err 2>/dev/null)
+      echo "DOWN|$((end_ms - start_ms))|${err:-connection refused or timed out}"
+    fi
+    rm -f /tmp/kada-nigrani-tcp-err
+  }
+
+  device_checks=$(curl -fsS -X POST "$COMMANDS_URL" \
+    -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+    -H "X-Agent-Key: $AGENT_KEY" -H "Content-Type: application/json" \
+    -d '{"action":"fetch_checks"}' 2>/dev/null || echo '{"checks":[]}')
+
+  echo "$device_checks" | python3 -c "import sys,json;[print(c['id']+'|'+c['host']+'|'+str(c['port'])) for c in json.load(sys.stdin).get('checks',[])]" 2>/dev/null | \
+  while IFS='|' read -r mon_id mon_host mon_port; do
+    [ -z "$mon_id" ] && continue
+    result=$(check_tcp "$mon_host" "$mon_port" 5)
+    chk_status=$(echo "$result" | cut -d'|' -f1)
+    chk_ms=$(echo "$result" | cut -d'|' -f2)
+    chk_err=$(echo "$result" | cut -d'|' -f3-)
+    result_payload=$(python3 -c "
+import json, sys
+print(json.dumps({
+  'action': 'submit_check_result',
+  'monitor_id': sys.argv[1],
+  'status': sys.argv[2],
+  'response_time_ms': int(sys.argv[3]),
+  'error_message': (sys.argv[4] or None),
+}))
+" "$mon_id" "$chk_status" "$chk_ms" "$chk_err")
+    curl -fsS -X POST "$COMMANDS_URL" \
+      -H "Authorization: Bearer $ANON_KEY" -H "apikey: $ANON_KEY" \
+      -H "X-Agent-Key: $AGENT_KEY" -H "Content-Type: application/json" \
+      -d "$result_payload" >/dev/null 2>&1
+  done
+
   run_action() {
     # $1 = action_key, $2 = arg. Echoes output; returns the action's exit code.
     case "$1" in
