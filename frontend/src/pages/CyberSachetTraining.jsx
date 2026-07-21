@@ -740,7 +740,7 @@ export default function CyberSachetTraining() {
         <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
 
-      {!local && hasAcademyTrack && <Reveal delay={0.03}><TrackToggle active={activeTrack} onChange={selectTrack} /></Reveal>}
+      {hasAcademyTrack && <Reveal delay={0.03}><TrackToggle active={activeTrack} onChange={selectTrack} /></Reveal>}
 
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
@@ -784,6 +784,6 @@ export default function CyberSachetTraining() {
         </div>}
 
       {!local && activeTrack !== "academy" && securityCourses.length > 0 && <CertificateSection eligible={!isStarter && securityCompletedCount >= securityCourses.length} userName={user?.name} orgName={organization?.name} />}
-      {local && <LocalCertificatePreview eligible={!isStarter && completedCount >= localCourses.length && completedCount > 0} stats={localStats} courseCount={localCourses.length} />}
+      {local && activeTrack !== "academy" && <LocalCertificatePreview eligible={!isStarter && securityCompletedCount >= securityCourses.length && securityCompletedCount > 0} stats={localStats} courseCount={securityCourses.length} />}
     </div>;
 }

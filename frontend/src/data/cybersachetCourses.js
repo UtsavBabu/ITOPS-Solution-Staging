@@ -460,6 +460,69 @@ const COURSES = [
       { id: "q5", questionType: "ordering", question: "Arrange the incident response lifecycle in the correct order:", choices: ["Recover affected systems", "Contain the incident", "Identify what's happening", "Post-incident review", "Eradicate the root cause"], correctOrder: [2, 1, 4, 0, 3] },
       { id: "q6", questionType: "multiple", question: "Select every factor that should influence how an analyst prioritizes an alert (choose all that apply):", choices: ["The sensitivity of the asset involved", "Whether this exact alert has fired before and turned out to be nothing", "The SIEM's raw severity score alone, with nothing else considered", "The surrounding context and activity around the alert"], correctIndexes: [0, 1, 3] }
     ]
+  },
+  // The one Moonsav ITOps Academy (Cloud/DevOps/Infrastructure) course
+  // mirrored into local preview — same real content as the seeded
+  // 'linux-fundamentals-for-it-operations' course in migration 0073, so an
+  // unlicensed prospect touring the product actually sees Academy exists,
+  // not just CyberSachet's security courses. Everything else in Academy
+  // (Cloud Computing Essentials, DevOps & CI/CD) only exists as real DB
+  // content today — adding a full second/third local course is real content
+  // authoring, not a quick follow-up, so this one is the honest preview.
+  {
+    id: "local-linux-fundamentals",
+    slug: "linux-fundamentals-for-it-operations",
+    title: "Linux Fundamentals for IT Operations",
+    description: "The commands and concepts you actually use running Linux servers day to day — the filesystem layout, permissions, processes, and package management every other Academy course builds on.",
+    level: "beginner",
+    estimatedMinutes: 20,
+    category: "infrastructure",
+    track: "academy",
+    freeTier: true,
+    modules: [
+      { id: "m1", title: "Finding Your Way Around" },
+      { id: "m2", title: "Permissions, Processes & Packages" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "The filesystem layout",
+        body: "Every Linux system is organized under a single root directory, / — there's no separate drive letter per disk the way Windows uses C:\\ and D:\\. A few directories matter most day to day: /etc holds system-wide configuration files, /var holds data that changes over time (most importantly /var/log, where nearly every service writes its logs), /home holds each user's personal files, and /tmp is scratch space that's often cleared on reboot. When something breaks, /var/log is usually the first place to look, and when you need to change how a service behaves, /etc is usually where its config file lives.",
+        keyTakeaway: "When troubleshooting, check /var/log first for what happened and /etc for how a service is configured.",
+        check: { question: "Where would you look first to find out why a service crashed?", choices: ["/home", "/var/log", "/tmp", "/etc"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Navigating and reading files from the shell",
+        body: "pwd prints your current directory, ls -la lists everything in it including hidden files (anything starting with a dot) with permissions and sizes, and cd changes directory — cd .. goes up one level, cd ~ goes home. To read a file without opening an editor, cat dumps the whole thing to the screen (fine for short files), less lets you scroll through a long one a page at a time, and tail -f /var/log/some.log follows a log file live as new lines are written — the single most-used command when watching a service start up or debugging something happening right now.",
+        keyTakeaway: "tail -f on a log file is how you watch what a service is doing in real time, not just what it already did.",
+        check: { question: "You want to watch a log file update live as a service runs. Which command?", choices: ["cat logfile", "less logfile", "tail -f logfile", "pwd logfile"], correctIndex: 2 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "File permissions and ownership",
+        body: "ls -l shows permissions as a 10-character string like -rwxr-xr--: the first character is the file type (- for a regular file, d for a directory), then three groups of three — owner, group, and everyone else — each showing read (r), write (w), and execute (x). chmod changes permissions (chmod 755 script.sh gives the owner full access and everyone else read+execute), and chown user:group file changes who owns it. Execute permission on a directory means \"can enter it,\" not \"can run it\" — a common point of confusion.",
+        keyTakeaway: "Permissions are owner / group / everyone, each with read, write, and execute — chmod changes them, chown changes who owns the file.",
+        check: { question: "What does the \"x\" permission mean on a directory (not a file)?", choices: ["You can execute the directory as a program", "You can enter (cd into) the directory", "You can delete the directory", "It has no effect on directories"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Processes, services, and package managers",
+        body: "ps aux lists every running process; top (or htop if installed) shows them live, sorted by resource usage, which is usually the fastest way to spot what's consuming CPU or memory. Most modern Linux distributions manage background services with systemd — systemctl status nginx shows whether a service is running and its recent log lines, systemctl restart nginx restarts it, and systemctl enable nginx makes it start automatically on boot. To install software, Debian/Ubuntu systems use apt install package-name and Red Hat/CentOS/Fedora systems use dnf install package-name (or the older yum) — same idea, different tool depending on the distribution family.",
+        keyTakeaway: "systemctl status/restart/enable is how you check and control services on most modern Linux distributions.",
+        check: { question: "Which command shows whether a service is currently running and its recent logs?", choices: ["ps aux", "systemctl status servicename", "apt install servicename", "chmod servicename"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "Where does most Linux system configuration live?", choices: ["/tmp", "/home", "/etc", "/var"], correctIndex: 2 },
+      { id: "q2", questionType: "single", question: "A file shows permissions \"-rwxr--r--\". Can someone outside the owner's group run it as a program?", choices: ["Yes, everyone has execute", "No, only the owner has execute permission", "Only the group can", "Permissions don't affect execution"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "Which command restarts a systemd-managed service?", choices: ["chmod restart nginx", "systemctl restart nginx", "apt restart nginx", "ps restart nginx"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "On Ubuntu, which command installs a new package?", choices: ["dnf install package", "systemctl install package", "apt install package", "chown install package"], correctIndex: 2 }
+    ]
   }
 ];
 
@@ -489,6 +552,8 @@ export function getLocalCourses() {
     estimatedMinutes: c.estimatedMinutes,
     category: c.category,
     freeTier: c.freeTier,
+    minPlan: c.minPlan ?? (c.freeTier ? "STARTER" : "PROFESSIONAL"),
+    track: c.track ?? "security",
     lessonCount: c.lessons.length,
     quizQuestionCount: c.quiz.length
   }));
@@ -656,9 +721,15 @@ export function getLocalStats(userId) {
     }
   }
 
-  const published = COURSES.length;
+  // 'completionist' has only ever meant "finished every CyberSachet
+  // security course" — scoped the same way the real my_cybersachet_stats()
+  // RPC scopes it, so adding the Academy course above doesn't silently
+  // raise the bar for a security-only learner.
+  const securityCourses = COURSES.filter(c => (c.track ?? "security") === "security");
+  const published = securityCourses.length;
+  const completedSecurity = completed.filter(e => (COURSES.find(c => c.id === e.courseId)?.track ?? "security") === "security");
   const hasPerfect = enrollments.some(e => e.quizScore === 100);
-  const completionist = published > 0 && completed.length >= published;
+  const completionist = published > 0 && completedSecurity.length >= published;
   const badges = [];
   if (completed.length >= 1) badges.push("first_course");
   if (hasPerfect) badges.push("perfect_score");
