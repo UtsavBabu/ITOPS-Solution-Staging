@@ -18,7 +18,7 @@ export function ThemeProvider({ children }) {
     window.localStorage.setItem(STORAGE_KEY, theme);
     // Keep the mobile browser-chrome/status-bar tint in sync with the
     // actual page background instead of leaving it hardcoded to dark.
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f6f7fb" : "#04050a");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f6f7fb" : "#0b0f19");
   }, [theme]);
 
   function toggleTheme() {

@@ -6,6 +6,45 @@
    lets wide-viewport-only containers/grids use more of the screen. */
 @theme {
   --breakpoint-3xl: 112.5rem;
+
+  /* ── "Cyber-Neon Enterprise Dark" palette ─────────────────────────
+     Every `bg-black`, `bg-neutral-9xx`, `*-cyan-*`, and `*-red-*` utility
+     across the whole app is generated from these tokens, so overriding
+     them here reskins the entire product from one place instead of a
+     file-by-file rewrite. Semantic mapping: black/neutral = obsidian
+     surfaces, cyan = the "cyber cyan" active/primary accent, red = the
+     "vibrant coral" alert/danger accent. `rose` (CyberSachet's own brand
+     hue) and `emerald` (already ~#10B981 by default) are deliberately
+     left alone. */
+  --color-black: #0b0f19;
+  --color-neutral-950: #0b0f19;
+  --color-neutral-900: #131826;
+  --color-neutral-800: #1c2233;
+  --color-neutral-700: #2a3142;
+
+  --color-cyan-50: #ecfeff;
+  --color-cyan-100: #cffafe;
+  --color-cyan-200: #a6f4fd;
+  --color-cyan-300: #67eafb;
+  --color-cyan-400: #00f0ff;
+  --color-cyan-500: #00cfe0;
+  --color-cyan-600: #00a3b3;
+  --color-cyan-700: #027d8c;
+  --color-cyan-800: #0a6270;
+  --color-cyan-900: #0d4f5c;
+  --color-cyan-950: #05323a;
+
+  --color-red-50: #fff1f1;
+  --color-red-100: #ffe0e0;
+  --color-red-200: #ffc6c6;
+  --color-red-300: #ff9f9f;
+  --color-red-400: #ff4d4d;
+  --color-red-500: #fa2c2c;
+  --color-red-600: #e31313;
+  --color-red-700: #be0c0c;
+  --color-red-800: #9c0f0f;
+  --color-red-900: #811414;
+  --color-red-950: #470505;
 }
 
 /* Site defaults to dark (unchanged from before this existed). Adding
@@ -18,16 +57,17 @@
   color-scheme: dark;
 
   /* ── Enterprise design tokens ─────────────────────────────── */
-  /* Surfaces (near-black, faint blue undertone for depth) */
-  --bg-base: #04050a;
-  --bg-elev-1: #0a0c13;
-  --bg-elev-2: #10131d;
+  /* Surfaces — obsidian (#0B0F19), matching --color-black/neutral-950 above */
+  --bg-base: #0b0f19;
+  --bg-elev-1: #131826;
+  --bg-elev-2: #1c2233;
 
-  /* Brand accents — professional, never oversaturated */
+  /* Brand accents — cyber cyan replaces the old muted cyan-400 */
   --blue: #3b82f6;
-  --cyan: #22d3ee;
-  --green: #34d399;
+  --cyan: #00f0ff;
+  --green: #10b981;
   --violet: #a78bfa;
+  --coral: #ff4d4d;
 
   /* Borders + text */
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -35,12 +75,13 @@
   --text-base: #ffffff;
 
   /* Signature gradient used on CTAs + accents */
-  --grad-brand: linear-gradient(100deg, #22d3ee 0%, #3b82f6 50%, #a78bfa 100%);
-  --grad-brand-soft: linear-gradient(100deg, rgba(34, 211, 238, 0.16), rgba(59, 130, 246, 0.16), rgba(167, 139, 250, 0.16));
+  --grad-brand: linear-gradient(100deg, #00f0ff 0%, #3b82f6 50%, #a78bfa 100%);
+  --grad-brand-soft: linear-gradient(100deg, rgba(0, 240, 255, 0.16), rgba(59, 130, 246, 0.16), rgba(167, 139, 250, 0.16));
 
   /* Elevation */
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px -24px rgba(0, 0, 0, 0.9);
   --shadow-glow-blue: 0 10px 40px -12px rgba(59, 130, 246, 0.5);
+  --shadow-glow-cyan: 0 10px 40px -12px rgba(0, 240, 255, 0.45);
 }
 
 html.light {
@@ -101,9 +142,15 @@ html.light .glass {
    as literal dark UI screenshots regardless of page theme, the same way a
    docs site keeps code/app screenshots dark on a light page. */
 .mockup-dark {
-  background: #0d0f16;
+  background: #0b0f19;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
+}
+
+/* Neon glow ring for focus/active states — cyber-cyan signature glow used
+   sparingly (focused inputs, active nav pills, "live" badges). */
+.glow-cyan {
+  box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.4), 0 0 24px -6px rgba(0, 240, 255, 0.55);
 }
 
 /* Gradient text */

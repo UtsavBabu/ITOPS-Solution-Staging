@@ -57,7 +57,7 @@ function useCountUp(to, active, duration = 1100) {
   }, [active, to, duration]);
   return n;
 }
-const TINT_HEX = { cyan: "#22d3ee", emerald: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24", rose: "#fb7185", red: "#f87171", white: "#e2e8f0" };
+const TINT_HEX = { cyan: "#00f0ff", emerald: "#10b981", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24", rose: "#fb7185", red: "#ff4d4d", white: "#e2e8f0" };
 export function ProductMockup({ itemKey, title, capabilities = [] }) {
   const identity = getProductIdentity(itemKey);
   const hex = TINT_HEX[identity.tint] ?? TINT_HEX.white;

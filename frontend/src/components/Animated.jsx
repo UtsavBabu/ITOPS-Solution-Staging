@@ -31,12 +31,13 @@ export function Reveal({
 }
 const TINT_RGB = {
   white: "255,255,255",
-  emerald: "52,211,153",
-  cyan: "34,211,238",
+  emerald: "16,185,129",
+  cyan: "0,240,255",
   amber: "251,191,36",
   blue: "96,165,250",
   violet: "167,139,250",
-  rose: "251,113,133"
+  rose: "251,113,133",
+  red: "255,77,77"
 };
 
 /**

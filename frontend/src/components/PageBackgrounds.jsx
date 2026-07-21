@@ -8,17 +8,17 @@ const TINTS = {
     bright: "rgba(255,255,255,0.9)"
   },
   emerald: {
-    line: "rgba(52,211,153,0.30)",
-    glow: "rgba(52,211,153,0.20)",
-    dot: "#34d399",
-    soft: "rgba(52,211,153,0.09)",
+    line: "rgba(16,185,129,0.30)",
+    glow: "rgba(16,185,129,0.20)",
+    dot: "#10b981",
+    soft: "rgba(16,185,129,0.09)",
     bright: "rgba(110,231,183,0.95)"
   },
   cyan: {
-    line: "rgba(34,211,238,0.30)",
-    glow: "rgba(34,211,238,0.20)",
-    dot: "#22d3ee",
-    soft: "rgba(34,211,238,0.09)",
+    line: "rgba(0,240,255,0.30)",
+    glow: "rgba(0,240,255,0.20)",
+    dot: "#00f0ff",
+    soft: "rgba(0,240,255,0.09)",
     bright: "rgba(103,232,249,0.95)"
   },
   amber: {
@@ -36,11 +36,11 @@ const TINTS = {
     bright: "rgba(147,197,253,0.95)"
   },
   red: {
-    line: "rgba(248,113,113,0.32)",
-    glow: "rgba(248,113,113,0.22)",
-    dot: "#f87171",
-    soft: "rgba(248,113,113,0.10)",
-    bright: "rgba(252,165,165,0.95)"
+    line: "rgba(255,77,77,0.32)",
+    glow: "rgba(255,77,77,0.22)",
+    dot: "#ff4d4d",
+    soft: "rgba(255,77,77,0.10)",
+    bright: "rgba(255,159,159,0.95)"
   },
   violet: {
     line: "rgba(167,139,250,0.30)",
