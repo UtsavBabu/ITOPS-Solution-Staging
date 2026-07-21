@@ -51,7 +51,8 @@ export function SpotlightCard({
   tint = "white",
   delay = 0,
   style,
-  scan = false
+  scan = false,
+  overflowVisible = false
 }) {
   const ref = useRef(null);
   const { theme } = useTheme();
@@ -80,7 +81,7 @@ export function SpotlightCard({
     duration: 0.6,
     delay,
     ease: EASE
-  }} style={style} className={`group relative overflow-hidden rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white light:shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_16px_-8px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-white/25 light:hover:border-slate-900/20 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)] light:hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.2)] ${className}`}>
+  }} style={style} className={`group relative ${overflowVisible ? "" : "overflow-hidden"} rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white light:shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_16px_-8px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1 hover:border-white/25 light:hover:border-slate-900/20 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)] light:hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.2)] ${className}`}>
       {/* cursor spotlight */}
       <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{
       background: `radial-gradient(340px circle at var(--mx, 50%) var(--my, 0px), rgba(${rgb},0.12), transparent 42%)`

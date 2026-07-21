@@ -14,6 +14,8 @@ import { CyberSachetCertificate, CertificationPath, CertificateDownloadCard } fr
 import { AcademyMark } from "../components/AcademyBrand";
 import { TerminalPlayground } from "../components/TerminalPlayground";
 import { TERMINAL_DEMOS } from "../data/terminalDemos";
+import { InteractiveDiagram } from "../components/InteractiveDiagram";
+import { DIAGRAM_DEMOS } from "../data/interactiveDiagrams";
 import { useAuth } from "../context/AuthContext";
 
 const LEVEL_TONE = {
@@ -119,7 +121,7 @@ function CourseCard({ course, enrollment, index, assignment, onOpen, canManageTr
   const displayPct = enrollment?.completedAt ? 100 : pct;
   const status = enrollment?.completedAt ? "Completed" : enrollment ? "In progress" : "Not started";
   return <div role="button" tabIndex={0} onClick={() => onOpen(course)} onKeyDown={e => { if (e.key === "Enter") onOpen(course); }} className="block h-full w-full cursor-pointer text-left">
-      <SpotlightCard tint="rose" delay={index * 0.06} className="h-full">
+      <SpotlightCard tint="rose" delay={index * 0.06} className="h-full" overflowVisible>
       <div className="flex h-full flex-col p-5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -282,7 +284,7 @@ function LessonPane({ lesson, index, total, done, locked, bookmarked, onToggleBo
             {lesson.title}
           </button>
           <div className="flex shrink-0 items-center gap-2">
-            {done && <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">✓ Done</span>}
+            {done && <span className="rounded-full bg-emerald-400/10 light:bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-300 light:text-emerald-700">✓ Done</span>}
             <button onClick={() => onToggleBookmark(lesson.id)} aria-label="Bookmark this lesson" className={bookmarked ? "text-amber-300" : "text-white/25 light:text-slate-300 hover:text-white/50 light:hover:text-slate-400"}>
               {bookmarked ? "★" : "☆"}
             </button>
@@ -293,6 +295,7 @@ function LessonPane({ lesson, index, total, done, locked, bookmarked, onToggleBo
         </div>
         {expanded && <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}>
             <motion.p variants={FADE_UP} className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/60 light:text-slate-600">{lesson.body}</motion.p>
+            {DIAGRAM_DEMOS[lesson.title] && <motion.div variants={FADE_UP}><InteractiveDiagram diagram={DIAGRAM_DEMOS[lesson.title]} /></motion.div>}
             {TERMINAL_DEMOS[lesson.title] && <motion.div variants={FADE_UP}><TerminalPlayground demos={TERMINAL_DEMOS[lesson.title]} /></motion.div>}
             {lesson.keyTakeaway && <motion.div variants={FADE_UP} className="relative mt-4 overflow-hidden rounded-xl border border-emerald-400/25 light:border-emerald-500/25 bg-emerald-400/[0.06] light:bg-emerald-50 px-4 py-3 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_0_28px_-10px_rgba(16,185,129,0.55)]">
                 <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-emerald-400/20 blur-2xl" aria-hidden />
@@ -505,7 +508,7 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
           <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] light:bg-sky-100 px-2.5 py-1 text-[11px] font-medium text-white/60 light:text-sky-700">
             <CategoryIcon category={course.category} size={12} />{CATEGORY_LABELS[course.category] ?? course.category}
           </span>
-          <span className="text-[11px] text-white/40 light:text-slate-400">{course.estimatedMinutes} min · Authored by the ITOps Solution security team</span>
+          <span className="text-[11px] text-white/40 light:text-slate-400">{course.estimatedMinutes} min · Authored by the ITOps Solution {course.track === "academy" ? "Academy" : "security"} team</span>
         </div>
         <h1 className="mt-3 text-2xl font-medium tracking-tight text-white light:text-slate-900">{course.title}</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/55 light:text-slate-500">{course.description}</p>
@@ -654,7 +657,7 @@ function LocalCertificatePreview({ eligible, stats, courseCount }) {
 
 export default function CyberSachetTraining({ defaultTrack = "security" }) {
   const { user, organization } = useAuth();
-  const { data: licensed, isLoading: licenseLoading } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
+  const { data: licensed, isLoading: licenseLoading, isError: licenseError, refetch: refetchLicense } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
   const { data: usage, isLoading: usageLoading } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 60_000 });
   const orgPlan = usage?.plan ?? "STARTER";
   const orgPlanRank = PLAN_ORDER.indexOf(orgPlan);
@@ -663,7 +666,11 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
   // only carry the old freeTier boolean — fall back to it the same way the
   // live-fetch mappers do, so a free local course doesn't regress to locked.
   const courseAllowedByPlan = c => PLAN_ORDER.indexOf(c.minPlan ?? (c.freeTier ? "STARTER" : "PROFESSIONAL")) <= orgPlanRank;
-  const local = !licenseLoading && !licensed;
+  // A failed license check is not the same as "not licensed" — falling back
+  // to `local` here would silently demote a real, paying, licensed org to
+  // local-preview mode (fake device-local progress) on a transient network
+  // blip. Show a real, retryable error instead of guessing.
+  const local = !licenseLoading && !licensed && !licenseError;
 
   const { data: liveCourses, isLoading: coursesLoading, isError: coursesError, refetch: refetchCourses } = useQuery({ queryKey: ["cybersachet-courses"], queryFn: fetchCybersachetCourses, enabled: !!licensed });
   const { data: liveEnrollments, refetch: refetchEnrollments } = useQuery({ queryKey: ["cybersachet-enrollments"], queryFn: fetchMyEnrollments, enabled: !!licensed });
@@ -757,6 +764,7 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
         <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
 
+      {licenseError && <Reveal delay={0.05}><ErrorState title="Couldn't confirm your license status." description="This is a connection issue, not a licensing change — your organization's data is safe. Try again." onRetry={refetchLicense} /></Reveal>}
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
       {dashboardStats && <Reveal delay={0.08}>
