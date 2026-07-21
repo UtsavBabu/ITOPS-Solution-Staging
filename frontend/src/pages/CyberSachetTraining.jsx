@@ -12,6 +12,8 @@ import { AnimatedCounter } from "../components/AnimatedCounter";
 import { TrainingHero, ProgressRing, CompletionCelebration, LocalPreviewBanner, CourseIcon, CategoryIcon, BadgeChip, StreakFlame, ModuleProgressBar, Leaderboard } from "../components/CyberSachetTheme";
 import { CyberSachetCertificate, CertificationPath, CertificateDownloadCard } from "../components/CyberSachetCertificate";
 import { AcademyMark } from "../components/AcademyBrand";
+import { TerminalPlayground } from "../components/TerminalPlayground";
+import { TERMINAL_DEMOS } from "../data/terminalDemos";
 import { useAuth } from "../context/AuthContext";
 
 const LEVEL_TONE = {
@@ -19,6 +21,10 @@ const LEVEL_TONE = {
   intermediate: "bg-amber-400/10 light:bg-amber-100 text-amber-300 light:text-amber-700",
   advanced: "bg-red-400/10 light:bg-red-100 text-red-300 light:text-red-700"
 };
+// Progressive-reveal variant for a lesson's content — body, terminal demo,
+// key takeaway, checkpoint, and notes fade/slide in one after another
+// (via the parent's staggerChildren) instead of all appearing at once.
+const FADE_UP = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } } };
 
 // ── Per-device notes & bookmarks ────────────────────────────────────────────
 // Deliberately local-only (not a database table) — a personal scratchpad
@@ -285,15 +291,20 @@ function LessonPane({ lesson, index, total, done, locked, bookmarked, onToggleBo
             </button>
           </div>
         </div>
-        {expanded && <>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/60 light:text-slate-600">{lesson.body}</p>
-            {lesson.keyTakeaway && <div className="mt-3 rounded-lg border border-emerald-400/20 light:border-emerald-500/25 bg-emerald-400/[0.05] light:bg-emerald-50 px-3 py-2.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-300 light:text-emerald-700">Key takeaway</p>
-                <p className="mt-1 text-sm text-white/80 light:text-slate-700">{lesson.keyTakeaway}</p>
-              </div>}
-            {!done && lesson.check && <LessonCheck check={lesson.check} onCheck={onCheck} />}
-            <LessonNote lessonId={lesson.id} />
-          </>}
+        {expanded && <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}>
+            <motion.p variants={FADE_UP} className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/60 light:text-slate-600">{lesson.body}</motion.p>
+            {TERMINAL_DEMOS[lesson.title] && <motion.div variants={FADE_UP}><TerminalPlayground demos={TERMINAL_DEMOS[lesson.title]} /></motion.div>}
+            {lesson.keyTakeaway && <motion.div variants={FADE_UP} className="relative mt-4 overflow-hidden rounded-xl border border-emerald-400/25 light:border-emerald-500/25 bg-emerald-400/[0.06] light:bg-emerald-50 px-4 py-3 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_0_28px_-10px_rgba(16,185,129,0.55)]">
+                <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-emerald-400/20 blur-2xl" aria-hidden />
+                <p className="relative flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300 light:text-emerald-700">
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" fill="currentColor" /></svg>
+                  Key takeaway
+                </p>
+                <p className="relative mt-1 text-sm text-white/85 light:text-slate-700">{lesson.keyTakeaway}</p>
+              </motion.div>}
+            {!done && lesson.check && <motion.div variants={FADE_UP}><LessonCheck check={lesson.check} onCheck={onCheck} /></motion.div>}
+            <motion.div variants={FADE_UP}><LessonNote lessonId={lesson.id} /></motion.div>
+          </motion.div>}
       </SpotlightCard>
     </div>;
 }
