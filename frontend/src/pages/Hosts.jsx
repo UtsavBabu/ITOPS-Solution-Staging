@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { createHostAgent, deleteHostAgent, fetchMyPermissions, listHostAgents, regenerateHostAgentKey } from "../api/endpoints";
 import { useRealtimeInvalidate } from "../hooks/useRealtimeInvalidate";
 import { HostRunbooks } from "../components/HostRunbooks";
@@ -84,18 +84,30 @@ function InstallSnippet({
   const snippet = `curl -fsSL "${window.location.origin}/kada-nigrani-agent.sh" -o /opt/kada-nigrani-agent.sh && chmod +x /opt/kada-nigrani-agent.sh
 # Run every minute via cron:
 ( crontab -l 2>/dev/null; echo '* * * * * INGEST_URL="${INGEST_URL}" ANON_KEY="${ANON_KEY}" AGENT_KEY="${host.ingestKey}" /opt/kada-nigrani-agent.sh >/dev/null 2>&1' ) | crontab -`;
-  return <div className="mt-3 rounded-lg border border-white/10 light:border-slate-900/10 bg-black/40 light:bg-slate-900/[0.03] p-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Install on this host</p>
+  return <div className="glass mt-3 overflow-hidden rounded-xl">
+      <div className="flex items-center justify-between border-b border-white/10 light:border-slate-900/10 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="flex gap-1" aria-hidden>
+            <span className="h-2 w-2 rounded-full bg-red-400/70" />
+            <span className="h-2 w-2 rounded-full bg-amber-400/70" />
+            <span className="h-2 w-2 rounded-full bg-emerald-400/70" />
+          </span>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Install on this host</p>
+        </div>
         <button onClick={() => {
         navigator.clipboard.writeText(snippet);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      }} className="text-[11px] text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900">
-          {copied ? "Copied ✓" : "Copy"}
+      }} className={`relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${copied ? "bg-emerald-400/15 text-emerald-300" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900 hover:bg-white/5"}`}>
+          <AnimatePresence mode="wait" initial={false}>
+            {copied ? <motion.span key="copied" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }} transition={{ duration: 0.2 }} className="flex items-center gap-1">
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Copied!
+              </motion.span> : <motion.span key="copy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>Copy</motion.span>}
+          </AnimatePresence>
         </button>
       </div>
-      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed text-white/55 light:text-slate-500">{snippet}</pre>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-all p-3 font-mono text-[11px] leading-relaxed text-cyan-100/80 light:text-slate-600">{snippet}</pre>
     </div>;
 }
 function HostCard({
@@ -162,8 +174,9 @@ function HostCard({
             {host.os ? ` · ${host.os}` : ""}
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${host.isOnline ? "bg-emerald-400/10 light:bg-emerald-100 text-emerald-300 light:text-emerald-700" : "bg-white/10 text-white/50 light:text-slate-500"}`}>
-          {host.isOnline ? "Online" : host.lastSeenAt ? "Offline" : "Pending"}
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${host.isOnline ? "bg-emerald-400/10 light:bg-emerald-100 text-emerald-300 light:text-emerald-700" : host.lastSeenAt ? "bg-white/10 text-white/50 light:text-slate-500" : "bg-amber-400/10 light:bg-amber-100 text-amber-300 light:text-amber-700"}`}>
+          {!host.lastSeenAt && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />}
+          {host.isOnline ? "Online" : host.lastSeenAt ? "Offline" : "Awaiting first report"}
         </span>
       </div>
 
