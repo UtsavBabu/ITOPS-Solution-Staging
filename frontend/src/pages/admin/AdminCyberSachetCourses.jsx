@@ -9,6 +9,12 @@ import { useConfirm } from "../../components/ConfirmDialog";
 import { CATEGORY_LABELS } from "../../data/cybersachetCourses";
 
 const LEVELS = ["beginner", "intermediate", "advanced"];
+const PLAN_TIERS = [
+  { value: "STARTER", label: "Starter (everyone)" },
+  { value: "PROFESSIONAL", label: "Professional" },
+  { value: "BUSINESS", label: "Business" },
+  { value: "ENTERPRISE", label: "Enterprise" }
+];
 const QUESTION_TYPES = [{ value: "single", label: "Single choice" }, { value: "multiple", label: "Multiple answer" }, { value: "ordering", label: "Arrange steps" }];
 const inputClass = "w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-amber-400/40 focus:outline-none";
 const labelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/35 light:text-slate-400";
@@ -276,12 +282,12 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
   const [estimatedMinutes, setEstimatedMinutes] = useState(course.estimatedMinutes);
   const [published, setPublished] = useState(course.published);
   const [category, setCategory] = useState(course.category ?? "security-awareness");
-  const [freeTier, setFreeTier] = useState(course.freeTier ?? false);
+  const [minPlan, setMinPlan] = useState(course.minPlan ?? "PROFESSIONAL");
   const toast = useToast();
   const confirm = useConfirm();
   const { data: modules } = useQuery({ queryKey: ["admin-cybersachet-modules", course.id], queryFn: () => adminFetchCybersachetModules(course.id), enabled: expanded });
   const save = useMutation({
-    mutationFn: () => adminSaveCybersachetCourse({ id: course.id, slug, title, description, level, estimatedMinutes: Number(estimatedMinutes), published, sortOrder: course.sortOrder, category, freeTier }),
+    mutationFn: () => adminSaveCybersachetCourse({ id: course.id, slug, title, description, level, estimatedMinutes: Number(estimatedMinutes), published, sortOrder: course.sortOrder, category, minPlan }),
     onSuccess: () => { toast.success("Course saved."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to save course")
   });
@@ -324,9 +330,11 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
               <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="h-4 w-4 rounded border-white/20 light:border-slate-900/25 bg-black/40 light:bg-slate-900/[0.03] accent-emerald-400" />
               Published
             </label>
-            <label className="flex items-center gap-2 text-sm text-white/70 light:text-slate-600" title="Included on the Starter package with no license upgrade — keep this to at most two courses.">
-              <input type="checkbox" checked={freeTier} onChange={e => setFreeTier(e.target.checked)} className="h-4 w-4 rounded border-white/20 light:border-slate-900/25 bg-black/40 light:bg-slate-900/[0.03] accent-emerald-400" />
-              Included on Starter
+            <label className="flex items-center gap-2 text-sm text-white/70 light:text-slate-600">
+              <span>Requires</span>
+              <select value={minPlan} onChange={e => setMinPlan(e.target.value)} className="rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-2 py-1 text-xs text-white light:text-slate-900 focus:outline-none">
+                {PLAN_TIERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </label>
           </div>
           <div className="flex gap-2">
@@ -358,7 +366,7 @@ export default function AdminCyberSachetCourses() {
   });
   const [expandedId, setExpandedId] = useState(null);
   const create = useMutation({
-    mutationFn: () => adminSaveCybersachetCourse({ slug: `new-course-${Date.now()}`, title: "New course", description: "", level: "beginner", estimatedMinutes: 15, published: false, sortOrder: (courses?.length ?? 0), category: "security-awareness", freeTier: false }),
+    mutationFn: () => adminSaveCybersachetCourse({ slug: `new-course-${Date.now()}`, title: "New course", description: "", level: "beginner", estimatedMinutes: 15, published: false, sortOrder: (courses?.length ?? 0), category: "security-awareness", minPlan: "PROFESSIONAL" }),
     onSuccess: () => { toast.success("Course created — fill it in below."); refetch(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to create course")
   });

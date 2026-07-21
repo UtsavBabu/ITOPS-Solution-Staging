@@ -26,7 +26,7 @@ export async function fetchPlanCatalog() {
     maxHosts: row.max_hosts ?? 1
   })).sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan));
 }
-const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
+export const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
 async function currentOrganizationId() {
   const {
     data: {
@@ -763,6 +763,7 @@ export async function fetchCybersachetCourses() {
     estimatedMinutes: row.estimated_minutes,
     category: row.category,
     freeTier: row.free_tier,
+    minPlan: row.min_plan ?? (row.free_tier ? "STARTER" : "PROFESSIONAL"),
     lessonCount: Number(row.lesson_count),
     quizQuestionCount: Number(row.quiz_question_count)
   }));

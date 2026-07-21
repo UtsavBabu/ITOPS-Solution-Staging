@@ -629,6 +629,7 @@ export async function adminFetchCybersachetCourses() {
     sortOrder: row.sort_order,
     category: row.category,
     freeTier: row.free_tier,
+    minPlan: row.min_plan ?? (row.free_tier ? "STARTER" : "PROFESSIONAL"),
     lessonCount: Number(row.lesson_count),
     quizQuestionCount: Number(row.quiz_question_count),
     enrollmentCount: Number(row.enrollment_count)
@@ -646,7 +647,7 @@ export async function adminSaveCybersachetCourse(course) {
     p_published: course.published,
     p_sort_order: course.sortOrder ?? 0,
     p_category: course.category ?? "security-awareness",
-    p_free_tier: course.freeTier ?? false
+    p_min_plan: course.minPlan ?? "PROFESSIONAL"
   });
   if (error) throw new Error(error.message);
   return data;

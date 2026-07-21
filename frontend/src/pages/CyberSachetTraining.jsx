@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, submitCourseQuiz } from "../api/endpoints";
+import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
 import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { EmptyState, ErrorState } from "../components/EmptyState";
@@ -125,7 +125,10 @@ function CourseCard({ course, enrollment, index, assignment, onOpen, canManageTr
     </div>;
 }
 
-function LockedCourseCard({ course, index, requiredPlan = "Professional" }) {
+const PLAN_LABEL = { STARTER: "Starter", PROFESSIONAL: "Professional", BUSINESS: "Business", ENTERPRISE: "Enterprise" };
+
+function LockedCourseCard({ course, index }) {
+  const requiredPlan = PLAN_LABEL[course.minPlan] ?? "Professional";
   return <SpotlightCard tint="white" delay={index * 0.06} className="h-full border-dashed opacity-70">
       <div className="flex h-full flex-col p-5">
         <div className="flex items-start justify-between gap-3">
@@ -620,7 +623,13 @@ export default function CyberSachetTraining() {
   const { user, organization } = useAuth();
   const { data: licensed, isLoading: licenseLoading } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
   const { data: usage, isLoading: usageLoading } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 60_000 });
-  const isStarter = usage?.plan === "STARTER";
+  const orgPlan = usage?.plan ?? "STARTER";
+  const orgPlanRank = PLAN_ORDER.indexOf(orgPlan);
+  const isStarter = orgPlan === "STARTER";
+  // Local preview courses (data/cybersachetCourses.js) predate min_plan and
+  // only carry the old freeTier boolean — fall back to it the same way the
+  // live-fetch mappers do, so a free local course doesn't regress to locked.
+  const courseAllowedByPlan = c => PLAN_ORDER.indexOf(c.minPlan ?? (c.freeTier ? "STARTER" : "PROFESSIONAL")) <= orgPlanRank;
   const local = !licenseLoading && !licensed;
 
   const { data: liveCourses, isLoading: coursesLoading, isError: coursesError, refetch: refetchCourses } = useQuery({ queryKey: ["cybersachet-courses"], queryFn: fetchCybersachetCourses, enabled: !!licensed });
@@ -662,31 +671,29 @@ export default function CyberSachetTraining() {
   }
 
   // Visibility rule (real accounts, not local preview):
-  //  - free_tier courses are always open, on any plan — the honest "always
-  //    on" on-ramp described in DEPLOY.md.
-  //  - On Professional+, everything else stays admin-assigned-only (an
-  //    employee never sees the full catalog, only what was assigned).
-  //  - On Starter, EVERY non-free course is locked, full stop — even one an
-  //    admin already assigned (e.g. before a downgrade from Professional),
-  //    and this applies identically in local preview mode too. Preview
-  //    exists to show a prospect what they'd actually get; showing a
-  //    Starter org the entire catalog wide open would be an honest-looking
-  //    preview of a plan restriction that isn't real — the exact opposite
-  //    of what the preview is for. The RPC layer
-  //    (_cybersachet_course_allowed) already refuses a live Starter org
-  //    the same way; the card says the same thing either side of licensing.
+  //  - A course's own min_plan decides it, not a Starter/non-Starter binary
+  //    — a course requiring Business stays locked for a Professional org
+  //    exactly like it would for Starter. free_tier (min_plan STARTER)
+  //    courses are always open, on any plan — the honest "always on" on-ramp
+  //    described in DEPLOY.md.
+  //  - Once a course's tier is unlocked by the org's plan, it's still
+  //    admin-assigned-only for a regular member (an employee never sees the
+  //    full catalog, only what was assigned) — that part is unchanged.
+  //  - Local preview applies the same real tiered rule against the org's
+  //    actual plan, not a simplified "Starter locked / anything else open"
+  //    — showing a Professional org's preview as if Business/Enterprise-only
+  //    courses were open would be an honest-looking preview of an
+  //    entitlement that isn't real. The RPC layer (_cybersachet_course_
+  //    allowed) enforces the identical tiered rule server-side.
   const allCourses = local ? localCourses : (courses ?? []);
   const freeCourses = allCourses.filter(c => c.freeTier);
-  const assignedCourses = local || isStarter ? [] : allCourses.filter(c => !c.freeTier && assignmentByCourseId.has(c.id));
-  const lockedCourses = isStarter ? allCourses.filter(c => !c.freeTier) : [];
-  // Non-Starter local preview still shows the whole catalog open — there's
-  // no admin in a solo preview to assign anything, so "assigned-only"
-  // doesn't apply; Professional+ live accounts keep the real assigned-only
-  // rule unchanged for a regular member. An admin (training:manage) on a
-  // real, non-Starter org sees the whole catalog too — same exception as
-  // local preview, for the same reason: they need to browse it to decide
-  // what to assign, not just see what's already assigned to themselves.
-  const visibleCourses = isStarter ? freeCourses : (local || canManageTraining ? allCourses : [...freeCourses, ...assignedCourses]);
+  // Local preview and an org admin (training:manage) both need to see
+  // everything their plan tier actually unlocks — a solo preview has no
+  // admin to assign anything, and an admin needs to browse the catalog to
+  // decide what to assign, not just see what's already assigned to them.
+  const assignedCourses = local ? [] : allCourses.filter(c => !c.freeTier && courseAllowedByPlan(c) && assignmentByCourseId.has(c.id));
+  const lockedCourses = allCourses.filter(c => !courseAllowedByPlan(c));
+  const visibleCourses = local || canManageTraining ? allCourses.filter(courseAllowedByPlan) : [...freeCourses, ...assignedCourses];
   const filteredVisible = activeCategory ? visibleCourses.filter(c => c.category === activeCategory) : visibleCourses;
   const filteredLocked = activeCategory ? lockedCourses.filter(c => c.category === activeCategory) : lockedCourses;
   const categories = [...new Set(allCourses.map(c => c.category))].filter(Boolean);
