@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { useSound } from "../context/SoundContext";
 const COMMANDS = [{
   label: "Home",
   hint: "Page",
@@ -97,6 +98,7 @@ const COMMANDS = [{
 }];
 export function CommandPalette({ disabled = false }) {
   const navigate = useNavigate();
+  const { play } = useSound();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -154,6 +156,7 @@ export function CommandPalette({ disabled = false }) {
     setActive(0);
   }, [query]);
   function run(cmd) {
+    play("select");
     close();
     navigate(cmd.to);
   }
@@ -161,9 +164,11 @@ export function CommandPalette({ disabled = false }) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActive(a => Math.min(a + 1, results.length - 1));
+      play("tick");
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive(a => Math.max(a - 1, 0));
+      play("tick");
     } else if (e.key === "Enter" && results[active]) {
       e.preventDefault();
       run(results[active]);

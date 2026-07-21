@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
 import { useTheme } from "../context/ThemeContext";
+import { useSound } from "../context/SoundContext";
 
 /* CyberSachet gets its own visual identity within the dashboard shell —
  * rose/violet in dark mode instead of the app's default cyan/emerald
@@ -98,6 +99,10 @@ export function ProgressRing({ pct, size = 44, tone = "rose" }) {
 export function CompletionCelebration({ score }) {
   const passed = score >= 70;
   const confetti = passed ? Array.from({ length: 20 }, (_, i) => i) : [];
+  const { play } = useSound();
+  // Plays once per real result (score changing means a new quiz attempt),
+  // not on every re-render this component happens to go through.
+  useEffect(() => { play(passed ? "success" : "error"); }, [score]); // eslint-disable-line react-hooks/exhaustive-deps
   return <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative overflow-hidden">
       {passed && <motion.div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "radial-gradient(circle, rgba(16,185,129,0.35), transparent 70%)" }} initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: [0, 0.9, 0], scale: 1.4 }} transition={{ duration: 0.9, ease: "easeOut" }} aria-hidden />}
       {confetti.map(i => <motion.span key={i} className="absolute top-1/2 left-1/2 h-1.5 w-1.5 rounded-full" style={{ background: ["#fb7185", "#a78bfa", "#10b981", "#fbbf24", "#00f0ff"][i % 5] }} initial={{ x: 0, y: 0, opacity: 1 }} animate={{ x: (Math.cos((i / 20) * Math.PI * 2) * 100), y: (Math.sin((i / 20) * Math.PI * 2) * 100) - 24, opacity: 0 }} transition={{ duration: 1.2, ease: "easeOut", delay: 0.1 }} />)}

@@ -11,6 +11,7 @@ import { EmptyState, ErrorState } from "../components/EmptyState";
 import { useConfirm } from "../components/ConfirmDialog";
 import { useToast } from "../components/Toast";
 import { useAuth } from "../context/AuthContext";
+import { useSound } from "../context/SoundContext";
 const EASE = [0.16, 1, 0.3, 1];
 const INGEST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-metrics`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -81,6 +82,7 @@ function InstallSnippet({
   host
 }) {
   const [copied, setCopied] = useState(false);
+  const { play } = useSound();
   const snippet = `curl -fsSL "${window.location.origin}/kada-nigrani-agent.sh" -o /opt/kada-nigrani-agent.sh && chmod +x /opt/kada-nigrani-agent.sh
 # Run every minute via cron:
 ( crontab -l 2>/dev/null; echo '* * * * * INGEST_URL="${INGEST_URL}" ANON_KEY="${ANON_KEY}" AGENT_KEY="${host.ingestKey}" /opt/kada-nigrani-agent.sh >/dev/null 2>&1' ) | crontab -`;
@@ -96,6 +98,7 @@ function InstallSnippet({
         </div>
         <button onClick={() => {
         navigator.clipboard.writeText(snippet);
+        play("success");
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }} className={`relative inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${copied ? "bg-emerald-400/15 text-emerald-300" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900 hover:bg-white/5"}`}>

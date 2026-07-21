@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useSound } from "../context/SoundContext";
 const ToastContext = createContext(null);
 const EASE = [0.16, 1, 0.3, 1];
 const DURATION_MS = 4500;
@@ -20,6 +21,7 @@ export function ToastProvider({
 }) {
   const [toasts, setToasts] = useState([]);
   const idRef = useRef(0);
+  const { play } = useSound();
   const dismiss = useCallback(id => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
@@ -30,8 +32,9 @@ export function ToastProvider({
       variant,
       message
     }]);
+    play(variant);
     window.setTimeout(() => dismiss(id), DURATION_MS);
-  }, [dismiss]);
+  }, [dismiss, play]);
   const value = {
     show,
     success: m => show(m, "success"),

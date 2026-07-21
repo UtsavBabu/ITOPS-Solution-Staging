@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { fetchAssets, fetchIncidents, fetchMonitors, listHostAgents } from "../api/endpoints";
 import { fetchAdminCustomers, fetchAdminUsers } from "../api/adminEndpoints";
+import { useSound } from "../context/SoundContext";
 
 /**
  * Real global search over live data — every result here comes from a
@@ -60,6 +61,7 @@ function useAdminResults(query, active) {
 
 export function AppSearch({ scope, navItems }) {
   const navigate = useNavigate();
+  const { play } = useSound();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -103,6 +105,7 @@ export function AppSearch({ scope, navItems }) {
     setActive(0);
   }, [query]);
   function run(item) {
+    play("select");
     close();
     navigate(item.to);
   }
@@ -110,9 +113,11 @@ export function AppSearch({ scope, navItems }) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActive(a => Math.min(a + 1, flat.length - 1));
+      play("tick");
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive(a => Math.max(a - 1, 0));
+      play("tick");
     } else if (e.key === "Enter" && flat[active]) {
       e.preventDefault();
       run(flat[active]);
