@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
+import { SoundToggle } from "./SoundToggle";
 import { AppSearch } from "./AppSearch";
 import { NotificationCenter } from "./NotificationCenter";
 const EASE = [0.16, 1, 0.3, 1];
@@ -275,6 +276,7 @@ export function AdminLayout() {
             </Link>
             <div className="flex shrink-0 items-center gap-2">
               <NotificationCenter scope="admin" />
+              <SoundToggle className="h-7 w-7 shrink-0 border-white/10 light:border-slate-900/10" />
               <ThemeToggle className="h-7 w-7 shrink-0 border-white/10 light:border-slate-900/10" />
             </div>
           </div>

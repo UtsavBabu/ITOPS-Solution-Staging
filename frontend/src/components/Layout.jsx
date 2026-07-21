@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { EnterpriseAuroraBackground } from "./PageBackgrounds";
 import { BrandMark } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
+import { SoundToggle } from "./SoundToggle";
 import { useQuery } from "@tanstack/react-query";
 import { fetchMyPermissions, fetchPlanUsage } from "../api/endpoints";
 import { usePortalType } from "../hooks/usePortalType";
@@ -276,6 +277,7 @@ export function Layout() {
             <Link to="/profile" onClick={closeMobileNav} className="truncate px-1 text-xs text-white/40 light:text-slate-500 hover:text-white light:hover:text-slate-900" title="My Profile">{user?.email}</Link>
             <div className="flex shrink-0 items-center gap-2">
               <NotificationCenter scope="customer" />
+              <SoundToggle className="h-7 w-7 border-white/10 light:border-slate-900/10" />
               <ThemeToggle className="h-7 w-7 border-white/10 light:border-slate-900/10" />
             </div>
           </div>
