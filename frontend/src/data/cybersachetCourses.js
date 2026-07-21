@@ -812,6 +812,63 @@ const COURSES = [
       { id: "q3", questionType: "single", question: "A pod is stuck in CrashLoopBackOff. What is the most useful next command?", choices: ["kubectl get nodes", "kubectl describe pod <name>, to read its Events section", "kubectl delete namespace", "kubectl top pod"], correctIndex: 1 },
       { id: "q4", questionType: "single", question: "What does `kubectl rollout restart deployment` accomplish that a fixed ConfigMap alone doesn't?", choices: ["It deletes the deployment", "It forces fresh Pods to start, which is what actually picks up the updated ConfigMap", "It changes the container image automatically", "It is identical to kubectl scale"], correctIndex: 1 }
     ]
+  },
+  // Same real content as the seeded 'microsoft-azure-fundamentals' course
+  // in migration 0085.
+  {
+    id: "local-microsoft-azure-fundamentals",
+    slug: "microsoft-azure-fundamentals",
+    title: "Microsoft Azure Fundamentals",
+    description: "How Azure actually organizes resources and identity — management groups, subscriptions, resource groups, and role-based access control — plus the core services (VMs, App Service, storage, virtual networks) every Azure workload is built from.",
+    level: "intermediate",
+    estimatedMinutes: 20,
+    category: "cloud",
+    track: "academy",
+    freeTier: false,
+    modules: [
+      { id: "m1", title: "Azure Structure & Identity" },
+      { id: "m2", title: "Core Azure Services" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "Subscriptions, resource groups, and Azure Resource Manager",
+        body: "Azure organizes everything under a hierarchy: management groups (optional, for applying policy across many subscriptions at once) contain subscriptions (the billing and access-control boundary), which contain resource groups (a logical container for resources that share a lifecycle — you typically delete a resource group to delete everything inside it together). Every operation in Azure, whether from the Portal, CLI, PowerShell, or an ARM/Bicep template, goes through Azure Resource Manager (ARM), the single control-plane API that authenticates the request, checks RBAC permissions, and routes it to the right resource provider. This is why infrastructure-as-code in Azure (ARM templates, Bicep, or Terraform's azurerm provider) all produce identical results — they're just different syntaxes for the same underlying ARM API calls.",
+        keyTakeaway: "A resource group is a lifecycle boundary — deleting it deletes everything inside it together, which is why deployments are usually scoped to one.",
+        check: { question: "What happens when you delete a resource group in Azure?", choices: ["Only the resource group's tags are removed", "Every resource inside it is deleted along with it", "Resources are moved to a default group", "Nothing, resource groups are permanent"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Microsoft Entra ID and role-based access control",
+        body: "Microsoft Entra ID (formerly Azure Active Directory) is Azure's identity service — every user, service principal (an application's own identity), and managed identity (an identity Azure automatically manages for a resource, so you never handle its credentials directly) authenticates through it. Access to actually do things with resources is governed separately by Azure RBAC: a role assignment binds a security principal (a user, group, or service principal) to a role definition (like Reader, Contributor, or Owner, or a custom role) at a scope (a management group, subscription, resource group, or single resource). RBAC is additive only — you grant permissions, you can't explicitly deny them the way a firewall rule blocks traffic — and permissions granted at a higher scope always inherit down to everything beneath it. Least privilege means picking the narrowest role at the narrowest scope that still lets someone do their job — Contributor on one resource group instead of Owner on the whole subscription.",
+        keyTakeaway: "RBAC in Azure is additive only, and permissions granted at a higher scope automatically inherit down.",
+        check: { question: "A user is granted Contributor at the subscription level. What does that mean for a specific resource group underneath it?", choices: ["They get no access unless granted separately", "They inherit Contributor access there too", "They only get Reader access there", "Subscription-level roles don't inherit"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Compute: VMs, scale sets, and App Service",
+        body: "An Azure Virtual Machine is IaaS — you pick a size (which fixes its vCPU/RAM/disk throughput), an OS image, and you're responsible for patching and managing everything above the hypervisor, the same as EC2 on AWS. A Virtual Machine Scale Set (VMSS) manages a group of identical VMs as one unit, automatically adding or removing instances based on an autoscale rule (like CPU percentage) — the same pattern as an AWS Auto Scaling Group. Azure App Service is PaaS: you deploy code (a container, or directly from a Git repo) and Azure handles the OS, runtime patching, and the scaling settings you configure — no VM to manage at all. Choosing between them mostly comes down to how much control you actually need: App Service for a standard web app or API, VMs/VMSS when you need OS-level control or software that doesn't fit a PaaS runtime.",
+        keyTakeaway: "App Service trades VM-level control for zero OS management — the same IaaS-vs-PaaS tradeoff as any cloud provider, just with Azure's own names for it.",
+        check: { question: "What is the main difference between a VM Scale Set and Azure App Service?", choices: ["They are identical services", "A VMSS manages a group of full VMs you still patch yourself; App Service is PaaS with no OS to manage", "App Service only runs static websites", "VMSS is only for databases"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Storage, virtual networks, and keeping costs in check",
+        body: "Azure Storage accounts hold multiple types side by side: Blob storage (unstructured files over HTTP/HTTPS, like AWS S3), Azure Files (a fully managed SMB/NFS file share you can mount like a network drive), and managed Disks (block storage attached to a single VM). A Virtual Network (VNet) is your own isolated network in Azure, split into subnets; a Network Security Group (NSG) is a set of allow/deny rules, by source/destination IP, port, and protocol, attached to a subnet or network interface, functioning as Azure's stateful firewall layer. Azure Monitor collects metrics and logs across all of this, and Cost Management (Cost Analysis plus budgets with alerts) is the tool for catching a runaway bill before the invoice arrives — a budget alert firing on an unexpected spike is usually the first sign a VM was left running, or a scale set's autoscale rule was misconfigured.",
+        keyTakeaway: "An NSG's allow/deny rules by IP/port/protocol are Azure's core firewall layer — most \"can't connect\" issues on a VNet trace back to one.",
+        check: { question: "What does a Network Security Group (NSG) control in Azure?", choices: ["Billing alerts", "Allow/deny traffic rules by IP, port, and protocol for a subnet or NIC", "Which OS a VM runs", "Storage account replication settings"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "What is the correct order of Azure's organizational hierarchy, from broadest to narrowest?", choices: ["Resource group > subscription > management group", "Management group > subscription > resource group", "Subscription > management group > resource group", "They have no hierarchy"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "Azure RBAC role assignments work by:", choices: ["Explicitly denying specific users", "Granting a role to a principal at a scope, which is additive and inherits downward", "Blocking all access by default with no way to grant it", "Only applying to a single resource, never a resource group"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "You need to run a legacy application that requires specific OS-level configuration Azure App Service doesn't support. What's the right compute choice?", choices: ["Azure App Service anyway", "A Virtual Machine", "Cost Management", "Microsoft Entra ID"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What is the primary purpose of Azure Cost Management budgets and alerts?", choices: ["To automatically delete unused resources", "To catch unexpected spending before the invoice arrives", "To enforce RBAC roles", "To configure NSG rules"], correctIndex: 1 }
+    ]
   }
 ];
 
