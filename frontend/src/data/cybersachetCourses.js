@@ -580,6 +580,238 @@ const COURSES = [
       { id: "q3", questionType: "single", question: "A server runs a website and SSH at the same time. How does incoming traffic get routed to the right one?", choices: ["By port number", "By MAC address", "By subnet mask", "It can't — one server can only run one service"], correctIndex: 0 },
       { id: "q4", questionType: "single", question: "You can ping a server but a specific web app on it won't load. What's the most useful next step?", choices: ["Assume the whole network is down", "Test the exact port with curl or telnet", "Give up on the network layer entirely", "Change the server's IP address"], correctIndex: 1 }
     ]
+  },
+  // Same real content as the seeded 'cloud-computing-essentials' course in
+  // migration 0073.
+  {
+    id: "local-cloud-computing-essentials",
+    slug: "cloud-computing-essentials",
+    title: "Cloud Computing Essentials",
+    description: "What \"the cloud\" actually is, the service models (IaaS/PaaS/SaaS) and shared responsibility model, and the core building blocks — compute, storage, and networking — behind AWS, Azure, and every other provider.",
+    level: "beginner",
+    estimatedMinutes: 18,
+    category: "cloud",
+    track: "academy",
+    freeTier: false,
+    modules: [
+      { id: "m1", title: "What Cloud Actually Means" },
+      { id: "m2", title: "The Building Blocks" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "IaaS, PaaS, and SaaS",
+        body: "The three service models differ in how much a provider manages for you. Infrastructure as a Service (IaaS — e.g. an AWS EC2 virtual machine) gives you raw compute, storage, and networking; you still install and manage the OS and everything above it. Platform as a Service (PaaS — e.g. AWS Elastic Beanstalk or Heroku) manages the OS and runtime for you, so you deploy code and the platform handles scaling and patching. Software as a Service (SaaS — e.g. Gmail or Salesforce) is a finished application you just use — nothing to provision or patch at all. Moving from IaaS toward SaaS trades control for convenience.",
+        keyTakeaway: "IaaS gives you raw infrastructure to manage yourself, PaaS manages the runtime for you, SaaS is a finished application you just use.",
+        check: { question: "You deploy your own application code and the platform handles the OS, patching, and scaling for you. Which service model is this?", choices: ["IaaS", "PaaS", "SaaS", "None of these"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "The shared responsibility model",
+        body: "Cloud security is a shared job, not something you can outsource entirely. The provider (AWS, Azure, GCP) secures \"the cloud\" — physical data centers, the underlying hardware, and the virtualization layer. You're responsible for security \"in the cloud\" — how you configure access controls, which ports you leave open, whether your storage buckets are accidentally public, and how you patch your own operating systems on IaaS. The exact line shifts depending on the service model: the more of the stack the provider manages (PaaS, SaaS), the less you're responsible for — but you're never responsible for zero.",
+        keyTakeaway: "The provider secures the underlying cloud infrastructure; you're always responsible for how you configure and use it.",
+        check: { question: "Under the shared responsibility model, who is responsible for correctly configuring access permissions on your own cloud storage?", choices: ["The cloud provider, always", "You, the customer", "Neither party — it's automatic", "Only relevant for on-premises systems"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Compute and storage basics",
+        body: "Compute is the processing power that runs your workloads — a virtual machine (like an AWS EC2 instance or Azure VM) behaves like a regular server you can SSH into, while a container (like AWS Fargate or Google Cloud Run) packages an application to run without you managing a full OS underneath it. Storage comes in a few shapes: object storage (like AWS S3) holds files accessed over HTTP, ideal for backups, media, and static website assets; block storage (like an EBS volume) behaves like an attached hard drive for a VM; and managed databases (like AWS RDS) run a real database engine without you administering the underlying server.",
+        keyTakeaway: "Object storage is for files over HTTP, block storage attaches to a VM like a hard drive, managed databases run the engine without you administering the server.",
+        check: { question: "Which storage type would you use to host static website assets and backups, accessed over HTTP?", choices: ["Block storage", "Object storage", "A managed database", "None — that requires a physical server"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Networking and regions",
+        body: "Cloud providers organize infrastructure into regions (geographic areas, like us-east-1 or eu-west-2), each containing multiple availability zones — physically separate data centers with independent power and networking, so a failure in one doesn't take down the others. A Virtual Private Cloud (VPC) is your own isolated network within a region, where you define subnets, routing, and firewall-like security groups that control what traffic can reach your resources. Placing resources across multiple availability zones is the standard way to build for high availability — if one zone has an outage, the others keep serving traffic.",
+        keyTakeaway: "Spreading resources across multiple availability zones within a region is how cloud architectures stay available through a single data-center failure.",
+        check: { question: "Why would you deploy an application across multiple availability zones instead of just one?", choices: ["It's required by every cloud provider", "So an outage in one zone doesn't take down the whole application", "It's the only way to get a public IP address", "Availability zones are just a billing concept, not physical separation"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "Which service model gives you the most control but requires you to manage the OS yourself?", choices: ["SaaS", "PaaS", "IaaS", "None of these require OS management"], correctIndex: 2 },
+      { id: "q2", questionType: "single", question: "Under the shared responsibility model, what does the cloud provider secure?", choices: ["Your application code", "The underlying physical infrastructure and virtualization layer", "Your firewall rules", "Your access control configuration"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "What's the difference between block storage and object storage?", choices: ["They are the same thing", "Block storage attaches to a VM like a drive; object storage holds files accessed over HTTP", "Object storage is only for databases", "Block storage cannot be resized"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What is an availability zone?", choices: ["A billing region", "A physically separate data center within a cloud region", "A type of virtual machine", "A security group rule"], correctIndex: 1 }
+    ]
+  },
+  // Same real content as the seeded 'intro-to-devops-and-cicd' course in
+  // migration 0073.
+  {
+    id: "local-intro-to-devops-and-cicd",
+    slug: "intro-to-devops-and-cicd",
+    title: "Introduction to DevOps & CI/CD",
+    description: "Why DevOps exists, how a CI/CD pipeline actually works from commit to deploy, and the practices — version control, automated testing, infrastructure as code — that make frequent, reliable releases possible.",
+    level: "intermediate",
+    estimatedMinutes: 22,
+    category: "devops",
+    track: "academy",
+    freeTier: false,
+    modules: [
+      { id: "m1", title: "Why DevOps Exists" },
+      { id: "m2", title: "How a Pipeline Actually Works" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "Breaking down the wall between Dev and Ops",
+        body: "Historically, a development team wrote code and \"threw it over the wall\" to a separate operations team responsible for deploying and running it — different goals (ship features vs. keep things stable), different tools, and a slow, blame-prone handoff whenever something broke in production. DevOps is the practice of merging those responsibilities: the same team (or closely collaborating teams) builds, tests, deploys, and operates the software, using automation to make frequent releases safe instead of risky. It's a cultural and process shift as much as a toolset — the tools (CI/CD pipelines, infrastructure as code) exist to support that shift, not the other way around.",
+        keyTakeaway: "DevOps merges development and operations responsibilities so the same team ships and runs software, using automation to make frequent releases safe.",
+        check: { question: "What is DevOps most fundamentally about?", choices: ["A specific tool you install", "Merging development and operations responsibilities with automation to enable safe, frequent releases", "Replacing operations teams entirely with software", "A programming language"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Version control as the foundation",
+        body: "Every DevOps practice assumes code lives in a version control system like Git — a full history of every change, who made it, and why, with the ability to branch (work on a change in isolation) and merge (bring it back into the main codebase) without stepping on other people's work. A pull request (or merge request) is where a proposed change gets reviewed by teammates before it merges — this is the real quality gate in most teams, catching bugs and design issues before code ever reaches a pipeline. Nothing else in a CI/CD pipeline works without this foundation, since the pipeline triggers off changes to the repository.",
+        keyTakeaway: "A pull request is where code gets reviewed before merging — the real quality gate before automation even runs.",
+        check: { question: "What triggers a CI/CD pipeline to run in most setups?", choices: ["A scheduled time only", "A change pushed to the version control repository", "A manual phone call to operations", "Nothing — pipelines run constantly regardless of changes"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Continuous Integration: build and test automatically",
+        body: "Continuous Integration (CI) means every code change automatically triggers a build and a test run — not \"we'll test it before the next release,\" but on every single commit or pull request. This catches problems within minutes of them being introduced, while the context is still fresh, instead of weeks later during a manual pre-release test pass. A typical CI job: check out the code, install dependencies, run the automated test suite, and report pass/fail back to the pull request — a red (failing) build blocks the change from merging until it's fixed.",
+        keyTakeaway: "CI means every commit automatically triggers a build and test run, catching problems within minutes instead of at release time.",
+        check: { question: "What does Continuous Integration (CI) mean in practice?", choices: ["Manually testing code once a month", "Every code change automatically triggers an automated build and test run", "Only testing code right before a major release", "Integrating with third-party APIs"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Continuous Delivery/Deployment and infrastructure as code",
+        body: "Continuous Delivery extends CI one step further: once code passes automated tests, it's automatically packaged and made ready to deploy — a human still clicks \"deploy,\" typically to production. Continuous Deployment goes all the way: passing changes deploy automatically, with no manual approval step, relying entirely on the automated tests to be the safety net. Infrastructure as code (tools like Terraform) applies the same version-controlled, automated approach to the servers and cloud resources themselves — instead of manually clicking through a cloud console, infrastructure is defined in files, reviewed like code, and applied automatically, so an environment can be recreated identically instead of drifting over time.",
+        keyTakeaway: "Continuous Deployment removes the manual approval step entirely — passing automated tests is what ships the change to production.",
+        check: { question: "What's the key difference between Continuous Delivery and Continuous Deployment?", choices: ["They are identical terms", "Continuous Delivery requires a manual approval to deploy; Continuous Deployment deploys automatically with no manual step", "Continuous Deployment is only for infrastructure, not application code", "Continuous Delivery skips automated testing"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "DevOps is best described as:", choices: ["A single software product", "A cultural and process shift merging dev and ops, supported by automation", "A replacement for version control", "A cloud provider"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "What is a pull request used for?", choices: ["Deploying code directly to production", "Having teammates review a proposed change before it merges", "Deleting old branches", "Installing dependencies"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "A build automatically runs tests on every commit and reports pass/fail. This is an example of:", choices: ["Continuous Deployment", "Continuous Integration", "Infrastructure as code", "Shared responsibility"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What does \"infrastructure as code\" let you do?", choices: ["Write application code faster", "Define and version-control servers/cloud resources so environments can be recreated identically", "Replace the need for testing", "Skip using a cloud provider"], correctIndex: 1 }
+    ]
+  },
+  // Same real content as the seeded 'docker-and-container-fundamentals'
+  // course in migration 0078 (also mirrored in data/terminalDemos.js for
+  // the practice-terminal demos keyed by these same lesson titles).
+  {
+    id: "local-docker-and-container-fundamentals",
+    slug: "docker-and-container-fundamentals",
+    title: "Docker & Container Fundamentals",
+    description: "What a container actually is versus a virtual machine, how to build one with a Dockerfile, and the day-to-day Docker commands — including volumes, networking, and docker-compose — every DevOps course after this one assumes you already know.",
+    level: "intermediate",
+    estimatedMinutes: 22,
+    category: "devops",
+    track: "academy",
+    freeTier: false,
+    modules: [
+      { id: "m1", title: "Why Containers" },
+      { id: "m2", title: "Working With Docker Day to Day" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "Containers vs. virtual machines",
+        body: "A virtual machine virtualizes an entire computer — its own kernel, its own OS, running on top of a hypervisor — which makes it heavy (gigabytes, minutes to boot) but fully isolated. A container shares the host machine's kernel and only packages the application plus its dependencies, making it lightweight (megabytes, starts in seconds) while still isolating the app's filesystem, processes, and network from everything else on the host. The tradeoff: a VM can run a completely different OS than its host; a Linux container needs a Linux kernel underneath (which is why Docker on Mac/Windows quietly runs a small Linux VM to host the containers). For most application deployment, containers win on speed and density — running far more containers than VMs on the same hardware — which is why they became the default unit of deployment for modern applications.",
+        keyTakeaway: "Containers share the host kernel and only package the app plus dependencies — lightweight and fast, but not a full separate OS like a VM.",
+        check: { question: "What is the key difference between a container and a virtual machine?", choices: ["Containers are always slower to start", "A container shares the host kernel instead of virtualizing a whole OS", "Virtual machines use less disk space", "There is no real difference"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Images, containers, and the Dockerfile",
+        body: "An image is a read-only template — application code, a runtime, libraries, and configuration, all bundled together — and a container is a running instance of that image, the same relationship a class has to an object. A Dockerfile is the recipe that builds an image: FROM picks a base image (like python:3.12 or node:20), COPY adds your application files in, RUN executes setup commands (like installing dependencies) at build time, and CMD defines what runs when a container starts from it. Images are built in layers, and Docker caches each layer — reordering a Dockerfile so rarely-changing steps (like installing dependencies) come before frequently-changing steps (like copying your source code) means most builds only re-run the last layer or two, dramatically speeding up iteration.",
+        keyTakeaway: "Order a Dockerfile so rarely-changing steps come first — Docker's layer cache means only the changed layers rebuild.",
+        check: { question: "In a Dockerfile, what does the RUN instruction do?", choices: ["Starts the container when it runs", "Executes a command at image build time, like installing dependencies", "Copies files from the host into the image", "Names the resulting image"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Core Docker commands",
+        body: "docker build -t myapp . builds an image from the Dockerfile in the current directory and tags it \"myapp\". docker run -d -p 8080:80 myapp starts a container from that image in the background (-d, detached) and maps port 8080 on the host to port 80 inside the container — without that mapping, the container's port is only reachable from other containers, not the host machine. docker ps lists running containers; add -a to see stopped ones too. docker logs <container> shows a container's output, the first place to look when something crashes right after starting. docker exec -it <container> bash opens an interactive shell inside a running container — useful for poking around, though a container you're regularly shelling into to fix things is usually a sign the image itself needs fixing instead.",
+        keyTakeaway: "-p host:container maps a port out to the host — without it, a container's service is only reachable from other containers.",
+        check: { question: "What does the -p flag do in `docker run -p 8080:80 myapp`?", choices: ["Names the container", "Maps port 8080 on the host to port 80 inside the container", "Pauses the container after starting", "Pulls a newer image version"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Volumes, networking, and docker-compose",
+        body: "A container's own filesystem is ephemeral — delete the container and any data written inside it is gone. A volume (docker run -v mydata:/var/lib/data) persists data outside the container's lifecycle, on the host, so a database container can be recreated without losing its data. By default, containers on the same Docker network can reach each other by container name — Docker's built-in DNS resolves \"database\" to the right container IP automatically, no hardcoded IPs needed. Running a real application usually means multiple containers (a web app, a database, a cache), and docker-compose.yml describes all of them — images, ports, volumes, and the network linking them — as one file, so `docker compose up` starts the entire stack with one command instead of a series of manual docker run commands typed in the right order.",
+        keyTakeaway: "A volume persists data outside a container's lifecycle; docker-compose describes a whole multi-container stack as one file.",
+        check: { question: "Why use a volume instead of just writing data inside the container?", choices: ["Volumes are required for a container to start", "A container's own filesystem is deleted with the container — a volume persists data outside it", "Volumes make the image smaller", "There is no difference"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "What is the most fundamental difference between a container and a VM?", choices: ["Containers cost more to run", "A container shares the host kernel instead of virtualizing a full OS", "VMs start faster than containers", "Containers cannot run on Linux"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "What does a Dockerfile's CMD instruction define?", choices: ["What runs when a container starts from the built image", "The base image to build from", "Which files get copied into the image", "The image's tag name"], correctIndex: 0 },
+      { id: "q3", questionType: "single", question: "A container is stopped and removed. What happens to data it wrote to a mounted volume?", choices: ["It is deleted along with the container", "It persists, since a volume lives outside the container's lifecycle", "It moves to a random other container", "Volumes only work for read-only data"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What problem does docker-compose solve?", choices: ["It replaces the need for a Dockerfile", "It describes and starts a whole multi-container application from one file instead of many manual commands", "It makes images smaller", "It is required for any container to run"], correctIndex: 1 }
+    ]
+  },
+  // Same real content as the seeded
+  // 'kubernetes-fundamentals-pods-and-cluster-triage' course in migration
+  // 0080 (also mirrored in data/terminalDemos.js for the kubectl practice
+  // terminal demos keyed by these same lesson titles).
+  {
+    id: "local-kubernetes-fundamentals",
+    slug: "kubernetes-fundamentals-pods-and-cluster-triage",
+    title: "Kubernetes Fundamentals: Pods & Cluster Triage",
+    description: "What a Pod and a Deployment actually are, how Services give them stable networking, and the kubectl workflow for diagnosing a broken deployment — CrashLoopBackOff, ImagePullBackOff, and the other failures you'll actually hit running a cluster.",
+    level: "intermediate",
+    estimatedMinutes: 24,
+    category: "devops",
+    track: "academy",
+    freeTier: false,
+    minPlan: "BUSINESS",
+    modules: [
+      { id: "m1", title: "Kubernetes Core Concepts" },
+      { id: "m2", title: "Operating and Troubleshooting a Cluster" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "Pods, Deployments, and the Kubernetes API",
+        body: "A Pod is the smallest deployable unit in Kubernetes — one or more containers that share the same network namespace and storage, always scheduled together on the same node. You almost never create a bare Pod directly, because a Pod that dies stays dead: nothing brings it back. A Deployment describes the desired state instead — \"I want 3 replicas of this container running\" — and Kubernetes' control loop continuously reconciles reality toward that desired state, recreating a Pod the moment it disappears. Under the hood, a Deployment manages a ReplicaSet, which manages the actual Pods; you edit the Deployment, and the ReplicaSet/Pod layers below it exist so a rolling update can spin up new Pods before tearing down old ones instead of causing an outage.",
+        keyTakeaway: "A bare Pod that dies stays dead — a Deployment is what actually keeps the desired number of replicas running.",
+        check: { question: "Why do you almost always use a Deployment instead of creating a Pod directly?", choices: ["Pods are deprecated", "A Deployment automatically recreates a Pod that dies to maintain the desired replica count", "Deployments are required for networking to work at all", "There is no real difference"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "Services and networking",
+        body: "Every Pod gets its own IP address, but that address is ephemeral — the moment a Pod is recreated (a redeploy, a crash, a node failure), it gets a new one. Nothing that depends on a stable address to reach your application, like other services or a load balancer, can track a Pod IP directly. A Service solves this: it's a stable virtual IP and DNS name that load-balances traffic across every currently-running Pod matching a label selector, updating automatically as Pods come and go. ClusterIP (the default) is only reachable from inside the cluster — for internal service-to-service traffic. NodePort opens a port on every node for external access, mostly used for testing. LoadBalancer provisions an actual cloud load balancer (on a cloud provider that supports it) for real external traffic. Other Pods reach a Service by its DNS name (like `my-service.my-namespace.svc.cluster.local`) rather than any IP at all, which is what makes the whole system resilient to Pods being replaced constantly.",
+        keyTakeaway: "A Service is a stable name/IP that load-balances across whichever Pods currently match its label selector — Pod IPs themselves are never something to depend on.",
+        check: { question: "Why shouldn't another service connect directly to a Pod's IP address?", choices: ["Pod IPs are always the same, so this is actually fine", "A Pod's IP changes every time it's recreated — a Service provides the stable address instead", "Pods don't have IP addresses", "It is required for security reasons only"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "kubectl essentials",
+        body: "`kubectl get pods` lists Pods and their status at a glance — Running (healthy), Pending (waiting to be scheduled, often on insufficient cluster resources), CrashLoopBackOff (the container keeps starting and immediately dying), and ImagePullBackOff (Kubernetes can't pull the container image, usually a typo in the image name/tag or a private registry auth problem). `kubectl describe pod <name>` is the single most useful troubleshooting command — its Events section at the bottom shows exactly what Kubernetes tried and what failed, in order, which is almost always more informative than the status alone. `kubectl logs <pod>` shows what the application itself printed — add `--previous` to see the logs from the last crashed instance of a CrashLoopBackOff pod, since by the time you look, it may have already restarted with a fresh, empty log. `kubectl exec -it <pod> -- sh` opens a shell inside a running container, the same escape hatch `docker exec` is for a container.",
+        keyTakeaway: "`kubectl describe pod` and its Events section is almost always more informative than the status column alone — that's where the real failure reason shows up.",
+        check: { question: "A crashed pod has already restarted, so `kubectl logs` shows nothing useful. What do you add to see the previous crash's logs?", choices: ["--all", "--previous", "--force", "--tail=0"], correctIndex: 1 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Triage: diagnosing a broken deployment",
+        body: "A repeatable sequence handles most real Kubernetes incidents. First, `kubectl get pods` to see which Pods are unhealthy and their status code (CrashLoopBackOff vs. ImagePullBackOff point to very different problems). Second, `kubectl describe pod <name>` for the Events section — this catches scheduling failures (insufficient CPU/memory on any node), failed readiness/liveness probes, and image pull errors immediately. Third, `kubectl logs <name>` (with `--previous` if it already restarted) to see what the application itself said before it died — a stack trace, a missing environment variable, a database connection refused. Common real causes: a typo'd image tag, a ConfigMap or Secret the Pod expects that doesn't exist or was renamed, a liveness probe with too short a timeout killing a slow-starting app, or requesting more CPU/memory than any node has available. Once you've found and fixed the cause, `kubectl scale deployment <name> --replicas=N` adjusts capacity, and `kubectl rollout restart deployment <name>` forces fresh Pods to pick up a fixed ConfigMap/Secret without a new image.",
+        keyTakeaway: "Work the same order every time: get pods for the symptom, describe pod for the Events section, logs (--previous if needed) for what the app itself said.",
+        check: { question: "A pod shows ImagePullBackOff. What does that specifically point to?", choices: ["The application crashed after starting", "Kubernetes could not pull the container image — often a typo'd tag or a registry auth problem", "The cluster is out of memory", "A readiness probe is failing"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "What is the relationship between a Deployment and a Pod?", choices: ["They are the same thing with different names", "A Deployment manages a ReplicaSet, which manages Pods, maintaining the desired replica count", "A Pod manages a Deployment", "Deployments are only used for networking"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "What problem does a Kubernetes Service solve?", choices: ["It provides a stable name/address that load-balances across Pods, whose own IPs are ephemeral", "It replaces the need for Pods entirely", "It only matters for external traffic, never internal", "It stores application configuration"], correctIndex: 0 },
+      { id: "q3", questionType: "single", question: "A pod is stuck in CrashLoopBackOff. What is the most useful next command?", choices: ["kubectl get nodes", "kubectl describe pod <name>, to read its Events section", "kubectl delete namespace", "kubectl top pod"], correctIndex: 1 },
+      { id: "q4", questionType: "single", question: "What does `kubectl rollout restart deployment` accomplish that a fixed ConfigMap alone doesn't?", choices: ["It deletes the deployment", "It forces fresh Pods to start, which is what actually picks up the updated ConfigMap", "It changes the container image automatically", "It is identical to kubectl scale"], correctIndex: 1 }
+    ]
   }
 ];
 
