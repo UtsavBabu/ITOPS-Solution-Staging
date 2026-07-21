@@ -770,7 +770,8 @@ export async function fetchCybersachetCourses() {
     minPlan: row.min_plan ?? (row.free_tier ? "STARTER" : "PROFESSIONAL"),
     track: row.track ?? "security",
     lessonCount: Number(row.lesson_count),
-    quizQuestionCount: Number(row.quiz_question_count)
+    quizQuestionCount: Number(row.quiz_question_count),
+    capstone: row.capstone ?? null
   }));
 }
 
@@ -796,7 +797,7 @@ export async function fetchAcademyPreviewCourses() {
 export async function fetchCourseModules(courseId) {
   const { data, error } = await supabase.rpc("list_course_modules", { p_course_id: courseId });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(row => ({ id: row.id, title: row.title, sortOrder: row.sort_order }));
+  return (data ?? []).map(row => ({ id: row.id, title: row.title, sortOrder: row.sort_order, interviewQuestions: row.interview_questions ?? [] }));
 }
 
 export async function fetchCourseLessons(courseId) {
@@ -809,7 +810,8 @@ export async function fetchCourseLessons(courseId) {
     body: row.body,
     keyTakeaway: row.key_takeaway,
     sortOrder: row.sort_order,
-    check: row.check_question ? { question: row.check_question, choices: row.check_choices } : null
+    check: row.check_question ? { question: row.check_question, choices: row.check_choices } : null,
+    lab: row.lab ?? null
   }));
 }
 

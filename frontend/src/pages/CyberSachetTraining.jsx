@@ -16,6 +16,10 @@ import { TerminalPlayground } from "../components/TerminalPlayground";
 import { TERMINAL_DEMOS } from "../data/terminalDemos";
 import { InteractiveDiagram } from "../components/InteractiveDiagram";
 import { DIAGRAM_DEMOS } from "../data/interactiveDiagrams";
+import { LabCard } from "../components/LabCard";
+import { InterviewQuestions } from "../components/InterviewQuestions";
+import { Flashcards } from "../components/Flashcards";
+import { buildCheatSheetText, downloadTextFile } from "../lib/cheatSheet";
 import { useAuth } from "../context/AuthContext";
 
 const LEVEL_TONE = {
@@ -296,6 +300,7 @@ function LessonPane({ lesson, index, total, done, locked, bookmarked, onToggleBo
         {expanded && <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}>
             <motion.p variants={FADE_UP} className="mt-3 whitespace-pre-line text-sm leading-relaxed text-white/60 light:text-slate-600">{lesson.body}</motion.p>
             {DIAGRAM_DEMOS[lesson.title] && <motion.div variants={FADE_UP}><InteractiveDiagram diagram={DIAGRAM_DEMOS[lesson.title]} /></motion.div>}
+            {lesson.lab && <motion.div variants={FADE_UP}><LabCard lab={lesson.lab} /></motion.div>}
             {TERMINAL_DEMOS[lesson.title] && <motion.div variants={FADE_UP}><TerminalPlayground demos={TERMINAL_DEMOS[lesson.title]} /></motion.div>}
             {lesson.keyTakeaway && <motion.div variants={FADE_UP} className="relative mt-4 overflow-hidden rounded-xl border border-emerald-400/25 light:border-emerald-500/25 bg-emerald-400/[0.06] light:bg-emerald-50 px-4 py-3 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_0_28px_-10px_rgba(16,185,129,0.55)]">
                 <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-emerald-400/20 blur-2xl" aria-hidden />
@@ -330,6 +335,7 @@ function ModuleSection({ mod, lessons, progress, lockedIds, bookmarks, onToggleB
         const done = progress?.has(lesson.id) ?? false;
         return <LessonPane key={lesson.id} lesson={lesson} index={i} total={lessons.length} done={done} locked={lockedIds.has(lesson.id)} bookmarked={bookmarks.has(lesson.id)} onToggleBookmark={onToggleBookmark} onCheck={choiceIndex => onCheck(lesson.id, choiceIndex)} />;
       })}
+      <InterviewQuestions questions={mod.interviewQuestions} />
     </div>;
 }
 
@@ -425,6 +431,7 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
   const bookmarksKey = `${BOOKMARKS_KEY}:${user?.id ?? "anon"}`;
   const toast = useToast();
   const [search, setSearch] = useState("");
+  const [showFlashcards, setShowFlashcards] = useState(false);
   const [bookmarks, setBookmarks] = useState(() => new Set(readJSON(bookmarksKey, [])));
   function toggleBookmark(lessonId) {
     setBookmarks(prev => {
@@ -476,7 +483,7 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
     const mods = modules ?? [];
     if (mods.length === 0) return [{ id: "_all", title: "Lessons", lessons: filteredLessons }];
     return [
-      ...mods.map(m => ({ id: m.id, title: m.title, lessons: filteredLessons.filter(l => l.moduleId === m.id) })),
+      ...mods.map(m => ({ id: m.id, title: m.title, interviewQuestions: m.interviewQuestions ?? [], lessons: filteredLessons.filter(l => l.moduleId === m.id) })),
       { id: "_ungrouped", title: "More lessons", lessons: filteredLessons.filter(l => !l.moduleId) }
     ].filter(g => g.lessons.length > 0);
   }, [modules, filteredLessons]);
@@ -522,12 +529,21 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
           </ul>
         </SpotlightCard>}
 
-      {!enrollment && <button onClick={() => enroll.mutate()} disabled={enroll.isPending} className="rounded-full bg-gradient-to-r from-rose-500 to-violet-600 light:from-sky-500 light:to-cyan-500 px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(244,63,94,0.5)] light:shadow-[0_8px_24px_-8px_rgba(14,165,233,0.5)] transition-transform hover:scale-[1.03] disabled:opacity-50">
-          {enroll.isPending ? "Enrolling…" : "Start course"}
-        </button>}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {!enrollment && <button onClick={() => enroll.mutate()} disabled={enroll.isPending} className="rounded-full bg-gradient-to-r from-rose-500 to-violet-600 light:from-sky-500 light:to-cyan-500 px-5 py-2.5 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(244,63,94,0.5)] light:shadow-[0_8px_24px_-8px_rgba(14,165,233,0.5)] transition-transform hover:scale-[1.03] disabled:opacity-50">
+            {enroll.isPending ? "Enrolling…" : "Start course"}
+          </button>}
+        {(lessons?.length ?? 0) > 0 && <button onClick={() => setShowFlashcards(true)} className="rounded-full border border-white/15 light:border-slate-900/15 px-4 py-2 text-xs font-medium text-white/70 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-900/5">
+            🗂 Flashcards
+          </button>}
+        {(lessons?.length ?? 0) > 0 && <button onClick={() => downloadTextFile(`${course.slug}-cheat-sheet.txt`, buildCheatSheetText(course, modules, lessons, TERMINAL_DEMOS))} className="rounded-full border border-white/15 light:border-slate-900/15 px-4 py-2 text-xs font-medium text-white/70 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-900/5">
+            ⬇ Cheat sheet
+          </button>}
+      </div>
 
       {groups.length > 1 && <div className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-1.5 overflow-x-auto bg-neutral-950/80 light:bg-sky-50/90 px-1 py-2 backdrop-blur">
           {groups.map(g => <a key={g.id} href={`#module-${g.id}`} className="shrink-0 rounded-full border border-white/10 light:border-sky-200 px-3 py-1 text-xs text-white/60 light:text-slate-600 hover:text-white light:hover:text-slate-900">{g.title}</a>)}
+          {course.capstone && <a href="#module-_capstone" className="shrink-0 rounded-full border border-white/10 light:border-sky-200 px-3 py-1 text-xs text-white/60 light:text-slate-600 hover:text-white light:hover:text-slate-900">Capstone Project</a>}
           {course.quizQuestionCount > 0 && <a href="#module-_assessment" className="shrink-0 rounded-full border border-white/10 light:border-sky-200 px-3 py-1 text-xs text-white/60 light:text-slate-600 hover:text-white light:hover:text-slate-900">Final Assessment</a>}
         </div>}
 
@@ -536,8 +552,24 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
       </div>
 
       {lessonsLoading ? <Skeleton className="h-32 rounded-2xl" /> : <div className="space-y-8">
-          {groups.map(g => <ModuleSection key={g.id} mod={{ id: g.id, title: g.title }} lessons={g.lessons} progress={progress} lockedIds={lockedIds} bookmarks={bookmarks} onToggleBookmark={toggleBookmark} onCheck={(lessonId, choiceIndex) => check.mutateAsync({ lessonId, choiceIndex })} />)}
+          {groups.map(g => <ModuleSection key={g.id} mod={{ id: g.id, title: g.title, interviewQuestions: g.interviewQuestions }} lessons={g.lessons} progress={progress} lockedIds={lockedIds} bookmarks={bookmarks} onToggleBookmark={toggleBookmark} onCheck={(lessonId, choiceIndex) => check.mutateAsync({ lessonId, choiceIndex })} />)}
           {groups.length === 0 && search && <EmptyState title="No lessons match your search." description="Try a different word or clear the search." />}
+        </div>}
+
+      {course.capstone && enrollment && <div id="module-_capstone">
+          <SpotlightCard className="p-6" tint="violet">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-violet-300 light:text-violet-700">🏁 Capstone project</p>
+            <h3 className="mt-1 text-lg font-medium text-white light:text-slate-900">{course.capstone.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-white/60 light:text-slate-500">{course.capstone.description}</p>
+            {course.capstone.requirements?.length > 0 && <ul className="mt-4 space-y-1.5">
+                {course.capstone.requirements.map((r, i) => <li key={i} className="flex items-start gap-2 text-sm text-white/70 light:text-slate-600">
+                    <span className="mt-0.5 shrink-0 text-violet-300" aria-hidden>☐</span>{r}
+                  </li>)}
+              </ul>}
+            {course.capstone.deliverable && <p className="mt-4 rounded-lg border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-3 text-xs leading-relaxed text-white/50 light:text-slate-500">
+                <span className="font-medium text-white/70 light:text-slate-700">Deliverable: </span>{course.capstone.deliverable}
+              </p>}
+          </SpotlightCard>
         </div>}
 
       {course.quizQuestionCount > 0 && enrollment && <div id="module-_assessment">
@@ -557,6 +589,8 @@ function CourseDetail({ course, enrollment, local, onBack, onProgress }) {
         </div>}
 
       <CourseCertificateSection course={course} enrollment={enrollment} score={lastScore ?? enrollment?.quizScore} local={local} passed={(lastScore !== null && lastScore >= 70) || !!enrollment?.completedAt} />
+
+      {showFlashcards && <Flashcards cards={(lessons ?? []).filter(l => l.keyTakeaway).map(l => ({ front: l.title, back: l.keyTakeaway }))} onClose={() => setShowFlashcards(false)} />}
     </div>;
 }
 

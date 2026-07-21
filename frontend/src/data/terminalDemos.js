@@ -78,6 +78,40 @@ export const TERMINAL_DEMOS = {
     { command: "kubectl describe pod api-web-7d9f8c6b4d-2xk9p", output: "Name:         api-web-7d9f8c6b4d-2xk9p\nStatus:       Running\n...\nEvents:\n  Type    Reason     Age   From                Message\n  ----    ------     ----  ----                -------\n  Normal  Scheduled  4d    default-scheduler    Successfully assigned to node-3\n  Normal  Pulled     4d    kubelet              Container image already present\n  Normal  Started    4d    kubelet              Started container api-web" },
     { command: "kubectl logs api-web-7d9f8c6b4d-2xk9p --previous", output: "2026-03-02T08:14:02Z ERROR Failed to connect to database: connection refused (10.96.4.11:5432)\n2026-03-02T08:14:02Z FATAL exiting after 3 failed connection attempts" }
   ],
+  "Installing Docker: Engine, Desktop, and verifying your setup": [
+    { command: "docker --version", output: "Docker version 27.3.1, build ce12230" },
+    { command: "docker run hello-world", output: "Unable to find image 'hello-world:latest' locally\nlatest: Pulling from library/hello-world\nStatus: Downloaded newer image for hello-world:latest\n\nHello from Docker!\nThis message shows that your installation appears to be working correctly." },
+    { command: "docker info --format '{{.Driver}}'", output: "overlay2" }
+  ],
+  "Your first container: the Docker CLI": [
+    { command: "docker run -d --name web -p 8080:80 nginx", output: "a7c9e21f8b3d" },
+    { command: "docker ps", output: "CONTAINER ID   IMAGE   STATUS         PORTS                  NAMES\na7c9e21f8b3d   nginx   Up 4 seconds   0.0.0.0:8080->80/tcp   web" },
+    { command: "docker stop web && docker ps -a", output: "web\nCONTAINER ID   IMAGE   STATUS                     PORTS   NAMES\na7c9e21f8b3d   nginx   Exited (0) 2 seconds ago           web" },
+    { command: "docker rm -f web", output: "web" }
+  ],
+  "Container lifecycle, logging, and health checks": [
+    { command: "docker run -d --name flaky --restart on-failure busybox sh -c \"echo starting; sleep 2; exit 1\"", output: "f291bcd7e4a1" },
+    { command: "docker ps -a", output: "CONTAINER ID   IMAGE     STATUS                      NAMES\nf291bcd7e4a1   busybox   Restarting (1) 2 seconds ago  flaky" },
+    { command: "docker inspect flaky --format '{{.State.ExitCode}}'", output: "1" },
+    { command: "docker logs flaky", output: "starting\nstarting\nstarting" }
+  ],
+  "Resource limits and performance": [
+    { command: "docker run -d --name limited --memory=50m polinux/stress stress --vm 1 --vm-bytes 100M", output: "3d8f1a2c9e0b" },
+    { command: "docker inspect limited --format '{{.State.OOMKilled}}'", output: "true" },
+    { command: "docker stats --no-stream", output: "CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %\n3d8f1a2c9e0b   limited   0.00%     0B / 50MiB            0.00%" }
+  ],
+  "Debugging a failed container, systematically": [
+    { command: "docker run -d --name broken -e REQUIRED_VAR= postgres:16", output: "8e4c1f9a2d7b" },
+    { command: "docker ps -a", output: "CONTAINER ID   IMAGE         STATUS                      NAMES\n8e4c1f9a2d7b   postgres:16   Exited (1) 1 second ago     broken" },
+    { command: "docker logs broken", output: "Error: Database is uninitialized and superuser password is not specified.\n       You must specify POSTGRES_PASSWORD to a non-empty value." },
+    { command: "docker rm broken && docker run -d --name fixed -e POSTGRES_PASSWORD=devpass postgres:16", output: "broken\nb1c4d8a9f2e3" }
+  ],
+  "Docker Compose for real multi-container apps": [
+    { command: "docker compose up -d", output: "[+] Running 3/3\n ✔ Network app_default   Created\n ✔ Container app-db-1    Started\n ✔ Container app-web-1   Started" },
+    { command: "docker compose ps", output: "NAME        IMAGE         STATUS          PORTS\napp-db-1    postgres:16   Up 12 seconds\napp-web-1   nginx         Up 12 seconds   0.0.0.0:8080->80/tcp" },
+    { command: "docker compose logs db --tail 3", output: "db-1  | LOG:  database system is ready to accept connections" },
+    { command: "docker compose down && docker compose up -d", output: "[+] Running 3/3\n ✔ Container app-web-1   Removed\n ✔ Container app-db-1    Removed\n ✔ Network app_default   Removed\n[+] Running 3/3\n ✔ Network app_default   Created\n ✔ Container app-db-1    Started\n ✔ Container app-web-1   Started" }
+  ],
   "Triage: diagnosing a broken deployment": [
     { command: "kubectl get pods", output: "NAME                       READY   STATUS             RESTARTS   AGE\napi-web-6f8b9d5c7-4qwer    0/1     CrashLoopBackOff   6          12m\napi-web-6f8b9d5c7-8ztyu    0/1     ImagePullBackOff   0          2m" },
     { command: "kubectl describe pod api-web-6f8b9d5c7-8ztyu", output: "Events:\n  Type     Reason    Message\n  ----     ------    -------\n  Warning  Failed    Failed to pull image \"registry.internal/api-web:v2.4.1\": manifest unknown\n  Warning  BackOff   Back-off pulling image" },
