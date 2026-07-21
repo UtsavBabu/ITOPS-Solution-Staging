@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
-import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
+import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchLearningPaths, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
+import { LearningPathCard } from "../components/LearningPathCard";
+import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLearningPaths, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { EmptyState, ErrorState } from "../components/EmptyState";
 import { Skeleton } from "../components/Skeleton";
@@ -711,6 +712,7 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
   const { data: assignments } = useQuery({ queryKey: ["cybersachet-my-assignments"], queryFn: fetchMyCybersachetAssignments, enabled: !!licensed });
   const { data: stats } = useQuery({ queryKey: ["cybersachet-my-stats"], queryFn: fetchMyCybersachetStats, enabled: !!licensed });
   const { data: leaderboard } = useQuery({ queryKey: ["cybersachet-leaderboard"], queryFn: fetchCybersachetLeaderboard, enabled: !!licensed });
+  const { data: learningPaths } = useQuery({ queryKey: ["cybersachet-learning-paths"], queryFn: fetchLearningPaths, enabled: !!licensed });
   const { data: can } = useQuery({ queryKey: ["my-permissions", organization?.id], queryFn: () => fetchMyPermissions(organization?.id), enabled: !!organization?.id, retry: false });
   const canManageTraining = !!can && can("organization", "training", "manage");
   // Only fetched for an admin who can actually assign something — a regular
@@ -766,6 +768,8 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
   // dropping it from every track-filtered view.
   const courseTrack = c => c.track ?? "security";
   const trackCourses = allCourses.filter(c => courseTrack(c) === activeTrack);
+  const trackLearningPaths = (local ? getLocalLearningPaths(user?.id) : (learningPaths ?? [])).filter(p => p.track === activeTrack);
+  const courseById = new Map(allCourses.map(c => [c.id, c]));
   const freeCourses = trackCourses.filter(c => c.freeTier);
   // Local preview and an org admin (training:manage) both need to see
   // everything their plan tier actually unlocks — a solo preview has no
@@ -835,6 +839,10 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
             <p className="mb-3 text-xs font-medium uppercase tracking-[0.15em] text-white/45 light:text-slate-400">Team leaderboard</p>
             <Leaderboard rows={leaderboard} currentUserId={user?.id} />
           </SpotlightCard>
+        </Reveal>}
+
+      {trackLearningPaths.length > 0 && <Reveal delay={0.1} className="space-y-4">
+          {trackLearningPaths.map(path => <LearningPathCard key={path.id} path={path} orgPlanRank={orgPlanRank} onOpenCourse={c => { const full = courseById.get(c.courseId); if (full) setOpenCourse(full); }} />)}
         </Reveal>}
 
       <CategoryFilterChips categories={categories} active={activeCategory} onChange={setActiveCategory} />

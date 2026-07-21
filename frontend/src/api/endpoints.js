@@ -755,6 +755,30 @@ export async function fetchCybersachetLicense() {
   return !!data;
 }
 
+export async function fetchLearningPaths() {
+  const { data, error } = await supabase.rpc("list_learning_paths");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    track: row.track,
+    category: row.category,
+    courses: (row.courses ?? []).map(c => ({
+      courseId: c.courseId,
+      slug: c.slug,
+      title: c.title,
+      levelLabel: c.levelLabel,
+      sortOrder: c.sortOrder,
+      minPlan: c.minPlan,
+      estimatedMinutes: c.estimatedMinutes,
+      lessonCount: c.lessonCount,
+      completed: c.completed
+    }))
+  }));
+}
+
 export async function fetchCybersachetCourses() {
   const { data, error } = await supabase.rpc("list_cybersachet_courses");
   if (error) throw new Error(error.message);

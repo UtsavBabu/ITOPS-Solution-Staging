@@ -67,6 +67,26 @@ export const TERMINAL_DEMOS = {
   "Continuous Integration: build and test automatically": [
     { command: "npm test", output: "PASS  src/middleware/throttle.test.js\nPASS  src/routes/health.test.js\n\nTest Suites: 2 passed, 2 total\nTests:       14 passed, 14 total" }
   ],
+  "The Jenkinsfile and pipeline syntax": [
+    { command: "jenkins-cli build api-service -f", output: "Started api-service #142\n[Pipeline] stage (Build)\n[Pipeline] stage (Test)\nFinished: SUCCESS" }
+  ],
+  "Workflow YAML: jobs, steps, and runners": [
+    { command: "gh workflow run ci.yml", output: "✓ Created workflow_dispatch event for ci.yml at main" },
+    { command: "gh run watch", output: "* ci.yml #48\n  ✓ checkout\n  ✓ install dependencies\n  ✓ run tests\nCompleted with 'success'" }
+  ],
+  "Building and tagging images in CI": [
+    { command: "docker build -t registry.internal/api:${GITHUB_SHA::7} .", output: "[+] Building 9.4s (11/11) FINISHED\n => exporting to image\n => => naming to registry.internal/api:a3f9d21" },
+    { command: "docker push registry.internal/api:a3f9d21", output: "a3f9d21: digest: sha256:8f2c... size: 1993" }
+  ],
+  "Terraform state and why it's dangerous to lose": [
+    { command: "terraform plan", output: "Terraform will perform the following actions:\n  # aws_instance.api will be created\n\nPlan: 1 to add, 0 to change, 0 to destroy." },
+    { command: "terraform apply -auto-approve", output: "aws_instance.api: Creating...\naws_instance.api: Creation complete after 34s\n\nApply complete! Resources: 1 added, 0 changed, 0 destroyed." },
+    { command: "terraform state list", output: "aws_instance.api" }
+  ],
+  "Debugging a failed pipeline run, systematically": [
+    { command: "gh run view 48 --log-failed", output: "test-suite\tRun tests\t2026-03-04T10:12:03Z FAIL src/routes/health.test.js\n  ● expected 200, received 503" },
+    { command: "gh run rerun 48 --failed", output: "✓ Requested rerun of failed jobs for run 48" }
+  ],
   "Pods, Deployments, and the Kubernetes API": [
     { command: "kubectl get deployments", output: "NAME       READY   UP-TO-DATE   AVAILABLE   AGE\napi-web    3/3     3            3           4d" },
     { command: "kubectl get pods", output: "NAME                       READY   STATUS    RESTARTS   AGE\napi-web-7d9f8c6b4d-2xk9p   1/1     Running   0          4d\napi-web-7d9f8c6b4d-9mzq2   1/1     Running   0          4d\napi-web-7d9f8c6b4d-jv7lh   1/1     Running   0          4d" }
