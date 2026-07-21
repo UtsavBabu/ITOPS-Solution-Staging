@@ -16,7 +16,8 @@ export function StatCard({
   value,
   tone = "default",
   icon,
-  delay = 0
+  delay = 0,
+  countUp = false
 }) {
   const ref = useRef(null);
   const { theme } = useTheme();
@@ -24,7 +25,7 @@ export function StatCard({
   const iconTone = tone === "danger" ? "bg-red-400/10 light:bg-red-100 text-red-300 light:text-red-700" : tone === "warning" ? "bg-amber-400/10 light:bg-amber-100 text-amber-300 light:text-amber-700" : "bg-white/[0.04] light:bg-slate-900/[0.04] text-white/40 light:text-slate-500";
   // "default" tone's glow is a white highlight against a dark card — invisible
   // on a light-mode white card, so it needs a dark glow instead (see SpotlightCard).
-  const glowRgb = tone === "danger" ? "248,113,113" : tone === "warning" ? "251,191,36" : theme === "light" ? "15,23,42" : "255,255,255";
+  const glowRgb = tone === "danger" ? "255,77,77" : tone === "warning" ? "251,191,36" : theme === "light" ? "15,23,42" : "0,240,255";
   function handleMove(e) {
     const el = ref.current;
     if (!el) return;
@@ -38,13 +39,20 @@ export function StatCard({
   }} animate={{
     opacity: 1,
     y: 0
-  }} transition={{
+  }} whileHover={{
+    y: -4,
+    rotateX: 4,
+    rotateY: -3
+  }} style={{ transformPerspective: 800 }} transition={{
     duration: 0.5,
     delay,
     ease: EASE
-  }} className="group relative overflow-hidden rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white light:shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_16px_-8px_rgba(15,23,42,0.12)] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 light:hover:border-slate-900/20 hover:shadow-[0_12px_40px_-16px_rgba(0,0,0,0.7)]">
+  }} className="group relative overflow-hidden rounded-2xl border border-white/10 light:border-slate-900/10 bg-neutral-900/60 light:bg-white light:shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_4px_16px_-8px_rgba(15,23,42,0.12)] p-4 transition-[border-color,box-shadow] duration-300 hover:border-white/20 light:hover:border-slate-900/20 hover:shadow-[0_16px_40px_-16px_rgba(0,0,0,0.75)]">
+      {/* Ambient tone glow — a faint always-on wash for danger/warning so a
+          row of six cards reads at a glance, not just on hover. */}
+      {tone !== "default" && <div className="pointer-events-none absolute -inset-x-4 -top-10 h-24 opacity-[0.14]" style={{ background: `radial-gradient(circle, rgba(${glowRgb},1), transparent 70%)` }} aria-hidden />}
       <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{
-      background: `radial-gradient(220px circle at var(--mx, 50%) var(--my, 0px), rgba(${glowRgb},0.08), transparent 60%)`
+      background: `radial-gradient(220px circle at var(--mx, 50%) var(--my, 0px), rgba(${glowRgb},0.1), transparent 60%)`
     }} />
       <div className="relative flex items-center justify-between">
         <p className="text-sm text-white/50 light:text-slate-500">{label}</p>
@@ -55,7 +63,7 @@ export function StatCard({
           </span>}
       </div>
       <p className={`relative mt-1 text-2xl font-medium tracking-tight tabular-nums ${toneClass}`}>
-        <AnimatedCounter value={value} />
+        <AnimatedCounter value={value} animateOnMount={countUp} />
       </p>
     </motion.div>;
 }

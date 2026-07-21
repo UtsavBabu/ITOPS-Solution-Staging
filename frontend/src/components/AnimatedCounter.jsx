@@ -8,22 +8,27 @@ import { animate } from "motion/react";
  */
 export function AnimatedCounter({
   value,
-  duration = 0.8
+  duration = 0.8,
+  // Opt-in only — the default stays "skip the tween on first mount" so
+  // stats don't all count up from zero on every page load everywhere this
+  // is used. Set true for a specific hero/summary spot (like the Dashboard
+  // top metrics) that genuinely wants the count-up-on-load moment.
+  animateOnMount = false
 }) {
   const isNumber = typeof value === "number" && Number.isFinite(value);
-  const [display, setDisplay] = useState(isNumber ? value : 0);
-  const prevRef = useRef(isNumber ? value : 0);
+  const [display, setDisplay] = useState(isNumber && !animateOnMount ? value : 0);
+  const prevRef = useRef(isNumber && !animateOnMount ? value : 0);
   const mountedRef = useRef(false);
   useEffect(() => {
     if (!isNumber) return;
     const target = value;
-    // Skip the tween on first mount so stats don't all count up from zero
-    // on every page load — only animate on genuine value changes.
     if (!mountedRef.current) {
       mountedRef.current = true;
-      prevRef.current = target;
-      setDisplay(target);
-      return;
+      if (!animateOnMount) {
+        prevRef.current = target;
+        setDisplay(target);
+        return;
+      }
     }
     const from = prevRef.current;
     const controls = animate(from, target, {

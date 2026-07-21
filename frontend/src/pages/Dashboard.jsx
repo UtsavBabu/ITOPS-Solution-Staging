@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
@@ -39,6 +40,40 @@ const PLAN_FEATURES = {
     historyDays: 365
   }
 };
+// Real wall-clock time, ticking every second — not decorative, this is the
+// same clock a NOC/command-center display shows so a screenshot or a
+// glance always carries "as of when."
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="font-mono tabular-nums">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>;
+}
+
+// The ticker line is computed from the same real summary data the stat
+// cards show — never a separate "looks healthy" flag that could drift
+// from what's actually true.
+function StatusTicker({ summary }) {
+  if (!summary) return <span className="text-white/40 light:text-slate-400">Loading system status…</span>;
+  const down = summary.downMonitors ?? 0;
+  const incidents = summary.openIncidents ?? 0;
+  if (down === 0 && incidents === 0) {
+    return <span className="inline-flex items-center gap-1.5 text-emerald-300 light:text-emerald-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:pulse-glow_1.6s_ease-in-out_infinite]" />
+        All systems operational
+      </span>;
+  }
+  const parts = [];
+  if (down > 0) parts.push(`${down} monitor${down === 1 ? "" : "s"} down`);
+  if (incidents > 0) parts.push(`${incidents} open incident${incidents === 1 ? "" : "s"}`);
+  return <span className="inline-flex items-center gap-1.5 text-red-300 light:text-red-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-red-400 [animation:pulse-glow_1s_ease-in-out_infinite]" />
+      {parts.join(" · ")}
+    </span>;
+}
+
 function UpgradePrompt({
   feature
 }) {
@@ -151,14 +186,20 @@ export default function Dashboard() {
   const networkMonitors = monitors?.filter(m => ["TCP", "DNS"].includes(m.checkType)) ?? [];
   return <div className="space-y-6">
       <Reveal y={12}>
-        <div className="flex items-center justify-between">
+        <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4">
           <div>
             <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Dashboard</h1>
-            <p className="text-sm text-white/40 light:text-slate-400">{organization?.name}</p>
+            <p className="mt-0.5 text-sm text-white/40 light:text-slate-400">{organization?.name}</p>
           </div>
-          <Link to="/monitors" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-200">
-            + Add Monitor
-          </Link>
+          <div className="flex items-center gap-5">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs"><StatusTicker summary={summary} /></p>
+              <p className="mt-0.5 text-[11px] text-white/35 light:text-slate-400"><LiveClock /></p>
+            </div>
+            <Link to="/monitors" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-200">
+              + Add Monitor
+            </Link>
+          </div>
         </div>
       </Reveal>
 
@@ -166,12 +207,12 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Total Monitors" value={summary?.totalMonitors ?? "—"} icon="monitors" delay={0} />
-        <StatCard label="Up" value={summary?.upMonitors ?? "—"} icon="up" delay={0.04} />
-        <StatCard label="Down" value={summary?.downMonitors ?? "—"} tone={summary && summary.downMonitors > 0 ? "danger" : "default"} icon="down" delay={0.08} />
-        <StatCard label="Open Incidents" value={summary?.openIncidents ?? "—"} tone={summary && summary.openIncidents > 0 ? "danger" : "default"} icon="incidents" delay={0.12} />
-        <StatCard label="Assets" value={summary?.totalAssets ?? "—"} icon="assets" delay={0.16} />
-        <StatCard label="SSL Expiring" value={summary?.expiringSsl ?? "—"} tone={summary && summary.expiringSsl > 0 ? "warning" : "default"} icon="ssl" delay={0.2} />
+        <StatCard label="Total Monitors" value={summary?.totalMonitors ?? "—"} icon="monitors" delay={0} countUp />
+        <StatCard label="Up" value={summary?.upMonitors ?? "—"} icon="up" delay={0.04} countUp />
+        <StatCard label="Down" value={summary?.downMonitors ?? "—"} tone={summary && summary.downMonitors > 0 ? "danger" : "default"} icon="down" delay={0.08} countUp />
+        <StatCard label="Open Incidents" value={summary?.openIncidents ?? "—"} tone={summary && summary.openIncidents > 0 ? "danger" : "default"} icon="incidents" delay={0.12} countUp />
+        <StatCard label="Assets" value={summary?.totalAssets ?? "—"} icon="assets" delay={0.16} countUp />
+        <StatCard label="SSL Expiring" value={summary?.expiringSsl ?? "—"} tone={summary && summary.expiringSsl > 0 ? "warning" : "default"} icon="ssl" delay={0.2} countUp />
       </div>
 
       {/* Open Incidents */}
