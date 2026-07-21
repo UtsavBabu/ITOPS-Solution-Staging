@@ -98,6 +98,12 @@ function ModuleRow({ mod, onSaved }) {
 }
 
 function LessonRow({ lesson, courseId, modules, onSaved }) {
+  // A course with real content (several modules, several fully-written
+  // lessons each with a comprehension checkpoint) turned this into a very
+  // long always-expanded scroll. Existing lessons start collapsed to a
+  // summary row; a freshly-added empty lesson starts open since there's
+  // nothing to summarize yet and it needs typing into immediately.
+  const [open, setOpen] = useState(!lesson.body);
   const [title, setTitle] = useState(lesson.title);
   const [body, setBody] = useState(lesson.body);
   const [moduleId, setModuleId] = useState(lesson.moduleId ?? "");
@@ -126,28 +132,42 @@ function LessonRow({ lesson, courseId, modules, onSaved }) {
   function updateChoice(i, v) {
     setCheckChoices(checkChoices.map((c, idx) => idx === i ? v : c));
   }
+  const moduleName = modules.find(m => m.id === moduleId)?.title;
   return <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-3 space-y-3">
-      <div className="flex items-end gap-2">
-        <LabeledInput label="Lesson title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" />
-        <LabeledSelect label="Module" value={moduleId} onChange={e => setModuleId(e.target.value)} className="w-40 shrink-0">
-          <option value="">No module</option>
-          {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-        </LabeledSelect>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className={`shrink-0 text-white/40 light:text-slate-400 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>▸</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-white light:text-slate-900">{title || "Untitled lesson"}</span>
+            <span className="block truncate text-[11px] text-white/40 light:text-slate-400">
+              {moduleName ?? "No module"}{checkQuestion ? " · has knowledge checkpoint" : ""}
+            </span>
+          </span>
+        </button>
         <button onClick={() => save.mutate()} disabled={save.isPending} className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">Save</button>
         <button onClick={async () => { if (await confirm({ title: "Delete lesson?", description: "This removes it for every organization." })) remove.mutate(); }} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 light:text-red-600 hover:bg-red-400/10">Delete</button>
       </div>
-      <LabeledTextarea label="Lesson content (plain text)" value={body} onChange={e => setBody(e.target.value)} rows={4} />
-      <LabeledInput label="Key takeaway — shown as a highlighted callout (optional)" value={keyTakeaway} onChange={e => setKeyTakeaway(e.target.value)} />
-      <div className="rounded-lg border border-white/10 light:border-slate-900/10 p-2.5 space-y-2">
-        <SectionLabel>Knowledge checkpoint (optional — required to mark this lesson complete if set)</SectionLabel>
-        <LabeledInput label="Comprehension question" value={checkQuestion} onChange={e => setCheckQuestion(e.target.value)} />
-        {checkQuestion && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {checkChoices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`lesson-correct-${lesson.id}`} checked={checkCorrectIndex === i} onChange={() => setCheckCorrectIndex(i)} className="accent-emerald-400" />
-                <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
-              </label>)}
-          </div>}
-      </div>
+      {open && <div className="space-y-3 border-t border-white/10 light:border-slate-900/10 pt-3">
+          <div className="flex items-end gap-2">
+            <LabeledInput label="Lesson title" value={title} onChange={e => setTitle(e.target.value)} className="flex-1" />
+            <LabeledSelect label="Module" value={moduleId} onChange={e => setModuleId(e.target.value)} className="w-40 shrink-0">
+              <option value="">No module</option>
+              {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </LabeledSelect>
+          </div>
+          <LabeledTextarea label="Lesson content (plain text)" value={body} onChange={e => setBody(e.target.value)} rows={4} />
+          <LabeledInput label="Key takeaway — shown as a highlighted callout (optional)" value={keyTakeaway} onChange={e => setKeyTakeaway(e.target.value)} />
+          <div className="rounded-lg border border-white/10 light:border-slate-900/10 p-2.5 space-y-2">
+            <SectionLabel>Knowledge checkpoint (optional — required to mark this lesson complete if set)</SectionLabel>
+            <LabeledInput label="Comprehension question" value={checkQuestion} onChange={e => setCheckQuestion(e.target.value)} />
+            {checkQuestion && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {checkChoices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
+                    <input type="radio" name={`lesson-correct-${lesson.id}`} checked={checkCorrectIndex === i} onChange={() => setCheckCorrectIndex(i)} className="accent-emerald-400" />
+                    <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
+                  </label>)}
+              </div>}
+          </div>
+        </div>}
     </div>;
 }
 
@@ -176,6 +196,7 @@ function LessonsEditor({ courseId, modules }) {
 }
 
 function QuizRow({ question, courseId, onSaved }) {
+  const [open, setOpen] = useState(!question.question);
   const [text, setText] = useState(question.question);
   const [choices, setChoices] = useState(question.choices.length ? question.choices : ["", "", "", ""]);
   const [questionType, setQuestionType] = useState(question.questionType ?? "single");
@@ -218,39 +239,52 @@ function QuizRow({ question, courseId, onSaved }) {
     if (next.has(i)) next.delete(i); else next.add(i);
     setCorrectIndexes(next);
   }
+  const typeLabel = QUESTION_TYPES.find(t => t.value === questionType)?.label;
   return <div className="rounded-xl border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-3 space-y-2">
-      <div className="flex items-end gap-2">
-        <LabeledInput label="Question" value={text} onChange={e => setText(e.target.value)} className="flex-1" />
-        <LabeledSelect label="Answer type" value={questionType} onChange={e => setQuestionType(e.target.value)} className="w-36 shrink-0">
-          {QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </LabeledSelect>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className={`shrink-0 text-white/40 light:text-slate-400 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>▸</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-white light:text-slate-900">{text || "Untitled question"}</span>
+            <span className="block truncate text-[11px] text-white/40 light:text-slate-400">{typeLabel}</span>
+          </span>
+        </button>
         <button onClick={() => save.mutate()} disabled={save.isPending} className="shrink-0 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-medium text-black hover:bg-amber-300 disabled:opacity-50">Save</button>
         <button onClick={async () => { if (await confirm({ title: "Delete question?", description: "This removes it from the quiz for every organization." })) remove.mutate(); }} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300 light:text-red-600 hover:bg-red-400/10">Delete</button>
       </div>
 
-      {questionType === "single" && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {choices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
-              <input type="radio" name={`correct-${question.id}`} checked={correctIndex === i} onChange={() => setCorrectIndex(i)} className="accent-emerald-400" />
-              <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
-            </label>)}
+      {open && <div className="space-y-2 border-t border-white/10 light:border-slate-900/10 pt-2">
+          <div className="flex items-end gap-2">
+            <LabeledInput label="Question" value={text} onChange={e => setText(e.target.value)} className="flex-1" />
+            <LabeledSelect label="Answer type" value={questionType} onChange={e => setQuestionType(e.target.value)} className="w-36 shrink-0">
+              {QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </LabeledSelect>
+          </div>
+
+          {questionType === "single" && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {choices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
+                  <input type="radio" name={`correct-${question.id}`} checked={correctIndex === i} onChange={() => setCorrectIndex(i)} className="accent-emerald-400" />
+                  <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
+                </label>)}
+            </div>}
+          {questionType === "multiple" && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {choices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={correctIndexes.has(i)} onChange={() => toggleMultiple(i)} className="accent-emerald-400" />
+                  <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
+                </label>)}
+            </div>}
+          {questionType === "ordering" && <div className="space-y-2">
+              {choices.map((c, i) => <div key={i} className="flex items-center gap-2">
+                  <input type="number" min={1} max={choices.length} value={positions[i] ?? i + 1} onChange={e => { const next = [...positions]; next[i] = Number(e.target.value); setPositions(next); }} className={`w-16 shrink-0 ${inputClass}`} />
+                  <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Step ${i + 1}`} className={inputClass} />
+                </div>)}
+            </div>}
+          <p className="text-[11px] text-white/40 light:text-slate-400">
+            {questionType === "single" ? "Select the radio button next to the correct answer."
+              : questionType === "multiple" ? "Check every correct answer."
+              : "Enter the correct step number (1 = first) next to each choice."}
+          </p>
         </div>}
-      {questionType === "multiple" && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {choices.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={correctIndexes.has(i)} onChange={() => toggleMultiple(i)} className="accent-emerald-400" />
-              <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Choice ${i + 1}`} className={inputClass} />
-            </label>)}
-        </div>}
-      {questionType === "ordering" && <div className="space-y-2">
-          {choices.map((c, i) => <div key={i} className="flex items-center gap-2">
-              <input type="number" min={1} max={choices.length} value={positions[i] ?? i + 1} onChange={e => { const next = [...positions]; next[i] = Number(e.target.value); setPositions(next); }} className={`w-16 shrink-0 ${inputClass}`} />
-              <input value={c} onChange={e => updateChoice(i, e.target.value)} placeholder={`Step ${i + 1}`} className={inputClass} />
-            </div>)}
-        </div>}
-      <p className="text-[11px] text-white/40 light:text-slate-400">
-        {questionType === "single" ? "Select the radio button next to the correct answer."
-          : questionType === "multiple" ? "Check every correct answer."
-          : "Enter the correct step number (1 = first) next to each choice."}
-      </p>
     </div>;
 }
 
@@ -278,6 +312,24 @@ function QuizEditor({ courseId }) {
     </div>;
 }
 
+// The expanded editor used to stack Modules, Lessons, and Quiz on top of
+// each other — with real courses (multiple modules, several fully-expanded
+// lesson forms each with a comprehension-check sub-panel, several quiz
+// questions) that was a very long, dense scroll for a single small edit.
+// Tabs show one editor at a time instead.
+const EDITOR_TABS = [
+  { key: "modules", label: "Modules" },
+  { key: "lessons", label: "Lessons" },
+  { key: "quiz", label: "Quiz" }
+];
+function EditorTabs({ active, onChange, counts }) {
+  return <div className="flex gap-1 rounded-full border border-white/10 light:border-slate-900/10 bg-black/20 light:bg-slate-900/[0.02] p-1">
+      {EDITOR_TABS.map(t => <button key={t.key} onClick={() => onChange(t.key)} className={`flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active === t.key ? "bg-amber-400 text-black" : "text-white/55 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+          {t.label}{counts[t.key] != null ? ` (${counts[t.key]})` : ""}
+        </button>)}
+    </div>;
+}
+
 function CourseCard({ course, expanded, onToggle, onSaved }) {
   const [title, setTitle] = useState(course.title);
   const [slug, setSlug] = useState(course.slug);
@@ -288,6 +340,7 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
   const [category, setCategory] = useState(course.category ?? "security-awareness");
   const [minPlan, setMinPlan] = useState(course.minPlan ?? "PROFESSIONAL");
   const [track, setTrack] = useState(course.track ?? "security");
+  const [editorTab, setEditorTab] = useState("modules");
   const toast = useToast();
   const confirm = useConfirm();
   const { data: modules } = useQuery({ queryKey: ["admin-cybersachet-modules", course.id], queryFn: () => adminFetchCybersachetModules(course.id), enabled: expanded });
@@ -358,10 +411,11 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
           </div>
         </div>
       </div>
-      {expanded && <div className="border-t border-white/10 light:border-slate-900/10 p-5 space-y-6 bg-black/10 light:bg-slate-900/[0.015]">
-          <ModulesEditor courseId={course.id} />
-          <LessonsEditor courseId={course.id} modules={modules} />
-          <QuizEditor courseId={course.id} />
+      {expanded && <div className="border-t border-white/10 light:border-slate-900/10 p-5 space-y-4 bg-black/10 light:bg-slate-900/[0.015]">
+          <EditorTabs active={editorTab} onChange={setEditorTab} counts={{ modules: modules?.length ?? null, lessons: course.lessonCount, quiz: course.quizQuestionCount }} />
+          {editorTab === "modules" && <ModulesEditor courseId={course.id} />}
+          {editorTab === "lessons" && <LessonsEditor courseId={course.id} modules={modules} />}
+          {editorTab === "quiz" && <QuizEditor courseId={course.id} />}
         </div>}
     </SpotlightCard>;
 }

@@ -91,7 +91,7 @@ export default function Solutions() {
           {filtered.map((solution, i) => {
           const capabilities = Array.isArray(solution.metadata.capabilities) ? solution.metadata.capabilities : [];
           const liveCount = capabilities.filter(c => c.status === "live").length;
-          return <Link key={solution.id} to={`/solutions/${solution.itemKey}`} className="block h-full">
+          return <Link key={solution.id} to={solution.href || `/solutions/${solution.itemKey}`} className="block h-full">
                 <SpotlightCard tint={CARD_TINTS[i % CARD_TINTS.length]} delay={i * 0.06} className="h-full">
                   <div className="flex h-full flex-col p-7">
                     <div className="flex items-start justify-between gap-3">
