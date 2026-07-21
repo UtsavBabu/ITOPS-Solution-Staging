@@ -1,4 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+const EASE = [0.16, 1, 0.3, 1];
+
+// A compact spinning radar sweep for the "Look up" button — the same
+// conic-gradient-sweep idea as RadarSweepBackground, just icon-sized.
+function RadarSpinIcon() {
+  return <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
+      <span className="absolute inset-0 rounded-full border border-black/25" />
+      <motion.span className="absolute inset-0 rounded-full" style={{ background: "conic-gradient(from 0deg, transparent 0deg, rgba(0,0,0,0.55) 60deg, transparent 90deg)" }} animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }} />
+      <span className="relative h-1 w-1 rounded-full bg-black/60" />
+    </span>;
+}
+
+// Live "expires in" countdown from the TTL captured at lookup time — ticks
+// down for real, not a static number that just says what the TTL *was*.
+function TtlCountdown({ ttl, capturedAt }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (ttl == null) return <>—</>;
+  const remaining = Math.max(0, ttl - Math.floor((now - capturedAt) / 1000));
+  return <>{formatTtl(remaining)}</>;
+}
 
 // Same record types and type codes the backend DNS check already resolves
 // against (supabase/functions/_shared/checks.ts) — kept in sync so a lookup
@@ -61,6 +86,7 @@ export function DomainLookup({ onMonitor }) {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [queriedDomain, setQueriedDomain] = useState(null);
+  const [queriedAt, setQueriedAt] = useState(null);
   const [emailAuth, setEmailAuth] = useState(null);
   const [dnssec, setDnssec] = useState(null);
   const [propagation, setPropagation] = useState(null);
@@ -74,6 +100,7 @@ export function DomainLookup({ onMonitor }) {
     const settled = await Promise.all(LOOKUP_TYPES.map(type => lookupOne(target, type)));
     setResults(settled);
     setQueriedDomain(target);
+    setQueriedAt(Date.now());
 
     const aRecord = settled.find(r => r.type === "A");
     setDnssec(aRecord?.ad ?? null);
@@ -134,34 +161,35 @@ export function DomainLookup({ onMonitor }) {
           <span className="mb-1.5 block text-white/70 light:text-slate-600">DKIM selector (optional)</span>
           <input value={dkimSelector} onChange={e => setDkimSelector(e.target.value)} placeholder="e.g. google" className="w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-white/40 focus:outline-none" />
         </label>
-        <button type="submit" disabled={isLoading} className="rounded-full bg-violet-400 px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-violet-300 disabled:opacity-60">
-          {isLoading ? "Looking up…" : "Look up"}
+        <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 rounded-full bg-violet-400 px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-violet-300 disabled:opacity-60">
+          {isLoading && <RadarSpinIcon />}
+          {isLoading ? "Scanning…" : "Look up"}
         </button>
       </form>
 
       {results && <div className="overflow-x-auto rounded-lg border border-white/10 light:border-slate-900/10">
           <table className="w-full min-w-[520px] text-left text-sm">
-            <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
+            <thead className="sticky top-0 border-b border-white/10 light:border-slate-900/10 bg-neutral-900 light:bg-white text-xs uppercase text-white/40 light:text-slate-400">
               <tr>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Resolved value</th>
-                <th className="px-3 py-2">TTL</th>
+                <th className="px-3 py-2">Expires in</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {results.map(r => r.status === "ok" ? r.answers.map((a, i) => <tr key={`${r.type}-${i}`}>
+              {results.flatMap((r, ri) => r.status === "ok" ? r.answers.map((a, i) => <motion.tr key={`${r.type}-${i}`} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: (ri * 0.05) + i * 0.03, ease: EASE }}>
                     <td className="px-3 py-2">
                       {i === 0 && <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-xs font-medium text-violet-300 light:bg-violet-100 light:text-violet-700">{r.type}</span>}
                     </td>
                     <td className="px-3 py-2 font-mono text-white/85 light:text-slate-800">{a.data}</td>
-                    <td className="px-3 py-2 text-white/50 light:text-slate-500">{formatTtl(a.ttl)}</td>
+                    <td className="px-3 py-2 font-mono text-white/50 light:text-slate-500"><TtlCountdown ttl={a.ttl} capturedAt={queriedAt} /></td>
                     <td className="px-3 py-2 text-right">
                       {i === 0 && onMonitor && TYPE_CODES[r.type] !== 257 && <button type="button" onClick={() => onMonitor(queriedDomain, r.type)} className="text-xs text-cyan-300 light:text-cyan-600 hover:underline">
                           Monitor this →
                         </button>}
                     </td>
-                  </tr>) : <tr key={r.type}>
+                  </motion.tr>) : [<motion.tr key={r.type} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: ri * 0.05, ease: EASE }}>
                     <td className="px-3 py-2">
                       <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-white/40 light:bg-slate-900/5 light:text-slate-400">{r.type}</span>
                     </td>
@@ -169,7 +197,7 @@ export function DomainLookup({ onMonitor }) {
                       {r.status === "error" ? (r.error ?? "Lookup failed") : "No record found"}
                     </td>
                     <td />
-                  </tr>)}
+                  </motion.tr>])}
             </tbody>
           </table>
         </div>}

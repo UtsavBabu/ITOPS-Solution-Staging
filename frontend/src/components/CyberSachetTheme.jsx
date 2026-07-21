@@ -97,11 +97,12 @@ export function ProgressRing({ pct, size = 44, tone = "rose" }) {
 
 export function CompletionCelebration({ score }) {
   const passed = score >= 70;
-  const confetti = passed ? Array.from({ length: 14 }, (_, i) => i) : [];
+  const confetti = passed ? Array.from({ length: 20 }, (_, i) => i) : [];
   return <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative overflow-hidden">
-      {confetti.map(i => <motion.span key={i} className="absolute top-1/2 left-1/2 h-1.5 w-1.5 rounded-full" style={{ background: ["#fb7185", "#a78bfa", "#34d399", "#fbbf24"][i % 4] }} initial={{ x: 0, y: 0, opacity: 1 }} animate={{ x: (Math.cos((i / 14) * Math.PI * 2) * 90), y: (Math.sin((i / 14) * Math.PI * 2) * 90) - 20, opacity: 0 }} transition={{ duration: 1.1, ease: "easeOut", delay: 0.1 }} />)}
+      {passed && <motion.div className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "radial-gradient(circle, rgba(16,185,129,0.35), transparent 70%)" }} initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: [0, 0.9, 0], scale: 1.4 }} transition={{ duration: 0.9, ease: "easeOut" }} aria-hidden />}
+      {confetti.map(i => <motion.span key={i} className="absolute top-1/2 left-1/2 h-1.5 w-1.5 rounded-full" style={{ background: ["#fb7185", "#a78bfa", "#10b981", "#fbbf24", "#00f0ff"][i % 5] }} initial={{ x: 0, y: 0, opacity: 1 }} animate={{ x: (Math.cos((i / 20) * Math.PI * 2) * 100), y: (Math.sin((i / 20) * Math.PI * 2) * 100) - 24, opacity: 0 }} transition={{ duration: 1.2, ease: "easeOut", delay: 0.1 }} />)}
       <div className="relative z-10 text-center">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.5, delay: 0.15, ease: [0.34, 1.56, 0.64, 1] }} className={`mx-auto grid h-16 w-16 place-items-center rounded-full ${passed ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-300"}`}>
+        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 0.5, delay: 0.15, ease: [0.34, 1.56, 0.64, 1] }} className={`mx-auto grid h-16 w-16 place-items-center rounded-full ${passed ? "bg-emerald-400/15 text-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.3),0_0_30px_-4px_rgba(16,185,129,0.6)]" : "bg-amber-400/15 text-amber-300"}`}>
           {passed ? <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none"><path d="M12 8v5m0 3h.01M10.3 3.3l-8 14A1 1 0 003 19h18a1 1 0 00.9-1.5l-8-14a1 1 0 00-1.6 0z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </motion.div>
         <p className={`mt-3 text-3xl font-semibold ${passed ? "text-emerald-300" : "text-amber-300"}`}>{score}%</p>
