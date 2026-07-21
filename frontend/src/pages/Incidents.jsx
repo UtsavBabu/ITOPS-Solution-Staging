@@ -6,7 +6,7 @@ import { fetchIncidents } from "../api/endpoints";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
 import { SkeletonRows } from "../components/Skeleton";
-import { EmptyState, ErrorState } from "../components/EmptyState";
+import { ErrorState } from "../components/EmptyState";
 const EASE = [0.16, 1, 0.3, 1];
 function fmtDuration(ms) {
   const s = Math.round(ms / 1000);
@@ -16,6 +16,26 @@ function fmtDuration(ms) {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ${m % 60}m`;
   return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+// A calm, ambient "nothing's wrong" moment instead of a plain text row —
+// shown only when there's genuinely nothing to show (an empty incident
+// list), never as a substitute for a real loading/error state.
+function AllClearState({ filter }) {
+  return <div className="flex flex-col items-center gap-4 px-6 py-14 text-center">
+      <div className="relative grid h-16 w-16 place-items-center">
+        <span className="absolute inset-0 rounded-full bg-emerald-400/10 [animation:pulse-glow_3s_ease-in-out_infinite]" />
+        <svg className="relative h-9 w-9 text-emerald-300" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M9 12l2 2 4-4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm font-medium text-white light:text-slate-900">
+          No incidents{filter !== "ALL" ? ` (${filter.toLowerCase()})` : ""} — everything's healthy.
+        </p>
+        <p className="mt-1 text-xs text-white/40 light:text-slate-400">When a monitor fails repeatedly, an incident opens here automatically.</p>
+      </div>
+    </div>;
 }
 function SummaryCard({
   label,
@@ -155,9 +175,10 @@ export default function Incidents() {
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Incidents</h1>
-        <div className="flex gap-2 text-sm">
-          {["ALL", "OPEN", "RESOLVED"].map(value => <button key={value} onClick={() => setFilter(value)} className={`rounded-full px-3 py-1.5 transition-colors ${filter === value ? "bg-white text-black" : "border border-white/15 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
-              {value === "ALL" ? "All" : value === "OPEN" ? "Open" : "Resolved"}
+        <div className="flex gap-1 rounded-full border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-1 text-sm">
+          {["ALL", "OPEN", "RESOLVED"].map(value => <button key={value} onClick={() => setFilter(value)} className={`relative rounded-full px-3.5 py-1.5 transition-colors ${filter === value ? "text-black" : "text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+              {filter === value && <motion.span layoutId="incident-filter-pill" transition={{ duration: 0.3, ease: EASE }} className="absolute inset-0 rounded-full bg-white" />}
+              <span className="relative">{value === "ALL" ? "All" : value === "OPEN" ? "Open" : "Resolved"}</span>
             </button>)}
         </div>
       </Reveal>
@@ -171,7 +192,7 @@ export default function Incidents() {
       </div>
 
       <SpotlightCard className="overflow-hidden" delay={0.1} scan tint={stats.open > 0 ? "cyan" : "white"}>
-        {isLoading ? <SkeletonRows count={3} className="h-12" /> : isError ? <ErrorState message={`Couldn't load incidents: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : !incidents || incidents.length === 0 ? <EmptyState title={`No incidents${filter !== "ALL" ? ` (${filter.toLowerCase()})` : ""}.`} description="When a monitor fails repeatedly, an incident opens here automatically." /> : <ul className="divide-y divide-white/10 light:divide-slate-900/8">
+        {isLoading ? <SkeletonRows count={3} className="h-12" /> : isError ? <ErrorState message={`Couldn't load incidents: ${error instanceof Error ? error.message : "unknown error"}`} onRetry={() => refetch()} /> : !incidents || incidents.length === 0 ? <AllClearState filter={filter} /> : <ul className="divide-y divide-white/10 light:divide-slate-900/8">
             {incidents.map((incident, i) => {
           const open = expanded === incident.id;
           const dur = incident.resolvedAt ? new Date(incident.resolvedAt).getTime() - new Date(incident.startedAt).getTime() : Date.now() - new Date(incident.startedAt).getTime();
