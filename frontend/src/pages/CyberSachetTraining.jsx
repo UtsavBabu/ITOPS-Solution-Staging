@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
 import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
 import { Reveal, SpotlightCard } from "../components/Animated";
@@ -54,14 +54,18 @@ function CategoryFilterChips({ categories, active, onChange }) {
 // Two real, differently-branded products sharing one LMS engine — shown only
 // once Academy-track courses actually exist for this org (pre-deploy or for
 // an org with only security courses, there's nothing to toggle between).
+// Two separate, distinctly-branded products with their own sidebar entry
+// and route (/training, /training/academy) — this toggle is a same-page
+// shortcut between them, always in sync with the URL via navigate(), never
+// a third "combined" view that would blur the two apart.
 const TRACKS = [
-  { value: null, label: "All Training" },
-  { value: "security", label: "CyberSachet" },
-  { value: "academy", label: "Moonsav ITOps Academy" }
+  { value: "security", label: "CyberSachet", to: "/training" },
+  { value: "academy", label: "Moonsav ITOps Academy", to: "/training/academy" }
 ];
-function TrackToggle({ active, onChange }) {
-  return <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by training product">
-      {TRACKS.map(t => <button key={t.label} onClick={() => onChange(t.value)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${active === t.value ? "bg-white text-black" : "border border-white/12 light:border-slate-900/12 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+function TrackToggle({ active }) {
+  const navigate = useNavigate();
+  return <div className="inline-flex gap-1 rounded-full border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-slate-900/[0.02] p-1" role="group" aria-label="Switch training product">
+      {TRACKS.map(t => <button key={t.value} onClick={() => navigate(t.to)} aria-current={active === t.value ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${active === t.value ? "bg-white text-black" : "text-white/55 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
           {t.value === "academy" && <AcademyMark size={13} />}
           {t.label}
         </button>)}
@@ -637,7 +641,7 @@ function LocalCertificatePreview({ eligible, stats, courseCount }) {
     </div>;
 }
 
-export default function CyberSachetTraining() {
+export default function CyberSachetTraining({ defaultTrack = "security" }) {
   const { user, organization } = useAuth();
   const { data: licensed, isLoading: licenseLoading } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
   const { data: usage, isLoading: usageLoading } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 60_000 });
@@ -672,8 +676,7 @@ export default function CyberSachetTraining() {
   const enrollments = local ? localEnrollments : liveEnrollments;
   const [openCourse, setOpenCourse] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
-  const [activeTrack, setActiveTrack] = useState(null);
-  function selectTrack(track) { setActiveTrack(track); setActiveCategory(null); }
+  const activeTrack = defaultTrack;
 
   if (licenseLoading || usageLoading) {
     return <div className="space-y-4"><Skeleton className="h-32 rounded-3xl" /><Skeleton className="h-32 rounded-2xl" /></div>;
@@ -710,8 +713,7 @@ export default function CyberSachetTraining() {
   // default anything without an explicit track to "security" rather than
   // dropping it from every track-filtered view.
   const courseTrack = c => c.track ?? "security";
-  const hasAcademyTrack = allCourses.some(c => courseTrack(c) === "academy");
-  const trackCourses = activeTrack ? allCourses.filter(c => courseTrack(c) === activeTrack) : allCourses;
+  const trackCourses = allCourses.filter(c => courseTrack(c) === activeTrack);
   const freeCourses = trackCourses.filter(c => c.freeTier);
   // Local preview and an org admin (training:manage) both need to see
   // everything their plan tier actually unlocks — a solo preview has no
@@ -732,15 +734,17 @@ export default function CyberSachetTraining() {
   const securityCompletedCount = securityCourses.filter(c => enrollmentByCourseId.get(c.id)?.completedAt).length;
 
   const dashboardStats = local ? localStats : stats;
-  const heroTitle = activeTrack === "academy" ? "Moonsav ITOps Academy" : activeTrack === "security" ? "CyberSachet Training" : "Training Center";
+  const heroTitle = activeTrack === "academy" ? "Moonsav ITOps Academy" : "CyberSachet Training";
   const heroSubtitle = activeTrack === "academy" ? "Cloud, DevOps, and infrastructure courses — enroll, complete lessons, and pass the quiz." : local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : canManageTraining ? "The full catalog — assign any course to a team member, or take one yourself." : "Your assigned courses, progress, and certification, in one place.";
 
   return <div className="space-y-6">
+      <Reveal y={12} className="flex flex-wrap items-center justify-between gap-3">
+        <TrackToggle active={activeTrack} />
+      </Reveal>
+
       <Reveal y={12}>
         <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
-
-      {hasAcademyTrack && <Reveal delay={0.03}><TrackToggle active={activeTrack} onChange={selectTrack} /></Reveal>}
 
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 

@@ -206,7 +206,8 @@ export default function App() {
             <Layout />
           </ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardGate />} />
-        <Route path="/training" element={<CyberSachetTraining />} />
+        <Route path="/training" element={<CyberSachetTraining key="security" defaultTrack="security" />} />
+        <Route path="/training/academy" element={<CyberSachetTraining key="academy" defaultTrack="academy" />} />
         <Route path="/profile" element={<Profile />} />
         {/* Operator-only routes — an Employee Portal member (no operational
             view access anywhere) is redirected back to /dashboard even on a

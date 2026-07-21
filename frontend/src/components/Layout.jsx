@@ -11,6 +11,7 @@ import { usePortalType } from "../hooks/usePortalType";
 import { useExpandedNavGroups } from "../hooks/useExpandedNavGroups";
 import { AppSearch } from "./AppSearch";
 import { NotificationCenter } from "./NotificationCenter";
+import { AcademyMark } from "./AcademyBrand";
 const PLAN_COLORS = {
   STARTER: "bg-white/10 light:bg-slate-900/8 text-white/60 light:text-slate-600",
   PROFESSIONAL: "bg-blue-400/10 light:bg-blue-500/10 text-blue-300 light:text-blue-700",
@@ -68,10 +69,17 @@ const NAV_GROUPS = [{
   items: [{
     to: "/training",
     label: "CyberSachet",
-    icon: "🎓"
+    icon: "🎓",
+    end: true
     // No `module` gate — visibility of the page's real content is decided
     // by the CyberSachet product license (organization_products), not RBAC;
     // every org member can see the nav item and, if unlicensed, the upsell.
+  }, {
+    to: "/training/academy",
+    label: "Moonsav ITOps Academy",
+    icon: <AcademyMark size={13} />
+    // Same license gate as CyberSachet above — one real per-org training
+    // license unlocks both distinctly-branded catalogs.
   }]
 }, {
   label: "Settings",
