@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { adminCreateUser, adminDeleteUser, adminInviteUserToOrganization, adminResetPassword, adminUpdateMemberRole, adminUpdateUserName, fetchAdminCustomers, fetchAdminUsers, fetchRoles, setUserPlatformAdmin } from "../../api/adminEndpoints";
+import { adminCreateUser, adminDeleteUser, adminFetchPlatformInstructors, adminInviteUserToOrganization, adminResetPassword, adminUpdateMemberRole, adminUpdateUserName, fetchAdminCustomers, fetchAdminUsers, fetchRoles, setUserPlatformAdmin, setUserPlatformInstructor } from "../../api/adminEndpoints";
 import { fetchOrgRoles } from "../../api/endpoints";
 import { useAuth } from "../../context/AuthContext";
 import { Reveal, SpotlightCard } from "../../components/Animated";
@@ -235,6 +235,25 @@ function GrantAdminControl({ u, isSelf, isSuperAdmin, adminMutation, adminRoles,
       </button>
     </div>;
 }
+// A lightweight, separate toggle from GrantAdminControl above — deliberately
+// not folded into the "Platform Admin" role picker, since an instructor is
+// never a platform_admins row (see migration 0083's reasoning). One person
+// can be both, independently: an admin who's also an instructor, or a
+// stand-alone instructor with no admin access at all.
+function InstructorControl({ u, isSelf, isInstructor, mutation }) {
+  if (isSelf) return <span className="text-xs text-white/40 light:text-slate-400">(you)</span>;
+  if (isInstructor) {
+    return <div className="flex items-center gap-2">
+        <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">Instructor</span>
+        <button onClick={() => mutation.mutate({ userId: u.userId, isInstructor: false })} disabled={mutation.isPending} className="text-xs text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
+          Revoke
+        </button>
+      </div>;
+  }
+  return <button onClick={() => mutation.mutate({ userId: u.userId, isInstructor: true })} disabled={mutation.isPending} className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/60 light:text-slate-500 transition-colors hover:text-white light:hover:text-slate-900 disabled:opacity-50">
+      Grant
+    </button>;
+}
 export default function AdminUsers() {
   const {
     user: currentUser,
@@ -258,6 +277,13 @@ export default function AdminUsers() {
     if (!q) return users ?? [];
     return (users ?? []).filter(u => u.email.toLowerCase().includes(q) || (u.organizationName ?? "").toLowerCase().includes(q));
   }, [users, search]);
+  const { data: instructors } = useQuery({ queryKey: ["platform-instructors"], queryFn: adminFetchPlatformInstructors, retry: false });
+  const instructorIds = useMemo(() => new Set((instructors ?? []).map(i => i.userId)), [instructors]);
+  const instructorMutation = useMutation({
+    mutationFn: ({ userId, isInstructor }) => setUserPlatformInstructor(userId, isInstructor),
+    onSuccess: () => { toast.success("Instructor access updated."); queryClient.invalidateQueries({ queryKey: ["platform-instructors"] }); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to update instructor access")
+  });
   // Reads live from the roles table (migration 0032) so a new/renamed
   // platform role shows up here with zero code changes; falls back to the
   // fixed migration-0030/0031 list on an un-migrated database.
@@ -384,6 +410,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3">MFA</th>
                 <th className="px-4 py-3">Joined</th>
                 <th className="px-4 py-3">Platform Admin</th>
+                <th className="px-4 py-3">Instructor</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -416,6 +443,9 @@ export default function AdminUsers() {
                   <td className="px-4 py-3 text-white/50 light:text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <GrantAdminControl u={u} isSelf={u.userId === currentUser?.id} isSuperAdmin={isSuperAdmin} adminMutation={adminMutation} adminRoles={adminRoles} roleLabel={roleLabel} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <InstructorControl u={u} isSelf={u.userId === currentUser?.id} isInstructor={instructorIds.has(u.userId)} mutation={instructorMutation} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-3">

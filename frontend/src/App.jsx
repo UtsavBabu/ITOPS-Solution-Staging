@@ -81,6 +81,7 @@ function PlatformAdminRoute({
   const {
     user,
     isPlatformAdmin,
+    isPlatformInstructor,
     isLoading
   } = useAuth();
   if (isLoading) {
@@ -89,7 +90,13 @@ function PlatformAdminRoute({
   if (!user) {
     return <Navigate to="/admin/login" replace />;
   }
-  if (!isPlatformAdmin) {
+  // An instructor-only account (isPlatformInstructor but not isPlatformAdmin)
+  // gets past this gate too — AdminLayout's nav and AdminOverview's redirect
+  // then confine them to the Academy dashboard. The real boundary is still
+  // server-side: every other admin RPC stays gated to is_platform_admin()
+  // alone (see migration 0083), so reaching a route here never implies the
+  // underlying data actually loads for an instructor.
+  if (!isPlatformAdmin && !isPlatformInstructor) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
@@ -115,12 +122,13 @@ function AdminPublicOnlyRoute({
   const {
     user,
     isPlatformAdmin,
+    isPlatformInstructor,
     isLoading
   } = useAuth();
   if (isLoading) {
     return <BrandLoading />;
   }
-  if (user && isPlatformAdmin) {
+  if (user && (isPlatformAdmin || isPlatformInstructor)) {
     return <Navigate to="/admin" replace />;
   }
   return <>{children}</>;

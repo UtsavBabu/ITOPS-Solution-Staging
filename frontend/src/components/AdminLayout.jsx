@@ -151,6 +151,15 @@ const ROLE_LABEL = {
   content_editor: "Content Editor",
   reseller: "Reseller Admin"
 };
+// Every nav group/item this lightweight role can reach — deliberately just
+// the Academy dashboard. This is UX only; the real boundary is server-side
+// (migration 0083 gates the underlying RPCs to is_platform_instructor()
+// for exactly these, nothing else), so this list can't itself be a security
+// hole even if it drifted out of sync with the backend.
+const INSTRUCTOR_NAV_GROUPS = [{
+  label: "Academy",
+  items: [{ to: "/admin/academy", label: "Dashboard", icon: "🎓" }]
+}];
 function visibleFor(role, itemOrGroup) {
   if (!itemOrGroup.roles) return true;
   if (!role) return true; // role not loaded yet — don't flash-hide items
@@ -160,10 +169,13 @@ export function AdminLayout() {
   const {
     user,
     logout,
-    platformAdminRole
+    platformAdminRole,
+    isPlatformAdmin,
+    isPlatformInstructor
   } = useAuth();
+  const isInstructorOnly = !isPlatformAdmin && isPlatformInstructor;
   const isResellerOnly = platformAdminRole === "reseller";
-  const visibleGroups = NAV_GROUPS.filter(g => visibleFor(platformAdminRole, g)).map(g => ({
+  const visibleGroups = isInstructorOnly ? INSTRUCTOR_NAV_GROUPS : NAV_GROUPS.filter(g => visibleFor(platformAdminRole, g)).map(g => ({
     ...g,
     // A reseller's "Customers" page only ever shows organizations they
     // themselves provisioned (migration 0031/0062) — "My Customers" says
@@ -211,7 +223,7 @@ export function AdminLayout() {
             <BrandMark size={28} />
             <div className="min-w-0">
               <span className="inline-block rounded-full bg-amber-400/10 light:bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-300 light:text-amber-700">
-                {ROLE_LABEL[platformAdminRole] ?? "Admin"}
+                {isInstructorOnly ? "Instructor" : ROLE_LABEL[platformAdminRole] ?? "Admin"}
               </span>
               <p className="mt-1 truncate text-xs text-white/45 light:text-slate-500 transition-colors group-hover:text-white/70 light:group-hover:text-slate-600 light:group-hover:text-slate-700">ITOps Solution · Platform Console</p>
             </div>

@@ -43,12 +43,17 @@ async function loadProfile() {
     data: isAdmin
   }, {
     data: adminRole
+  }, {
+    data: isInstructor
   }] = await Promise.all([
     supabase.from("memberships").select("role, organization_id").eq("user_id", session.user.id).single(),
     supabase.rpc("is_platform_admin"),
     // Returns null for non-admins; requires migration 0030. Failing this call
     // (e.g. migration not yet applied) shouldn't block login, so it's not awaited strictly.
     supabase.rpc("platform_admin_role").then((r) => r).catch(() => ({ data: null })),
+    // Requires migration 0083 — same "don't block login if it's not deployed
+    // yet" reasoning as platform_admin_role above.
+    supabase.rpc("is_platform_instructor").then((r) => r).catch(() => ({ data: false })),
   ]);
   if (!membership) return null;
   const {
@@ -67,7 +72,11 @@ async function loadProfile() {
       name: org.name
     },
     isPlatformAdmin: Boolean(isAdmin),
-    platformAdminRole: adminRole ?? null
+    platformAdminRole: adminRole ?? null,
+    // True for a real platform admin too (is_platform_instructor() includes
+    // is_platform_admin()) — components that need to tell "instructor-only"
+    // apart from "full admin" should check isPlatformInstructor && !isPlatformAdmin.
+    isPlatformInstructor: Boolean(isInstructor)
   };
 }
 // Enrolling an MFA factor (see Profile.jsx) means nothing if a session with
@@ -90,6 +99,7 @@ export function AuthProvider({
   const [organization, setOrganization] = useState(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [platformAdminRole, setPlatformAdminRole] = useState(null);
+  const [isPlatformInstructor, setIsPlatformInstructor] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mfaPending, setMfaPending] = useState(false);
   const queryClient = useQueryClient();
@@ -108,6 +118,7 @@ export function AuthProvider({
       setOrganization(null);
       setIsPlatformAdmin(false);
       setPlatformAdminRole(null);
+      setIsPlatformInstructor(false);
       return;
     }
     setMfaPending(false);
@@ -115,6 +126,7 @@ export function AuthProvider({
     setOrganization(profile?.organization ?? null);
     setIsPlatformAdmin(profile?.isPlatformAdmin ?? false);
     setPlatformAdminRole(profile?.platformAdminRole ?? null);
+    setIsPlatformInstructor(profile?.isPlatformInstructor ?? false);
   }, []);
   useEffect(() => {
     let active = true;
@@ -256,6 +268,7 @@ export function AuthProvider({
     organization,
     isPlatformAdmin,
     platformAdminRole,
+    isPlatformInstructor,
     isLoading,
     mfaPending,
     resolveMfaChallenge,
@@ -266,7 +279,7 @@ export function AuthProvider({
     requestPasswordReset,
     updatePassword,
     logout
-  }), [user, organization, isPlatformAdmin, platformAdminRole, isLoading, mfaPending, resolveMfaChallenge, cancelMfaChallenge, login, loginWithGoogle, register, requestPasswordReset, updatePassword, logout]);
+  }), [user, organization, isPlatformAdmin, platformAdminRole, isPlatformInstructor, isLoading, mfaPending, resolveMfaChallenge, cancelMfaChallenge, login, loginWithGoogle, register, requestPasswordReset, updatePassword, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {

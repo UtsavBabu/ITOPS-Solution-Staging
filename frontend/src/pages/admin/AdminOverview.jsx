@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { fetchAdminCustomers, fetchAdminOrganizations, fetchAdminStats, fetchAuditLog, fetchProductAdoption, fetchResellerApplications, fetchSecurityHighlights } from "../../api/adminEndpoints";
 import { useAuth } from "../../context/AuthContext";
@@ -62,7 +62,7 @@ function timeAgo(iso) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 export default function AdminOverview() {
-  const { platformAdminRole } = useAuth();
+  const { platformAdminRole, isPlatformAdmin, isPlatformInstructor } = useAuth();
   // Resellers get the platform-wide aggregate stat tiles and pure-aggregate
   // product adoption panel, same as every other admin role — but not named
   // individual-customer detail that belongs to organizations they didn't
@@ -129,6 +129,14 @@ export default function AdminOverview() {
   const totalOrgs = organizations?.length ?? 0;
   const recentCustomers = useMemo(() => [...(customers ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5), [customers]);
   const maxAdoption = Math.max(1, ...(adoption ?? []).map(p => p.organizationCount));
+
+  // An instructor-only account (no real platform_admins row) can't load any
+  // of the RPCs this page queries above — send them straight to the one
+  // page they actually have access to instead of a page full of "Not
+  // authorized" errors. After every hook, per the Rules of Hooks.
+  if (!isPlatformAdmin && isPlatformInstructor) {
+    return <Navigate to="/admin/academy" replace />;
+  }
 
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-start justify-between gap-3">

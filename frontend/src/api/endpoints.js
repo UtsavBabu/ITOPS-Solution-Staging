@@ -440,8 +440,12 @@ export async function fetchOrgInvites() {
     invitedByEmail: row.invited_by_email
   }));
 }
-export async function createOrgInvite(email, role) {
-  const { data, error } = await supabase.rpc("create_org_invite", { p_email: email, p_role: role });
+export async function createOrgInvite(email, role, departmentId) {
+  // p_department_id is omitted entirely (not just null) unless actually set
+  // — migration 0084 is pending deploy, and PostgREST resolves RPCs by
+  // exact named-parameter match, so sending an unrecognized param name
+  // would 404 every invite, not just department-assigned ones.
+  const { data, error } = await supabase.rpc("create_org_invite", { p_email: email, p_role: role, ...(departmentId ? { p_department_id: departmentId } : {}) });
   if (error) throw new Error(error.message);
   const row = data?.[0];
   return { id: row?.id, token: row?.token };

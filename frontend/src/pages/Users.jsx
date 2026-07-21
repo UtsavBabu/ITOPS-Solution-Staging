@@ -353,23 +353,30 @@ function InviteRow({ invite, canManage, onChanged }) {
 // email,role — role matches either a role key (e.g. "it_manager") or its
 // display name (e.g. "IT Manager"), case-insensitive. A header row is
 // detected and skipped automatically if its first cell isn't an email.
-function parseInviteCsv(text, orgRoles) {
+// Third column is optional and purely a convenience: an unmatched or blank
+// department name never blocks the invite (an admin can always assign a
+// department to a real member later on the Departments panel below) — it
+// just means that one row's "assign initial training group" step didn't
+// happen automatically.
+function parseInviteCsv(text, orgRoles, departments) {
   const roleByKey = new Map(orgRoles.map(r => [r.key.toLowerCase(), r]));
   const roleByName = new Map(orgRoles.map(r => [r.name.toLowerCase(), r]));
+  const deptByName = new Map((departments ?? []).filter(d => !d.archived).map(d => [d.name.toLowerCase(), d]));
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (lines.length && !/^[^@\s]+@[^@\s]+\.[^@\s]+,/.test(lines[0] + ",")) {
     const firstCell = lines[0].split(",")[0]?.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(firstCell)) lines.shift();
   }
   return lines.map(line => {
-    const [emailRaw, roleRaw] = line.split(",").map(s => (s ?? "").trim().replace(/^"|"$/g, ""));
+    const [emailRaw, roleRaw, deptRaw] = line.split(",").map(s => (s ?? "").trim().replace(/^"|"$/g, ""));
     const email = (emailRaw ?? "").toLowerCase();
     const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
     const matchedRole = roleRaw ? roleByKey.get(roleRaw.toLowerCase()) ?? roleByName.get(roleRaw.toLowerCase()) : null;
+    const matchedDept = deptRaw ? deptByName.get(deptRaw.toLowerCase()) ?? null : null;
     let reason = null;
     if (!emailValid) reason = "Invalid email";
     else if (!matchedRole) reason = roleRaw ? `Unknown role "${roleRaw}"` : "Missing role";
-    return { email, roleRaw: roleRaw ?? "", role: matchedRole, valid: emailValid && !!matchedRole, reason };
+    return { email, roleRaw: roleRaw ?? "", role: matchedRole, deptRaw: deptRaw ?? "", department: matchedDept, valid: emailValid && !!matchedRole, reason };
   });
 }
 
@@ -379,6 +386,7 @@ function BulkInvitePanel({ orgRoles, onDone }) {
   const [fileName, setFileName] = useState(null);
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState(null);
+  const { data: departments } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
 
   function handleFile(e) {
     const file = e.target.files?.[0];
@@ -386,13 +394,14 @@ function BulkInvitePanel({ orgRoles, onDone }) {
     setFileName(file.name);
     setResults(null);
     const reader = new FileReader();
-    reader.onload = () => setRows(parseInviteCsv(String(reader.result ?? ""), orgRoles));
+    reader.onload = () => setRows(parseInviteCsv(String(reader.result ?? ""), orgRoles, departments));
     reader.readAsText(file);
   }
 
   function downloadTemplate() {
     const sampleRole = orgRoles[0]?.key ?? "helpdesk";
-    const csv = `email,role\njane@yourcompany.com,${sampleRole}\njohn@yourcompany.com,${sampleRole}\n`;
+    const sampleDept = departments?.[0]?.name ?? "Engineering";
+    const csv = `email,role,department\njane@yourcompany.com,${sampleRole},${sampleDept}\njohn@yourcompany.com,${sampleRole},\n`;
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -409,7 +418,7 @@ function BulkInvitePanel({ orgRoles, onDone }) {
     const outcomes = [];
     for (const row of validRows) {
       try {
-        await createOrgInvite(row.email, row.role.key);
+        await createOrgInvite(row.email, row.role.key, row.department?.id);
         outcomes.push({ email: row.email, ok: true });
       } catch (err) {
         outcomes.push({ email: row.email, ok: false, error: err instanceof Error ? err.message : "Failed" });
@@ -430,19 +439,22 @@ function BulkInvitePanel({ orgRoles, onDone }) {
           <input type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
         </label>
         <button type="button" onClick={downloadTemplate} className="text-xs text-cyan-300 light:text-cyan-600 hover:underline">Download template</button>
-        <span className="text-xs text-white/35 light:text-slate-400">Columns: email, role (role key or name — e.g. "it_manager" or "IT Manager")</span>
+        <span className="text-xs text-white/35 light:text-slate-400">Columns: email, role (key or name), department (optional — must match an existing department name)</span>
       </div>
 
       {rows.length > 0 && <>
           <div className="max-h-56 overflow-y-auto rounded-xl border border-white/10 light:border-slate-900/10">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 border-b border-white/10 light:border-slate-900/10 bg-neutral-900 light:bg-white uppercase text-white/40 light:text-slate-400">
-                <tr><th className="px-3 py-1.5">Email</th><th className="px-3 py-1.5">Role</th><th className="px-3 py-1.5">Status</th></tr>
+                <tr><th className="px-3 py-1.5">Email</th><th className="px-3 py-1.5">Role</th><th className="px-3 py-1.5">Department</th><th className="px-3 py-1.5">Status</th></tr>
               </thead>
               <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
                 {rows.map((r, i) => <tr key={i}>
                     <td className="px-3 py-1.5 text-white light:text-slate-900">{r.email || "—"}</td>
                     <td className="px-3 py-1.5 text-white/60 light:text-slate-600">{r.role?.name ?? r.roleRaw ?? "—"}</td>
+                    <td className="px-3 py-1.5 text-white/60 light:text-slate-600">
+                      {r.department ? r.department.name : r.deptRaw ? <span className="text-amber-300" title="No department matches this name — the invite still sends, just without a department.">{r.deptRaw} (no match)</span> : "—"}
+                    </td>
                     <td className={`px-3 py-1.5 ${r.valid ? "text-emerald-300 light:text-emerald-600" : "text-red-300 light:text-red-600"}`}>{r.valid ? "Ready" : r.reason}</td>
                   </tr>)}
               </tbody>

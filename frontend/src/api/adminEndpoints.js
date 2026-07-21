@@ -241,6 +241,19 @@ export async function setUserPlatformAdmin(userId, isAdmin, role = "support") {
   if (error) throw new Error(error.message);
 }
 
+// A separate, narrower mechanism from setUserPlatformAdmin above — see
+// migration 0083 for why: an instructor never becomes a platform_admins
+// row, so is_platform_admin() (and everything gated on it) never sees them.
+export async function setUserPlatformInstructor(userId, isInstructor) {
+  const { error } = await supabase.rpc("admin_set_platform_instructor", { p_user_id: userId, p_is_instructor: isInstructor });
+  if (error) throw new Error(error.message);
+}
+export async function adminFetchPlatformInstructors() {
+  const { data, error } = await supabase.rpc("admin_list_platform_instructors");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({ userId: row.user_id, email: row.email, grantedByEmail: row.granted_by_email, createdAt: row.created_at }));
+}
+
 // supabase.functions.invoke surfaces non-2xx responses as an error whose body
 // lives in error.context (a Response). Pull the function's own {error} message
 // out of it so the admin sees "Password too short" instead of a generic 400.
