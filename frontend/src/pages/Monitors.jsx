@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { createMonitor, deleteMonitor, fetchMonitors, fetchMyPermissions, listHostAgents } from "../api/endpoints";
 import { StatusBadge } from "../components/StatusBadge";
 import { Reveal, SpotlightCard } from "../components/Animated";
@@ -304,6 +304,7 @@ export default function Monitors({ mode = "web" }) {
   const [devicePreset, setDevicePreset] = useState(null);
   const [viaHostAgentId, setViaHostAgentId] = useState("");
   const [formError, setFormError] = useState(null);
+  const [step, setStep] = useState(1);
   const isTcp = checkType === "TCP";
   const isPing = checkType === "PING";
   const activeChecks = mode === "web" ? WEB_CHECKS : NETWORK_CHECKS;
@@ -345,6 +346,7 @@ export default function Monitors({ mode = "web" }) {
       setExpectedKeyword("");
       setDevicePreset(null);
       setViaHostAgentId("");
+      setStep(1);
       queryClient.invalidateQueries({
         queryKey: ["monitors"]
       });
@@ -376,6 +378,12 @@ export default function Monitors({ mode = "web" }) {
     event.preventDefault();
     setFormError(null);
     createMutation.mutate();
+  }
+  function goNext() {
+    if (!name.trim() || !url.trim()) { setFormError("Name and target are required before continuing."); return; }
+    if (isTcp && !tcpPort) { setFormError("Pick or enter a port before continuing."); return; }
+    setFormError(null);
+    setStep(2);
   }
   const shownMonitors = mode === "web" ? webMonitors : networkMonitors;
   return <div className="space-y-6">
@@ -428,105 +436,136 @@ export default function Monitors({ mode = "web" }) {
         </Reveal>}
 
       {canCreate && <Reveal delay={0.05}>
-      <form onSubmit={handleSubmit} className={`space-y-4 rounded-2xl border bg-neutral-900/60 light:bg-white p-5 ${mode === "web" ? "border-blue-400/15 light:border-blue-900/10" : "border-cyan-400/15 light:border-cyan-900/10"}`}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">Check type</span>
-            <select value={checkType} onChange={e => setCheckType(e.target.value)} className={`w-full ${inputClass}`}>
-              {activeChecks.map(t => <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>)}
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">Name</span>
-            <input required value={name} onChange={e => setName(e.target.value)} placeholder={mode === "web" ? "Marketing site" : "Office router"} className={`w-full ${inputClass}`} />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">{isTcp || isPing ? "Hostname / IP" : "URL"}</span>
-            <input required type={isTcp || isPing ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isTcp || isPing ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">Check every</span>
-            <select value={interval} onChange={e => setInterval(e.target.value)} className={`w-full ${inputClass}`}>
-              {Object.entries(INTERVAL_LABELS).map(([value, label]) => <option key={value} value={value}>
-                  {label}
-                </option>)}
-            </select>
-          </label>
+      <form onSubmit={handleSubmit} className={`overflow-hidden rounded-2xl border bg-neutral-900/60 light:bg-white ${mode === "web" ? "border-blue-400/15 light:border-blue-900/10" : "border-cyan-400/15 light:border-cyan-900/10"}`}>
+        {/* Step indicator */}
+        <div className="flex items-center gap-3 border-b border-white/10 light:border-slate-900/10 px-5 py-3">
+          {[{ n: 1, label: "What to monitor" }, { n: 2, label: "How to monitor it" }].map((s, i) => <div key={s.n} className="flex items-center gap-3">
+              {i > 0 && <span className={`h-px w-8 ${step >= s.n ? (mode === "web" ? "bg-blue-400/50" : "bg-cyan-400/50") : "bg-white/10"}`} />}
+              <button type="button" onClick={() => s.n === 1 && setStep(1)} disabled={s.n === 2} className="flex items-center gap-2 disabled:cursor-default">
+                <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-medium transition-colors ${step === s.n ? (mode === "web" ? "bg-blue-400 text-black" : "bg-cyan-400 text-black") : step > s.n ? "bg-emerald-400/20 text-emerald-300" : "bg-white/10 text-white/40 light:bg-slate-900/10 light:text-slate-400"}`}>
+                  {step > s.n ? "✓" : s.n}
+                </span>
+                <span className={`text-xs font-medium ${step === s.n ? "text-white light:text-slate-900" : "text-white/40 light:text-slate-400"}`}>{s.label}</span>
+              </button>
+            </div>)}
         </div>
 
-        <p className="text-xs text-white/45 light:text-slate-400">{activeType.blurb}</p>
+        <div className="relative overflow-hidden p-5">
+          <AnimatePresence mode="wait" initial={false}>
+            {step === 1 ? <motion.div key="step1" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25, ease: EASE }} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="text-sm">
+                    <span className="mb-1.5 block text-white/70 light:text-slate-600">Check type</span>
+                    <select value={checkType} onChange={e => setCheckType(e.target.value)} className={`w-full ${inputClass}`}>
+                      {activeChecks.map(t => <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1.5 block text-white/70 light:text-slate-600">Name</span>
+                    <input required value={name} onChange={e => setName(e.target.value)} placeholder={mode === "web" ? "Marketing site" : "Office router"} className={`w-full ${inputClass}`} />
+                  </label>
+                  <label className="text-sm sm:col-span-2">
+                    <span className="mb-1.5 block text-white/70 light:text-slate-600">{isTcp || isPing ? "Hostname / IP" : "URL"}</span>
+                    <input required type={isTcp || isPing ? "text" : "url"} value={url} onChange={e => setUrl(e.target.value)} placeholder={isTcp || isPing ? "gateway.example.com or 203.0.113.1" : "https://example.com"} className={`w-full ${inputClass}`} />
+                  </label>
+                </div>
 
-        {isTcp && <div className="space-y-4">
-            <div className="space-y-2.5">
-              <span className="block text-sm text-white/70 light:text-slate-600">Common devices</span>
-              <div className="flex flex-wrap gap-2">
-                {DEVICE_PRESETS.map(d => <button key={d.label} type="button" onClick={() => { setName(d.name); setTcpPort(String(d.port)); setDevicePreset(d); }} className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-all ${devicePreset?.label === d.label ? "bg-cyan-400 text-black" : "border border-white/15 text-white/60 light:text-slate-500 hover:border-cyan-400/40 hover:text-white light:hover:text-slate-900"}`}>
-                    <span aria-hidden>{d.icon}</span> {d.label}
-                  </button>)}
-              </div>
-              {devicePreset?.blurb && <p className="text-xs leading-relaxed text-cyan-200/70">{devicePreset.blurb}</p>}
-            </div>
-            <div className="space-y-2.5">
-              <span className="block text-sm text-white/70 light:text-slate-600">Port</span>
-              <div className="flex flex-wrap items-center gap-2">
-                {PORT_PRESETS.map(p => <button key={p.port} type="button" onClick={() => setTcpPort(String(p.port))} className={`rounded-full px-3 py-1.5 text-xs transition-all ${Number(tcpPort) === p.port ? "bg-white text-black" : "border border-white/15 text-white/60 light:text-slate-500 hover:border-white/30 hover:text-white light:hover:text-slate-900"}`}>
-                    {p.label}
-                  </button>)}
-                <input required type="number" min={1} max={65535} value={tcpPort} onChange={e => setTcpPort(e.target.value)} aria-label="Custom port" className={`w-28 ${inputClass}`} />
-              </div>
-            </div>
-          </div>}
+                <p className="text-xs text-white/45 light:text-slate-400">{activeType.blurb}</p>
 
-        {(isTcp || isPing) && <div className="space-y-2.5">
-              <span className="block text-sm text-white/70 light:text-slate-600">Check via</span>
-              <select value={viaHostAgentId} onChange={e => setViaHostAgentId(e.target.value)} className={`w-full max-w-xs ${inputClass}`}>
-                {isTcp && <option value="">Cloud (direct — device must have a public port)</option>}
-                {isPing && <option value="">Select an agent…</option>}
-                {(hostAgents ?? []).map(a => <option key={a.id} value={a.id}>
-                    Agent: {a.name}{a.isOnline ? "" : " (offline)"}
-                  </option>)}
-              </select>
-              {isPing && !viaHostAgentId ? <p className="text-xs leading-relaxed text-amber-300/90">
-                  ICMP ping always runs via an agent — the cloud has no way to send a raw ping. Pick one above to
-                  continue.{" "}
-                  {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
-                </p> : !viaHostAgentId ? <p className="text-xs leading-relaxed text-white/45 light:text-slate-400">
-                  Works when this device's port is reachable from the internet. Behind a home router/office
-                  firewall? Install the Kada Nigrani agent on any machine on the <em>same network</em> as this
-                  device, then pick it here — the agent checks it locally and reports back.{" "}
-                  {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
-                </p> : <p className="text-xs leading-relaxed text-cyan-200/70">
-                  Checked from that agent's network every {INTERVAL_LABELS[interval]}, not from the cloud — works
-                  even if this device has no public port.
-                </p>}
-          </div>}
+                {isTcp && <div className="space-y-4">
+                    <div className="space-y-2.5">
+                      <span className="block text-sm text-white/70 light:text-slate-600">Common devices</span>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {DEVICE_PRESETS.map(d => <button key={d.label} type="button" onClick={() => { setName(d.name); setTcpPort(String(d.port)); setDevicePreset(d); }} className={`flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all ${devicePreset?.label === d.label ? "border-cyan-400/60 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(0,240,255,0.35),0_0_20px_-6px_rgba(0,240,255,0.55)]" : "border-white/10 light:border-slate-900/10 hover:border-cyan-400/40 hover:bg-white/[0.03]"}`}>
+                            <span className="text-lg" aria-hidden>{d.icon}</span>
+                            <span className={`text-xs font-medium ${devicePreset?.label === d.label ? "text-cyan-200" : "text-white/70 light:text-slate-600"}`}>{d.label}</span>
+                          </button>)}
+                      </div>
+                      {devicePreset?.blurb && <p className="text-xs leading-relaxed text-cyan-200/70">{devicePreset.blurb}</p>}
+                    </div>
+                    <div className="space-y-2.5">
+                      <span className="block text-sm text-white/70 light:text-slate-600">Port</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {PORT_PRESETS.map(p => <button key={p.port} type="button" onClick={() => setTcpPort(String(p.port))} className={`rounded-full px-3 py-1.5 text-xs transition-all ${Number(tcpPort) === p.port ? "bg-white text-black" : "border border-white/15 text-white/60 light:text-slate-500 hover:border-white/30 hover:text-white light:hover:text-slate-900"}`}>
+                            {p.label}
+                          </button>)}
+                        <input required type="number" min={1} max={65535} value={tcpPort} onChange={e => setTcpPort(e.target.value)} aria-label="Custom port" className={`w-28 ${inputClass}`} />
+                      </div>
+                    </div>
+                  </div>}
 
-        {checkType === "KEYWORD" && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="text-sm">
-              <span className="mb-1.5 block text-white/70 light:text-slate-600">Page must…</span>
-              <select value={keywordMatchMode} onChange={e => setKeywordMatchMode(e.target.value)} className={`w-full ${inputClass}`}>
-                <option value="CONTAINS">Contain this text</option>
-                <option value="NOT_CONTAINS">Not contain this text</option>
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="mb-1.5 block text-white/70 light:text-slate-600">Text to look for</span>
-              <input required value={expectedKeyword} onChange={e => setExpectedKeyword(e.target.value)} placeholder="Sign in" className={`w-full ${inputClass}`} />
-            </label>
-          </div>}
+                <div className="flex items-center gap-3 pt-1">
+                  <button type="button" onClick={goNext} className={`rounded-full px-5 py-2 text-sm font-medium text-black transition-colors ${mode === "web" ? "bg-blue-400 hover:bg-blue-300" : "bg-cyan-400 hover:bg-cyan-300"}`}>
+                    Continue →
+                  </button>
+                  {formError && <p className="text-sm text-red-300">{formError}</p>}
+                </div>
+              </motion.div> : <motion.div key="step2" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.25, ease: EASE }} className="space-y-4">
+                <label className="block max-w-xs text-sm">
+                  <span className="mb-1.5 block text-white/70 light:text-slate-600">Check every</span>
+                  <select value={interval} onChange={e => setInterval(e.target.value)} className={`w-full ${inputClass}`}>
+                    {Object.entries(INTERVAL_LABELS).map(([value, label]) => <option key={value} value={value}>
+                        {label}
+                      </option>)}
+                  </select>
+                </label>
 
-        {checkType === "STATUS_CODE" && <label className="block max-w-xs text-sm">
-            <span className="mb-1.5 block text-white/70 light:text-slate-600">Expected HTTP status code</span>
-            <input required type="number" min={100} max={599} value={expectedStatusCode} onChange={e => setExpectedStatusCode(e.target.value)} placeholder="200" className={`w-full ${inputClass}`} />
-          </label>}
+                {(isTcp || isPing) && <div className="space-y-2.5">
+                      <span className="block text-sm text-white/70 light:text-slate-600">Check via</span>
+                      <select value={viaHostAgentId} onChange={e => setViaHostAgentId(e.target.value)} className={`w-full max-w-xs ${inputClass}`}>
+                        {isTcp && <option value="">Cloud (direct — device must have a public port)</option>}
+                        {isPing && <option value="">Select an agent…</option>}
+                        {(hostAgents ?? []).map(a => <option key={a.id} value={a.id}>
+                            Agent: {a.name}{a.isOnline ? "" : " (offline)"}
+                          </option>)}
+                      </select>
+                      {isPing && !viaHostAgentId ? <p className="text-xs leading-relaxed text-amber-300/90">
+                          ICMP ping always runs via an agent — the cloud has no way to send a raw ping. Pick one above to
+                          continue.{" "}
+                          {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
+                        </p> : !viaHostAgentId ? <p className="text-xs leading-relaxed text-white/45 light:text-slate-400">
+                          Works when this device's port is reachable from the internet. Behind a home router/office
+                          firewall? Install the Kada Nigrani agent on any machine on the <em>same network</em> as this
+                          device, then pick it here — the agent checks it locally and reports back.{" "}
+                          {(hostAgents ?? []).length === 0 && <Link to="/hosts" className="text-cyan-300 light:text-cyan-600 hover:underline">Add an agent →</Link>}
+                        </p> : <p className="text-xs leading-relaxed text-cyan-200/70">
+                          Checked from that agent's network every {INTERVAL_LABELS[interval]}, not from the cloud — works
+                          even if this device has no public port.
+                        </p>}
+                  </div>}
 
-        <div className="flex items-center gap-3">
-          <button type="submit" disabled={createMutation.isPending || (isPing && !viaHostAgentId)} className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:opacity-60">
-            {createMutation.isPending ? "Adding…" : mode === "web" ? "Add Monitor" : "Add Device"}
-          </button>
-          {formError && <p className="text-sm text-red-300">{formError}</p>}
+                {checkType === "KEYWORD" && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <label className="text-sm">
+                      <span className="mb-1.5 block text-white/70 light:text-slate-600">Page must…</span>
+                      <select value={keywordMatchMode} onChange={e => setKeywordMatchMode(e.target.value)} className={`w-full ${inputClass}`}>
+                        <option value="CONTAINS">Contain this text</option>
+                        <option value="NOT_CONTAINS">Not contain this text</option>
+                      </select>
+                    </label>
+                    <label className="text-sm">
+                      <span className="mb-1.5 block text-white/70 light:text-slate-600">Text to look for</span>
+                      <input required value={expectedKeyword} onChange={e => setExpectedKeyword(e.target.value)} placeholder="Sign in" className={`w-full ${inputClass}`} />
+                    </label>
+                  </div>}
+
+                {checkType === "STATUS_CODE" && <label className="block max-w-xs text-sm">
+                    <span className="mb-1.5 block text-white/70 light:text-slate-600">Expected HTTP status code</span>
+                    <input required type="number" min={100} max={599} value={expectedStatusCode} onChange={e => setExpectedStatusCode(e.target.value)} placeholder="200" className={`w-full ${inputClass}`} />
+                  </label>}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button type="button" onClick={() => setStep(1)} className="rounded-full border border-white/15 light:border-slate-900/15 px-4 py-2 text-sm text-white/70 light:text-slate-600 hover:bg-white/5 light:hover:bg-slate-900/5">
+                    ← Back
+                  </button>
+                  <button type="submit" disabled={createMutation.isPending || (isPing && !viaHostAgentId)} className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-neutral-200 disabled:opacity-60">
+                    {createMutation.isPending ? "Adding…" : mode === "web" ? "Add Monitor" : "Add Device"}
+                  </button>
+                  {formError && <p className="text-sm text-red-300">{formError}</p>}
+                </div>
+              </motion.div>}
+          </AnimatePresence>
         </div>
       </form>
       </Reveal>}
