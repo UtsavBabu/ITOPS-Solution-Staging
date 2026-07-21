@@ -66,5 +66,21 @@ export const TERMINAL_DEMOS = {
   ],
   "Continuous Integration: build and test automatically": [
     { command: "npm test", output: "PASS  src/middleware/throttle.test.js\nPASS  src/routes/health.test.js\n\nTest Suites: 2 passed, 2 total\nTests:       14 passed, 14 total" }
+  ],
+  "Pods, Deployments, and the Kubernetes API": [
+    { command: "kubectl get deployments", output: "NAME       READY   UP-TO-DATE   AVAILABLE   AGE\napi-web    3/3     3            3           4d" },
+    { command: "kubectl get pods", output: "NAME                       READY   STATUS    RESTARTS   AGE\napi-web-7d9f8c6b4d-2xk9p   1/1     Running   0          4d\napi-web-7d9f8c6b4d-9mzq2   1/1     Running   0          4d\napi-web-7d9f8c6b4d-jv7lh   1/1     Running   0          4d" }
+  ],
+  "Services and networking": [
+    { command: "kubectl get services", output: "NAME        TYPE          CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE\napi-web     ClusterIP     10.96.142.7    <none>        80/TCP         4d\napi-web-lb  LoadBalancer  10.96.88.201   203.0.113.44  80:31840/TCP   4d" }
+  ],
+  "kubectl essentials": [
+    { command: "kubectl describe pod api-web-7d9f8c6b4d-2xk9p", output: "Name:         api-web-7d9f8c6b4d-2xk9p\nStatus:       Running\n...\nEvents:\n  Type    Reason     Age   From                Message\n  ----    ------     ----  ----                -------\n  Normal  Scheduled  4d    default-scheduler    Successfully assigned to node-3\n  Normal  Pulled     4d    kubelet              Container image already present\n  Normal  Started    4d    kubelet              Started container api-web" },
+    { command: "kubectl logs api-web-7d9f8c6b4d-2xk9p --previous", output: "2026-03-02T08:14:02Z ERROR Failed to connect to database: connection refused (10.96.4.11:5432)\n2026-03-02T08:14:02Z FATAL exiting after 3 failed connection attempts" }
+  ],
+  "Triage: diagnosing a broken deployment": [
+    { command: "kubectl get pods", output: "NAME                       READY   STATUS             RESTARTS   AGE\napi-web-6f8b9d5c7-4qwer    0/1     CrashLoopBackOff   6          12m\napi-web-6f8b9d5c7-8ztyu    0/1     ImagePullBackOff   0          2m" },
+    { command: "kubectl describe pod api-web-6f8b9d5c7-8ztyu", output: "Events:\n  Type     Reason    Message\n  ----     ------    -------\n  Warning  Failed    Failed to pull image \"registry.internal/api-web:v2.4.1\": manifest unknown\n  Warning  BackOff   Back-off pulling image" },
+    { command: "kubectl scale deployment api-web --replicas=3", output: "deployment.apps/api-web scaled" }
   ]
 };

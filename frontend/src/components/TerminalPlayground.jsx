@@ -20,15 +20,17 @@ function TerminalLine({ command, output, index }) {
     setTimeout(() => setCopied(false), 1600);
   }
   return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05, ease: EASE }}>
-      <div onClick={doRun} className={`group flex items-center gap-2 rounded px-1.5 py-0.5 ${run ? "" : "cursor-pointer hover:bg-white/[0.04]"}`}>
+      <div onClick={doRun} className={`group flex flex-wrap items-start gap-x-2 gap-y-1 rounded px-1.5 py-1 ${run ? "" : "cursor-pointer hover:bg-white/[0.04]"}`}>
         <span className="shrink-0 text-emerald-400">$</span>
-        <span className="flex-1 truncate text-cyan-100/90">{command}</span>
-        <button onClick={doCopy} aria-label="Copy command" className="shrink-0 text-white/25 opacity-0 transition-opacity hover:text-white/70 group-hover:opacity-100">
-          {copied ? <svg className="h-3.5 w-3.5 text-emerald-300" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><path d="M9 9h10v10H9zM5 15V5h10" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>}
-        </button>
-        {!run && <span className="shrink-0 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 opacity-0 transition-opacity group-hover:opacity-100">▶ Run</span>}
+        <span className="min-w-0 flex-1 break-all text-cyan-100/90">{command}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <button onClick={doCopy} aria-label="Copy command" className="text-white/35 transition-colors hover:text-white/80 sm:opacity-60 sm:group-hover:opacity-100">
+            {copied ? <svg className="h-3.5 w-3.5 text-emerald-300" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><path d="M9 9h10v10H9zM5 15V5h10" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>}
+          </button>
+          {!run && <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 sm:opacity-60 sm:group-hover:opacity-100">▶ Run</span>}
+        </span>
       </div>
-      {run && <motion.pre initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.25, ease: EASE }} className="ml-4 mt-1 overflow-hidden whitespace-pre-wrap break-words text-white/55 light:text-slate-400">
+      {run && <motion.pre initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.25, ease: EASE }} className="ml-4 mt-1 max-w-full overflow-x-auto whitespace-pre-wrap break-words text-white/55 light:text-slate-400">
           {output || "(no output)"}
         </motion.pre>}
     </motion.div>;

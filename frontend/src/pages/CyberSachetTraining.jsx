@@ -760,7 +760,17 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
       {dashboardStats && <Reveal delay={0.08}>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {/* XP is a display-only score computed live from real progress
+                (courses completed, hours trained, quiz average, streak) —
+                never a separately stored counter that could drift from
+                what actually happened. */}
+            <div className="rounded-2xl border border-amber-400/20 light:border-amber-500/25 bg-amber-400/[0.05] light:bg-amber-50 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/80 light:text-amber-700">XP</p>
+              <p className="mt-1.5 text-xl font-semibold tabular-nums text-amber-200 light:text-amber-800">
+                <AnimatedCounter value={dashboardStats.completedCourses * 250 + Math.round(dashboardStats.hoursTrained * 20) + (dashboardStats.avgScore ?? 0) * 2 + dashboardStats.streakDays * 15} />
+              </p>
+            </div>
             <StatTile label="Avg. quiz score" value={dashboardStats.avgScore != null ? dashboardStats.avgScore : "—"} suffix={dashboardStats.avgScore != null ? "%" : ""} />
             {/* Not AnimatedCounter here — it always rounds to a whole
                 number, which would silently show "0.3h" as "0h". */}
