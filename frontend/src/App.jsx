@@ -34,6 +34,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const Company = lazy(() => import("./pages/Company"));
 const Support = lazy(() => import("./pages/Support"));
 const CyberSachet = lazy(() => import("./pages/CyberSachet"));
+const Academy = lazy(() => import("./pages/Academy"));
 const BecomeReseller = lazy(() => import("./pages/BecomeReseller"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const VerifyCertificate = lazy(() => import("./pages/VerifyCertificate"));
@@ -58,6 +59,7 @@ const AdminIncidents = lazy(() => import("./pages/admin/AdminIncidents"));
 const AdminAgents = lazy(() => import("./pages/admin/AdminAgents"));
 const AdminSslCerts = lazy(() => import("./pages/admin/AdminSslCerts"));
 const AdminCyberSachetCourses = lazy(() => import("./pages/admin/AdminCyberSachetCourses"));
+const AdminAcademyDashboard = lazy(() => import("./pages/admin/AdminAcademyDashboard"));
 function ProtectedRoute({
   children
 }) {
@@ -182,6 +184,7 @@ export default function App() {
       <Route path="/company" element={<Company />} />
       <Route path="/support" element={<Support />} />
       <Route path="/cybersachet" element={<CyberSachet />} />
+      <Route path="/academy" element={<Academy />} />
       <Route path="/partners" element={<BecomeReseller />} />
 
       {/* Public per-organization status page — no auth required. */}
@@ -243,6 +246,7 @@ export default function App() {
         <Route path="/admin/incidents" element={<AdminIncidents />} />
         <Route path="/admin/agents" element={<AdminAgents />} />
         <Route path="/admin/ssl" element={<AdminSslCerts />} />
+        <Route path="/admin/academy" element={<AdminAcademyDashboard />} />
         <Route path="/admin/cybersachet-courses" element={<AdminCyberSachetCourses />} />
       </Route>
 

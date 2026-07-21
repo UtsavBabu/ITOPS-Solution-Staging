@@ -48,13 +48,21 @@ export default function CyberSachet() {
 
         <section className="py-16">
           <ProductShell>
-            <div className="mx-auto max-w-md text-center">
-              <p className="text-sm text-white/50 light:text-slate-500">
-                Not a customer yet? Get notified when phishing simulations and compliance reporting ship.
-              </p>
-              <div className="mt-4">
-                <WaitlistForm product="cybersachet" ctaLabel="Join the Waitlist" />
+            <div className="mx-auto flex max-w-md flex-col items-center gap-8 text-center">
+              <div>
+                <p className="text-sm text-white/50 light:text-slate-500">
+                  Not a customer yet? Get notified when phishing simulations and compliance reporting ship.
+                </p>
+                <div className="mt-4">
+                  <WaitlistForm product="cybersachet" ctaLabel="Join the Waitlist" />
+                </div>
               </div>
+              <p className="text-sm text-white/40 light:text-slate-400">
+                Looking for Cloud, DevOps, or Infrastructure training instead?{" "}
+                <Link to="/academy" className="font-medium text-amber-300 light:text-amber-700 hover:text-amber-200">
+                  See Moonsav ITOps Academy
+                </Link>
+              </p>
             </div>
           </ProductShell>
         </section>

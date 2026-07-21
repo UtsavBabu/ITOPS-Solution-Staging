@@ -36,6 +36,11 @@ const PRODUCT_META = {
     label: "MoonSAV-EDR",
     gradient: "linear-gradient(135deg, #1e1b4b, #dc2626)",
     glyph: <path d="M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm-3 9l2 2 4-4.5" stroke="#fff" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  },
+  academy: {
+    label: "Moonsav ITOps Academy",
+    gradient: "linear-gradient(135deg, #f59e0b, #6366f1)",
+    glyph: <path d="M12 4l9 4.5-9 4.5-9-4.5L12 4zm-6.5 6.75v4c0 2 2.9 3.75 6.5 3.75s6.5-1.75 6.5-3.75v-4M20 8.5v6" stroke="#fff" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" />
   }
 };
 const FALLBACK = {

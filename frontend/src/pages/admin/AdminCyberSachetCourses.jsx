@@ -16,6 +16,10 @@ const PLAN_TIERS = [
   { value: "ENTERPRISE", label: "Enterprise" }
 ];
 const QUESTION_TYPES = [{ value: "single", label: "Single choice" }, { value: "multiple", label: "Multiple answer" }, { value: "ordering", label: "Arrange steps" }];
+const TRACKS = [
+  { value: "security", label: "CyberSachet (Security Awareness)" },
+  { value: "academy", label: "Moonsav ITOps Academy (Cloud/DevOps/Infra)" }
+];
 const inputClass = "w-full rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-slate-900/[0.03] px-3 py-2 text-sm text-white light:text-slate-900 placeholder:text-white/30 light:placeholder:text-slate-400 focus:border-amber-400/40 focus:outline-none";
 const labelClass = "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-white/35 light:text-slate-400";
 
@@ -283,11 +287,12 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
   const [published, setPublished] = useState(course.published);
   const [category, setCategory] = useState(course.category ?? "security-awareness");
   const [minPlan, setMinPlan] = useState(course.minPlan ?? "PROFESSIONAL");
+  const [track, setTrack] = useState(course.track ?? "security");
   const toast = useToast();
   const confirm = useConfirm();
   const { data: modules } = useQuery({ queryKey: ["admin-cybersachet-modules", course.id], queryFn: () => adminFetchCybersachetModules(course.id), enabled: expanded });
   const save = useMutation({
-    mutationFn: () => adminSaveCybersachetCourse({ id: course.id, slug, title, description, level, estimatedMinutes: Number(estimatedMinutes), published, sortOrder: course.sortOrder, category, minPlan }),
+    mutationFn: () => adminSaveCybersachetCourse({ id: course.id, slug, title, description, level, estimatedMinutes: Number(estimatedMinutes), published, sortOrder: course.sortOrder, category, minPlan, track }),
     onSuccess: () => { toast.success("Course saved."); onSaved(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to save course")
   });
@@ -307,7 +312,10 @@ function CourseCard({ course, expanded, onToggle, onSaved }) {
 
         <div>
           <SectionLabel>Catalog details</SectionLabel>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <LabeledSelect label="Product" value={track} onChange={e => setTrack(e.target.value)}>
+              {TRACKS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </LabeledSelect>
             <LabeledInput label="URL slug" value={slug} onChange={e => setSlug(slugify(e.target.value))} />
             <LabeledSelect label="Difficulty" value={level} onChange={e => setLevel(e.target.value)}>
               {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
@@ -365,19 +373,21 @@ export default function AdminCyberSachetCourses() {
     queryFn: adminFetchCybersachetCourses
   });
   const [expandedId, setExpandedId] = useState(null);
+  const [trackFilter, setTrackFilter] = useState("all");
   const create = useMutation({
-    mutationFn: () => adminSaveCybersachetCourse({ slug: `new-course-${Date.now()}`, title: "New course", description: "", level: "beginner", estimatedMinutes: 15, published: false, sortOrder: (courses?.length ?? 0), category: "security-awareness", minPlan: "PROFESSIONAL" }),
+    mutationFn: () => adminSaveCybersachetCourse({ slug: `new-course-${Date.now()}`, title: "New course", description: "", level: "beginner", estimatedMinutes: 15, published: false, sortOrder: (courses?.length ?? 0), category: "security-awareness", minPlan: "PROFESSIONAL", track: trackFilter === "academy" ? "academy" : "security" }),
     onSuccess: () => { toast.success("Course created — fill it in below."); refetch(); },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to create course")
   });
+  const filteredCourses = (courses ?? []).filter(c => trackFilter === "all" || c.track === trackFilter);
 
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">CyberSachet Courses</h1>
+          <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Training Courses</h1>
           <p className="text-sm text-white/50 light:text-slate-500">
-            The training catalog every CyberSachet-licensed organization sees. Unpublished courses are hidden from customers.
-            "Included on Starter" courses stay free on every package — keep that to at most two.
+            One catalog, two branded products: CyberSachet (security awareness) and Moonsav ITOps Academy (cloud/DevOps/infrastructure).
+            Unpublished courses are hidden from customers; "Requires" controls which package tier unlocks a course.
           </p>
         </div>
         <button onClick={() => create.mutate()} disabled={create.isPending} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-medium text-black hover:bg-amber-300 disabled:opacity-50">
@@ -385,10 +395,16 @@ export default function AdminCyberSachetCourses() {
         </button>
       </Reveal>
 
+      <Reveal delay={0.03} className="flex flex-wrap gap-2">
+        {[["all", "All courses"], ...TRACKS.map(t => [t.value, t.label])].map(([value, label]) => <button key={value} onClick={() => setTrackFilter(value)} className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${trackFilter === value ? "bg-amber-400 text-black" : "border border-white/15 light:border-slate-900/15 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+            {label}
+          </button>)}
+      </Reveal>
+
       {isLoading ? <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
-        </div> : isError ? <ErrorState message={error instanceof Error ? `Couldn't load courses — ${error.message}` : "Couldn't load courses."} onRetry={refetch} /> : courses.length === 0 ? <EmptyState title="No courses yet." description="Create your first course to start building the training catalog." /> : <div className="space-y-4">
-          {courses.map(course => <CourseCard key={course.id} course={course} expanded={expandedId === course.id} onToggle={() => setExpandedId(expandedId === course.id ? null : course.id)} onSaved={refetch} />)}
+        </div> : isError ? <ErrorState message={error instanceof Error ? `Couldn't load courses — ${error.message}` : "Couldn't load courses."} onRetry={refetch} /> : filteredCourses.length === 0 ? <EmptyState title="No courses yet." description="Create your first course to start building the training catalog." /> : <div className="space-y-4">
+          {filteredCourses.map(course => <CourseCard key={course.id} course={course} expanded={expandedId === course.id} onToggle={() => setExpandedId(expandedId === course.id ? null : course.id)} onSaved={refetch} />)}
         </div>}
     </div>;
 }

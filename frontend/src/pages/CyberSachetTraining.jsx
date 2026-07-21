@@ -11,6 +11,7 @@ import { useToast } from "../components/Toast";
 import { AnimatedCounter } from "../components/AnimatedCounter";
 import { TrainingHero, ProgressRing, CompletionCelebration, LocalPreviewBanner, CourseIcon, CategoryIcon, BadgeChip, StreakFlame, ModuleProgressBar, Leaderboard } from "../components/CyberSachetTheme";
 import { CyberSachetCertificate, CertificationPath, CertificateDownloadCard } from "../components/CyberSachetCertificate";
+import { AcademyMark } from "../components/AcademyBrand";
 import { useAuth } from "../context/AuthContext";
 
 const LEVEL_TONE = {
@@ -46,6 +47,23 @@ function CategoryFilterChips({ categories, active, onChange }) {
       </button>
       {categories.map(c => <button key={c} onClick={() => onChange(c)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active === c ? "bg-white text-black" : "bg-white/[0.05] light:bg-slate-900/[0.05] text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
           <CategoryIcon category={c} size={13} />{CATEGORY_LABELS[c] ?? c}
+        </button>)}
+    </div>;
+}
+
+// Two real, differently-branded products sharing one LMS engine — shown only
+// once Academy-track courses actually exist for this org (pre-deploy or for
+// an org with only security courses, there's nothing to toggle between).
+const TRACKS = [
+  { value: null, label: "All Training" },
+  { value: "security", label: "CyberSachet" },
+  { value: "academy", label: "Moonsav ITOps Academy" }
+];
+function TrackToggle({ active, onChange }) {
+  return <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by training product">
+      {TRACKS.map(t => <button key={t.label} onClick={() => onChange(t.value)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${active === t.value ? "bg-white text-black" : "border border-white/12 light:border-slate-900/12 text-white/60 light:text-slate-500 hover:text-white light:hover:text-slate-900"}`}>
+          {t.value === "academy" && <AcademyMark size={13} />}
+          {t.label}
         </button>)}
     </div>;
 }
@@ -550,17 +568,17 @@ function CourseCertificateSection({ course, enrollment, score, local, passed }) 
     // title, score, hours — just watermarked "Preview" and with no QR/
     // verify block, since there's no database record behind it yet.
     return <div>
-        <CyberSachetCertificate preview userName={user?.name} orgName={organization?.name ?? "Your organization"} courseTitle={course.title} score={score ?? 0} averageScore={score ?? 0} hoursTrained={Math.round((course.estimatedMinutes / 60) * 10) / 10} issuedAt={enrollment?.completedAt ?? new Date().toISOString()} expiresAt={new Date(new Date(enrollment?.completedAt ?? Date.now()).setFullYear(new Date(enrollment?.completedAt ?? Date.now()).getFullYear() + 1)).toISOString()} />
+        <CyberSachetCertificate preview brand={course.track === "academy" ? "academy" : "cybersachet"} userName={user?.name} orgName={organization?.name ?? "Your organization"} courseTitle={course.title} score={score ?? 0} averageScore={score ?? 0} hoursTrained={Math.round((course.estimatedMinutes / 60) * 10) / 10} issuedAt={enrollment?.completedAt ?? new Date().toISOString()} expiresAt={new Date(new Date(enrollment?.completedAt ?? Date.now()).setFullYear(new Date(enrollment?.completedAt ?? Date.now()).getFullYear() + 1)).toISOString()} />
         <p className="mx-auto mt-3 max-w-md text-center text-xs text-white/45 light:text-slate-500">
           This is a preview of the real certificate design — a verifiable version with a QR code and a public verification page is
-          issued the moment your organization licenses CyberSachet.
+          issued the moment your organization licenses {course.track === "academy" ? "Moonsav ITOps Academy" : "CyberSachet"}.
         </p>
       </div>;
   }
 
   return certificate ? <div id={`course-certificate-${course.id}`}>
       <CertificateDownloadCard verifyPath={`/verify/${certificate.certificateNo}`}>
-        <CyberSachetCertificate userName={user?.name} orgName={organization?.name} certId={certificate.certificateNo} score={certificate.averageScore} averageScore={certificate.averageScore} courseTitle={certificate.courseTitle} hoursTrained={certificate.hoursTrained} issuedAt={certificate.issuedAt} expiresAt={certificate.expiresAt} certificateHash={certificate.certificateHash} verifyPath={`${window.location.origin}/verify/${certificate.certificateNo}`} />
+        <CyberSachetCertificate brand={course.track === "academy" ? "academy" : "cybersachet"} userName={user?.name} orgName={organization?.name} certId={certificate.certificateNo} score={certificate.averageScore} averageScore={certificate.averageScore} courseTitle={certificate.courseTitle} hoursTrained={certificate.hoursTrained} issuedAt={certificate.issuedAt} expiresAt={certificate.expiresAt} certificateHash={certificate.certificateHash} verifyPath={`${window.location.origin}/verify/${certificate.certificateNo}`} />
       </CertificateDownloadCard>
     </div> : <SpotlightCard className="p-6 text-center" tint="amber">
       <p className="text-2xl" aria-hidden>🎓</p>
@@ -654,6 +672,8 @@ export default function CyberSachetTraining() {
   const enrollments = local ? localEnrollments : liveEnrollments;
   const [openCourse, setOpenCourse] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [activeTrack, setActiveTrack] = useState(null);
+  function selectTrack(track) { setActiveTrack(track); setActiveCategory(null); }
 
   if (licenseLoading || usageLoading) {
     return <div className="space-y-4"><Skeleton className="h-32 rounded-3xl" /><Skeleton className="h-32 rounded-2xl" /></div>;
@@ -686,24 +706,41 @@ export default function CyberSachetTraining() {
   //    entitlement that isn't real. The RPC layer (_cybersachet_course_
   //    allowed) enforces the identical tiered rule server-side.
   const allCourses = local ? localCourses : (courses ?? []);
-  const freeCourses = allCourses.filter(c => c.freeTier);
+  // Local preview data predates the track column and is CyberSachet-only —
+  // default anything without an explicit track to "security" rather than
+  // dropping it from every track-filtered view.
+  const courseTrack = c => c.track ?? "security";
+  const hasAcademyTrack = allCourses.some(c => courseTrack(c) === "academy");
+  const trackCourses = activeTrack ? allCourses.filter(c => courseTrack(c) === activeTrack) : allCourses;
+  const freeCourses = trackCourses.filter(c => c.freeTier);
   // Local preview and an org admin (training:manage) both need to see
   // everything their plan tier actually unlocks — a solo preview has no
   // admin to assign anything, and an admin needs to browse the catalog to
   // decide what to assign, not just see what's already assigned to them.
-  const assignedCourses = local ? [] : allCourses.filter(c => !c.freeTier && courseAllowedByPlan(c) && assignmentByCourseId.has(c.id));
-  const lockedCourses = allCourses.filter(c => !courseAllowedByPlan(c));
-  const visibleCourses = local || canManageTraining ? allCourses.filter(courseAllowedByPlan) : [...freeCourses, ...assignedCourses];
+  const assignedCourses = local ? [] : trackCourses.filter(c => !c.freeTier && courseAllowedByPlan(c) && assignmentByCourseId.has(c.id));
+  const lockedCourses = trackCourses.filter(c => !courseAllowedByPlan(c));
+  const visibleCourses = local || canManageTraining ? trackCourses.filter(courseAllowedByPlan) : [...freeCourses, ...assignedCourses];
   const filteredVisible = activeCategory ? visibleCourses.filter(c => c.category === activeCategory) : visibleCourses;
   const filteredLocked = activeCategory ? lockedCourses.filter(c => c.category === activeCategory) : lockedCourses;
-  const categories = [...new Set(allCourses.map(c => c.category))].filter(Boolean);
+  const categories = [...new Set(trackCourses.map(c => c.category))].filter(Boolean);
+
+  // The CSSA certificate only ever certified the CyberSachet security
+  // catalog — scope its eligibility to security-track courses so an Academy
+  // (Cloud/DevOps) course completion can never gate or count toward it,
+  // matching issue_cybersachet_certificate()'s own server-side scoping.
+  const securityCourses = allCourses.filter(c => courseTrack(c) === "security");
+  const securityCompletedCount = securityCourses.filter(c => enrollmentByCourseId.get(c.id)?.completedAt).length;
 
   const dashboardStats = local ? localStats : stats;
+  const heroTitle = activeTrack === "academy" ? "Moonsav ITOps Academy" : activeTrack === "security" ? "CyberSachet Training" : "Training Center";
+  const heroSubtitle = activeTrack === "academy" ? "Cloud, DevOps, and infrastructure courses — enroll, complete lessons, and pass the quiz." : local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : canManageTraining ? "The full catalog — assign any course to a team member, or take one yourself." : "Your assigned courses, progress, and certification, in one place.";
 
   return <div className="space-y-6">
       <Reveal y={12}>
-        <TrainingHero title="CyberSachet Training" subtitle={local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : canManageTraining ? "The full catalog — assign any course to a team member, or take one yourself." : "Your assigned courses, progress, and certification, in one place."} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
+        <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
+
+      {!local && hasAcademyTrack && <Reveal delay={0.03}><TrackToggle active={activeTrack} onChange={selectTrack} /></Reveal>}
 
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
@@ -746,7 +783,7 @@ export default function CyberSachetTraining() {
           {filteredLocked.map((course, i) => <LockedCourseCard key={course.id} course={course} index={filteredVisible.length + i} />)}
         </div>}
 
-      {!local && liveCourses && liveCourses.length > 0 && <CertificateSection eligible={!isStarter && completedCount >= liveCourses.length} userName={user?.name} orgName={organization?.name} />}
+      {!local && activeTrack !== "academy" && securityCourses.length > 0 && <CertificateSection eligible={!isStarter && securityCompletedCount >= securityCourses.length} userName={user?.name} orgName={organization?.name} />}
       {local && <LocalCertificatePreview eligible={!isStarter && completedCount >= localCourses.length && completedCount > 0} stats={localStats} courseCount={localCourses.length} />}
     </div>;
 }

@@ -52,6 +52,10 @@ const COLUMNS = [{
   }, {
     label: "CyberSachet",
     to: "/cybersachet"
+  }, {
+    label: "Moonsav ITOps Academy",
+    to: "/academy",
+    badge: "Live"
   }]
 }, {
   heading: "Resources",

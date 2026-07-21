@@ -39,14 +39,14 @@ export function CourseIcon({ slug, size = 34 }) {
     </span>;
 }
 
-export function TrainingHero({ title, subtitle, stats }) {
+export function TrainingHero({ title, subtitle, stats, academy = false }) {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  return <div className="relative isolate overflow-hidden rounded-3xl border border-rose-400/15 light:border-sky-200 bg-gradient-to-br from-rose-950 via-neutral-950 to-violet-950 light:from-white light:via-sky-50 light:to-sky-100 p-6 shadow-none light:shadow-[0_20px_60px_-30px_rgba(14,165,233,0.35)] md:p-8">
+  return <div className={`relative isolate overflow-hidden rounded-3xl border p-6 shadow-none md:p-8 ${academy ? "border-amber-400/15 light:border-amber-200 bg-gradient-to-br from-amber-950 via-neutral-950 to-indigo-950 light:from-white light:via-amber-50 light:to-indigo-50 light:shadow-[0_20px_60px_-30px_rgba(99,102,241,0.3)]" : "border-rose-400/15 light:border-sky-200 bg-gradient-to-br from-rose-950 via-neutral-950 to-violet-950 light:from-white light:via-sky-50 light:to-sky-100 light:shadow-[0_20px_60px_-30px_rgba(14,165,233,0.35)]"}`}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className={`absolute -left-16 -top-16 h-64 w-64 rounded-full blur-3xl [animation:cs-drift-a_16s_ease-in-out_infinite] ${isLight ? "bg-sky-300/40" : "bg-rose-500/20"}`} />
-        <div className={`absolute -right-10 bottom-0 h-56 w-56 rounded-full blur-3xl [animation:cs-drift-b_20s_ease-in-out_infinite] ${isLight ? "bg-cyan-200/50" : "bg-violet-500/20"}`} />
-        {PARTICLES.map((p, i) => <span key={i} className={`absolute rounded-full ${isLight ? "bg-sky-400/45" : "bg-rose-200/40"}`} style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size, animation: `cs-float ${p.dur}s ease-in-out ${p.delay}s infinite` }} />)}
+        <div className={`absolute -left-16 -top-16 h-64 w-64 rounded-full blur-3xl [animation:cs-drift-a_16s_ease-in-out_infinite] ${academy ? (isLight ? "bg-amber-300/40" : "bg-amber-500/20") : isLight ? "bg-sky-300/40" : "bg-rose-500/20"}`} />
+        <div className={`absolute -right-10 bottom-0 h-56 w-56 rounded-full blur-3xl [animation:cs-drift-b_20s_ease-in-out_infinite] ${academy ? (isLight ? "bg-indigo-200/50" : "bg-indigo-500/20") : isLight ? "bg-cyan-200/50" : "bg-violet-500/20"}`} />
+        {PARTICLES.map((p, i) => <span key={i} className={`absolute rounded-full ${academy ? (isLight ? "bg-amber-400/45" : "bg-amber-200/40") : isLight ? "bg-sky-400/45" : "bg-rose-200/40"}`} style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size, animation: `cs-float ${p.dur}s ease-in-out ${p.delay}s infinite` }} />)}
         <style>{`
           @keyframes cs-drift-a { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(24px,14px) scale(1.08); } }
           @keyframes cs-drift-b { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20px,10px) scale(1.06); } }
@@ -55,11 +55,15 @@ export function TrainingHero({ title, subtitle, stats }) {
       </div>
       <div className="relative z-10 flex flex-wrap items-start justify-between gap-6">
         <div className="flex items-start gap-4">
-          <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 to-violet-600 light:from-sky-500 light:to-cyan-500 shadow-[0_12px_30px_-8px_rgba(244,63,94,0.5)] light:shadow-[0_12px_30px_-8px_rgba(14,165,233,0.55)]">
-            <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${academy ? "bg-gradient-to-br from-amber-500 to-indigo-600 shadow-[0_12px_30px_-8px_rgba(99,102,241,0.5)]" : "bg-gradient-to-br from-rose-500 to-violet-600 light:from-sky-500 light:to-cyan-500 shadow-[0_12px_30px_-8px_rgba(244,63,94,0.5)] light:shadow-[0_12px_30px_-8px_rgba(14,165,233,0.55)]"}`}>
+            {academy ? <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+              <path d="M7 10.5v4c0 1.7 2.2 3 5 3s5-1.3 5-3v-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M21 7.5v6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg> : <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.7" />
               <path d="M9 12l2 2 4-4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            </svg>}
           </motion.div>
           <div>
             <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">{title}</h1>
@@ -119,7 +123,10 @@ const CATEGORY_ICONS = {
   "endpoint-security": "M4 4h16v10H4zM9 20h6M12 14v6",
   "data-protection": "M12 3c4 0 7 1.3 7 3v10c0 1.7-3 3-7 3s-7-1.3-7-3V6c0-1.7 3-3 7-3z",
   "physical-security": "M4 21v-9l8-6 8 6v9h-5v-6H9v6z",
-  "soc": "M4 5h16v11H4zM9 20h6M12 16v4M8 9l2.5 2.5L8 14M13 14h3"
+  "soc": "M4 5h16v11H4zM9 20h6M12 16v4M8 9l2.5 2.5L8 14M13 14h3",
+  "infrastructure": "M4 4h16v5H4zM4 10.5h16v5H4zM4 17h16v3H4M7.5 6.5h.01M7.5 13h.01M7.5 18.5h.01",
+  "cloud": "M7.5 18a4.2 4.2 0 01-1-8.27A5.3 5.3 0 0117 8.2 4 4 0 0116.5 18h-9z",
+  "devops": "M5 12a7 7 0 0112.5-4.3M19 4v4.5h-4.5M19 12a7 7 0 01-12.5 4.3M5 20v-4.5h4.5"
 };
 export function CategoryIcon({ category, size = 16 }) {
   const path = CATEGORY_ICONS[category] ?? CATEGORY_ICONS["cybersecurity"];

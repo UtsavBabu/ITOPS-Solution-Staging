@@ -122,12 +122,16 @@ const NAV_GROUPS = [{
     roles: ["super_admin", "content_editor"]
   }]
 }, {
-  label: "Training",
+  label: "Academy",
   roles: ["super_admin", "content_editor"],
   items: [{
-    to: "/admin/cybersachet-courses",
-    label: "CyberSachet Courses",
+    to: "/admin/academy",
+    label: "Dashboard",
     icon: "🎓"
+  }, {
+    to: "/admin/cybersachet-courses",
+    label: "Courses",
+    icon: "📚"
   }]
 }, {
   label: "CRM",

@@ -764,8 +764,28 @@ export async function fetchCybersachetCourses() {
     category: row.category,
     freeTier: row.free_tier,
     minPlan: row.min_plan ?? (row.free_tier ? "STARTER" : "PROFESSIONAL"),
+    track: row.track ?? "security",
     lessonCount: Number(row.lesson_count),
     quizQuestionCount: Number(row.quiz_question_count)
+  }));
+}
+
+// Public marketing-site preview — no auth, no license required to browse.
+// Real published Academy-track courses, title/description/level/duration
+// only (no lesson/quiz internals) — a prospect sees exactly what's actually
+// in the catalog today, not a curated fake list.
+export async function fetchAcademyPreviewCourses() {
+  const { data, error } = await supabase.rpc("list_academy_preview_courses");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    level: row.level,
+    estimatedMinutes: row.estimated_minutes,
+    category: row.category,
+    minPlan: row.min_plan ?? "PROFESSIONAL"
   }));
 }
 

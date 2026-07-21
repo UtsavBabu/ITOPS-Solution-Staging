@@ -51,8 +51,9 @@ function QrCode({ value, size = 96 }) {
 // point to. It's a preview of what the certificate looks like, not a
 // certificate — the watermark is the difference between showing the design
 // and fabricating a credential.
-export function CyberSachetCertificate({ userName, orgName, score, issuedAt, expiresAt, certId, averageScore, courseCount, hoursTrained, courseTitle, verifyPath, certificateHash, preview = false }) {
+export function CyberSachetCertificate({ userName, orgName, score, issuedAt, expiresAt, certId, averageScore, courseCount, hoursTrained, courseTitle, verifyPath, certificateHash, preview = false, brand = "cybersachet" }) {
   const level = CERT_LEVELS.CSSA;
+  const isAcademy = brand === "academy";
   return <div className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white p-10 text-slate-900 shadow-[0_40px_100px_-30px_rgba(15,23,42,0.35)] sm:p-14" style={{ fontFamily: "'Readex Pro', system-ui, sans-serif" }}>
       {/* subtle blue geometric security pattern, not a photo */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{
@@ -72,13 +73,13 @@ export function CyberSachetCertificate({ userName, orgName, score, issuedAt, exp
           <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Monitor · Secure · Optimize · Simplify</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-semibold text-rose-600">CyberSachet™</p>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Security Awareness Training</p>
+          <p className={`text-sm font-semibold ${isAcademy ? "text-indigo-600" : "text-rose-600"}`}>{isAcademy ? "Moonsav ITOps Academy™" : "CyberSachet™"}</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{isAcademy ? "Cloud · DevOps · Infrastructure Training" : "Security Awareness Training"}</p>
         </div>
       </div>
 
       <div className="relative mt-8 flex flex-col items-center text-center">
-        <motion.div initial={{ scale: 0.7, opacity: 0, rotate: -8 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }} className="grid h-20 w-20 place-items-center rounded-full shadow-[0_10px_30px_-8px_rgba(202,138,4,0.6)]" style={{ background: "linear-gradient(135deg, #fde68a, #d97706 55%, #92400e)" }}>
+        <motion.div initial={{ scale: 0.7, opacity: 0, rotate: -8 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }} className="grid h-20 w-20 place-items-center rounded-full shadow-[0_10px_30px_-8px_rgba(202,138,4,0.6)]" style={{ background: isAcademy ? "linear-gradient(135deg, #fcd34d, #6366f1 65%, #3730a3)" : "linear-gradient(135deg, #fde68a, #d97706 55%, #92400e)" }}>
           <svg className="h-10 w-10 text-white" viewBox="0 0 24 24" fill="none"><path d="M12 2l7 3v6c0 5-3 9.4-7 11-4-1.6-7-6-7-11V5l7-3z" stroke="currentColor" strokeWidth="1.6" fill="rgba(255,255,255,0.12)" /><path d="M9 12l2 2 4-4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </motion.div>
 

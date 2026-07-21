@@ -70,6 +70,11 @@ const COMMANDS = [{
   to: "/cybersachet",
   keywords: "awareness training phishing"
 }, {
+  label: "Moonsav ITOps Academy",
+  hint: "Product",
+  to: "/academy",
+  keywords: "training courses cloud devops infrastructure certificate learning academy"
+}, {
   label: "Log in",
   hint: "Account",
   to: "/login",

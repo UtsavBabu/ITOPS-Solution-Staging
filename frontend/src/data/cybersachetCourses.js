@@ -472,7 +472,10 @@ export const CATEGORY_LABELS = {
   "endpoint-security": "Endpoint Security",
   "data-protection": "Data Protection",
   "physical-security": "Physical Security",
-  "soc": "Security Operations"
+  "soc": "Security Operations",
+  "infrastructure": "Infrastructure",
+  "cloud": "Cloud Computing",
+  "devops": "DevOps & CI/CD"
 };
 
 // Public catalog shape — matches fetchCybersachetCourses() exactly.

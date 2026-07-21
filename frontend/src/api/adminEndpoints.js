@@ -630,6 +630,7 @@ export async function adminFetchCybersachetCourses() {
     category: row.category,
     freeTier: row.free_tier,
     minPlan: row.min_plan ?? (row.free_tier ? "STARTER" : "PROFESSIONAL"),
+    track: row.track ?? "security",
     lessonCount: Number(row.lesson_count),
     quizQuestionCount: Number(row.quiz_question_count),
     enrollmentCount: Number(row.enrollment_count)
@@ -647,10 +648,56 @@ export async function adminSaveCybersachetCourse(course) {
     p_published: course.published,
     p_sort_order: course.sortOrder ?? 0,
     p_category: course.category ?? "security-awareness",
-    p_min_plan: course.minPlan ?? "PROFESSIONAL"
+    p_min_plan: course.minPlan ?? "PROFESSIONAL",
+    p_track: course.track ?? "security"
   });
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function adminFetchAcademyDashboardStats() {
+  const { data, error } = await supabase.rpc("admin_academy_dashboard_stats");
+  if (error) throw new Error(error.message);
+  const row = data?.[0] ?? {};
+  return {
+    totalStudents: Number(row.total_students ?? 0),
+    totalOrganizations: Number(row.total_organizations ?? 0),
+    activeCourses: Number(row.active_courses ?? 0),
+    academyCourses: Number(row.academy_courses ?? 0),
+    securityCourses: Number(row.security_courses ?? 0),
+    certificatesIssued: Number(row.certificates_issued ?? 0),
+    completedEnrollments: Number(row.completed_enrollments ?? 0),
+    totalEnrollments: Number(row.total_enrollments ?? 0),
+    avgQuizScore: row.avg_quiz_score != null ? Number(row.avg_quiz_score) : null,
+    totalTrainingHours: Number(row.total_training_hours ?? 0)
+  };
+}
+
+export async function adminFetchAcademyCourseStats() {
+  const { data, error } = await supabase.rpc("admin_academy_course_stats");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    courseId: row.course_id,
+    title: row.title,
+    track: row.track,
+    enrollmentCount: Number(row.enrollment_count),
+    completedCount: Number(row.completed_count),
+    avgScore: row.avg_score != null ? Number(row.avg_score) : null
+  }));
+}
+
+export async function adminFetchRecentAcademyCertificates(limit = 15) {
+  const { data, error } = await supabase.rpc("admin_recent_academy_certificates", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    certificateNo: row.certificate_no,
+    organizationName: row.organization_name,
+    userEmail: row.user_email,
+    courseTitle: row.course_title,
+    levelCode: row.level_code,
+    issuedAt: row.issued_at,
+    revokedAt: row.revoked_at
+  }));
 }
 
 export async function adminDeleteCybersachetCourse(id) {

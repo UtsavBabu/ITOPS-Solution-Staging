@@ -21,7 +21,8 @@ export const PRODUCT_IDENTITY = {
   "devops-monitor": { category: "Monitoring", tint: "amber", bg: "radar" },
   "alerting-incident-response": { category: "Operations", tint: "rose", bg: "radar" },
   "moonsav-edr": { category: "Endpoint Security", tint: "red", bg: "storm" },
-  cybersachet: { category: "Training", tint: "rose", bg: "storm" }
+  cybersachet: { category: "Training", tint: "rose", bg: "storm" },
+  academy: { category: "Training", tint: "amber", bg: "radar" }
 };
 const DEFAULT_IDENTITY = { category: "Platform", tint: "white", bg: "radar" };
 export function getProductIdentity(itemKey) {

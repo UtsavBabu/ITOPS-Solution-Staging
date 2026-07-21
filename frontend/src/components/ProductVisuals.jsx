@@ -291,6 +291,10 @@ const FEATURE_ICONS = {
     gradient: "linear-gradient(135deg, #9d174d, #f472b6)",
     path: "M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3zm0 6v4m0 3h.01"
   },
+  "Moonsav ITOps Academy": {
+    gradient: "linear-gradient(135deg, #f59e0b, #6366f1)",
+    path: "M12 4l9 4.5-9 4.5-9-4.5L12 4zm-6.5 6.75v4c0 2 2.9 3.75 6.5 3.75s6.5-1.75 6.5-3.75v-4M20 8.5v6"
+  },
   "Reporting & Analytics": {
     gradient: "linear-gradient(135deg, #4d7c0f, #a3e635)",
     path: "M4 20V10m6 10V4m6 16v-7M3 20h18"
