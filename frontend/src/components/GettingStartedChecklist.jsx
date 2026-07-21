@@ -33,7 +33,11 @@ export function GettingStartedChecklist({ monitors }) {
     { key: "alert", label: "Set up an alert channel", description: "Email, Slack, or a webhook so you hear about incidents.", done: (alertChannels?.length ?? 0) > 0, to: "/settings/alerts" },
     { key: "team", label: "Invite your team", description: "Bring in the people who'll respond when something breaks.", done: (members?.length ?? 0) > 1, to: "/users" },
     { key: "agent", label: "Install a server agent", description: "Optional — CPU, memory, and disk for servers you run.", done: (hostAgents?.length ?? 0) > 0, to: "/hosts" },
-    ...(hasCybersachet ? [{ key: "training", label: "Assign security training", description: "Get your team started on a CyberSachet course.", done: (assignments?.length ?? 0) > 0, to: "/training" }] : [])
+    // Scoped to security-track assignments specifically — this step is
+    // labeled (and means) CyberSachet security training, so an org that's
+    // only assigned Moonsav ITOps Academy courses shouldn't see a false
+    // checkmark here.
+    ...(hasCybersachet ? [{ key: "training", label: "Assign security training", description: "Get your team started on a CyberSachet course.", done: (assignments ?? []).some(a => (a.track ?? "security") === "security"), to: "/training" }] : [])
   ];
 
   const doneCount = steps.filter(s => s.done).length;

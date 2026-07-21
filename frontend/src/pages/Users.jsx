@@ -578,8 +578,8 @@ function TrainingManagementPanel({ members, canManage }) {
 
   return <SpotlightCard className="overflow-hidden" delay={0.16}>
       <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
-        <h2 className="text-sm font-medium text-white light:text-slate-900">CyberSachet Training</h2>
-        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">Members only see courses assigned here — there's no self-enroll. Assign a course to require it, then track completion below.</p>
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Training</h2>
+        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">CyberSachet (security) and Moonsav ITOps Academy courses, in one place. Members only see courses assigned here — there's no self-enroll.</p>
       </div>
       <div className="p-4 space-y-4">
         {total > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -608,7 +608,12 @@ function TrainingManagementPanel({ members, canManage }) {
             </select>
             <select value={courseId} onChange={e => setCourseId(e.target.value)} className={selectClass}>
               <option value="">Choose course…</option>
-              {(courses ?? []).map(c => <option key={c.id} value={c.id}>{c.title}{c.freeTier ? " (free)" : ""}</option>)}
+              <optgroup label="CyberSachet">
+                {(courses ?? []).filter(c => (c.track ?? "security") === "security").map(c => <option key={c.id} value={c.id}>{c.title}{c.freeTier ? " (free)" : ""}</option>)}
+              </optgroup>
+              <optgroup label="Moonsav ITOps Academy">
+                {(courses ?? []).filter(c => c.track === "academy").map(c => <option key={c.id} value={c.id}>{c.title}{c.freeTier ? " (free)" : ""}</option>)}
+              </optgroup>
             </select>
             <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} title="Due date (optional)" className={selectClass} />
             <button onClick={() => assign.mutate()} disabled={!userId || !courseId || assign.isPending} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-neutral-200 disabled:opacity-50">
@@ -623,7 +628,12 @@ function TrainingManagementPanel({ members, canManage }) {
               const isOverdue = !a.completedAt && a.dueAt && new Date(a.dueAt).getTime() < now;
               return <tr key={`${a.userId}-${a.courseId}`}>
                     <td className="px-3 py-2.5 text-white light:text-slate-900">{a.userEmail}</td>
-                    <td className="px-3 py-2.5 text-white/60 light:text-slate-600">{a.courseTitle}</td>
+                    <td className="px-3 py-2.5 text-white/60 light:text-slate-600">
+                      {a.courseTitle}
+                      <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${a.track === "academy" ? "bg-amber-400/10 text-amber-300" : "bg-rose-400/10 text-rose-300"}`}>
+                        {a.track === "academy" ? "Academy" : "CyberSachet"}
+                      </span>
+                    </td>
                     <td className="px-3 py-2.5">
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${a.completedAt ? "bg-emerald-400/10 light:bg-emerald-100 text-emerald-300 light:text-emerald-700" : isOverdue ? "bg-amber-400/10 light:bg-amber-100 text-amber-300 light:text-amber-700" : "bg-white/10 text-white/50 light:text-slate-500"}`}>
                         {a.completedAt ? `Completed · ${a.quizScore}%` : isOverdue ? "Overdue" : "Not completed"}

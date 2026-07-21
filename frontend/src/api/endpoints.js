@@ -1001,6 +1001,7 @@ export async function fetchOrgCybersachetAssignments() {
     userEmail: row.user_email,
     courseId: row.course_id,
     courseTitle: row.course_title,
+    track: row.track ?? "security",
     assignedAt: row.assigned_at,
     dueAt: row.due_at ?? null,
     completedAt: row.completed_at ?? null,
