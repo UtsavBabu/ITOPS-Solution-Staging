@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { adminFetchAcademyCourseStats, adminFetchAcademyDashboardStats, adminFetchRecentAcademyCertificates } from "../../api/adminEndpoints";
+import { adminFetchAcademyCourseStats, adminFetchAcademyDashboardStats, adminFetchAcademyScoreDistribution, adminFetchRecentAcademyCertificates } from "../../api/adminEndpoints";
 import { AdminStatCard } from "../../components/AdminStatCard";
 import { Reveal, SpotlightCard } from "../../components/Animated";
 import { SkeletonRows, SkeletonStatGrid } from "../../components/Skeleton";
@@ -22,8 +22,13 @@ export default function AdminAcademyDashboard() {
     queryKey: ["admin-recent-academy-certificates"],
     queryFn: () => adminFetchRecentAcademyCertificates(15)
   });
+  const { data: scoreDist, isLoading: scoreDistLoading, isError: scoreDistError, refetch: refetchScoreDist } = useQuery({
+    queryKey: ["admin-academy-score-distribution"],
+    queryFn: adminFetchAcademyScoreDistribution
+  });
 
   const completionRate = stats && stats.totalEnrollments > 0 ? Math.round((stats.completedEnrollments / stats.totalEnrollments) * 100) : null;
+  const maxScoreCount = Math.max(1, ...((scoreDist ?? []).map(b => b.count)));
 
   return <div className="space-y-6">
       <Reveal y={12} className="flex items-center gap-3">
@@ -72,7 +77,7 @@ export default function AdminAcademyDashboard() {
           </div>
           {courseStatsLoading ? <SkeletonRows count={4} /> : courseStatsError ? <ErrorState message="Couldn't load course stats." onRetry={refetchCourseStats} /> : (courseStats ?? []).length === 0 ? <EmptyState title="No published courses yet." className="py-6" /> : <table className="w-full text-left text-sm">
               <thead className="border-b border-white/10 light:border-slate-900/10 text-xs uppercase text-white/40 light:text-slate-400">
-                <tr><th className="px-4 py-2">Course</th><th className="px-4 py-2">Enrolled</th><th className="px-4 py-2">Completed</th><th className="px-4 py-2">Avg score</th></tr>
+                <tr><th className="px-4 py-2">Course</th><th className="px-4 py-2">Enrolled</th><th className="px-4 py-2">Completed</th><th className="px-4 py-2">Avg score</th><th className="px-4 py-2">Avg. time to finish</th></tr>
               </thead>
               <tbody className="divide-y divide-white/[0.06]">
                 {courseStats.slice(0, 8).map(c => <tr key={c.courseId}>
@@ -83,6 +88,7 @@ export default function AdminAcademyDashboard() {
                     <td className="px-4 py-2.5 text-white/60 light:text-slate-500">{c.enrollmentCount}</td>
                     <td className="px-4 py-2.5 text-white/60 light:text-slate-500">{c.completedCount}</td>
                     <td className="px-4 py-2.5 text-white/60 light:text-slate-500">{c.avgScore != null ? `${c.avgScore}%` : "—"}</td>
+                    <td className="px-4 py-2.5 text-white/60 light:text-slate-500">{c.avgDaysToComplete != null ? `${c.avgDaysToComplete}d` : "—"}</td>
                   </tr>)}
               </tbody>
             </table>}
@@ -106,5 +112,19 @@ export default function AdminAcademyDashboard() {
             </ul>}
         </SpotlightCard>
       </div>
+
+      <SpotlightCard className="p-5" delay={0.28} scan>
+        <h2 className="text-sm font-medium text-white light:text-slate-900">Quiz score distribution</h2>
+        <p className="mt-0.5 text-xs text-white/40 light:text-slate-400">Every graded quiz attempt across both products, bucketed by score.</p>
+        {scoreDistLoading ? <SkeletonRows count={2} className="mt-4" /> : scoreDistError ? <ErrorState message="Couldn't load score distribution." onRetry={refetchScoreDist} /> : !scoreDist || scoreDist.length === 0 ? <EmptyState title="No graded quiz attempts yet." className="py-6" /> : <div className="mt-4 flex items-end gap-3">
+            {scoreDist.map(b => <div key={b.bucket} className="flex flex-1 flex-col items-center gap-1.5">
+                <span className="text-xs font-medium text-white/70 light:text-slate-600">{b.count}</span>
+                <div className="flex h-28 w-full items-end overflow-hidden rounded-md bg-white/[0.03] light:bg-slate-900/[0.03]">
+                  <div className={`w-full rounded-t-md ${b.bucket === "90-100" ? "bg-emerald-400" : b.bucket === "0-59" ? "bg-red-400" : "bg-cyan-400"}`} style={{ height: `${Math.round((b.count / maxScoreCount) * 100)}%` }} />
+                </div>
+                <span className="text-[10px] text-white/40 light:text-slate-400">{b.bucket}</span>
+              </div>)}
+          </div>}
+      </SpotlightCard>
     </div>;
 }

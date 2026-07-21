@@ -1012,6 +1012,13 @@ export async function assignCybersachetCourseToMember(userId, courseId, dueAt) {
   const { error } = await supabase.rpc("assign_cybersachet_course", { p_user_id: userId, p_course_id: courseId, p_due_at: dueAt ?? null });
   if (error) throw new Error(error.message);
 }
+// Assigns a course to every member of a department or team at once — pass
+// exactly one of departmentId/teamId. Returns how many members it hit.
+export async function bulkAssignCybersachetCourse({ courseId, departmentId, teamId, dueAt }) {
+  const { data, error } = await supabase.rpc("bulk_assign_cybersachet_course", { p_course_id: courseId, p_department_id: departmentId ?? null, p_team_id: teamId ?? null, p_due_at: dueAt ?? null });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
 export async function unassignCybersachetCourseFromMember(userId, courseId) {
   const { error } = await supabase.rpc("unassign_cybersachet_course", { p_user_id: userId, p_course_id: courseId });
   if (error) throw new Error(error.message);

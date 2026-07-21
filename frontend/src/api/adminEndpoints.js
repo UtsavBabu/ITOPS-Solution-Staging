@@ -682,8 +682,18 @@ export async function adminFetchAcademyCourseStats() {
     track: row.track,
     enrollmentCount: Number(row.enrollment_count),
     completedCount: Number(row.completed_count),
-    avgScore: row.avg_score != null ? Number(row.avg_score) : null
+    avgScore: row.avg_score != null ? Number(row.avg_score) : null,
+    avgDaysToComplete: row.avg_days_to_complete != null ? Number(row.avg_days_to_complete) : null
   }));
+}
+
+// Real histogram of quiz scores across every completed attempt — buckets
+// are computed server-side in admin_academy_score_distribution(), never
+// derived from a sample or estimate.
+export async function adminFetchAcademyScoreDistribution() {
+  const { data, error } = await supabase.rpc("admin_academy_score_distribution");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({ bucket: row.bucket, sortOrder: Number(row.sort_order), count: Number(row.count) }));
 }
 
 export async function adminFetchRecentAcademyCertificates(limit = 15) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
+import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, bulkAssignCybersachetCourse, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
@@ -523,6 +523,55 @@ function InvitesPanel({ orgRoles, canManage }) {
     </SpotlightCard>;
 }
 
+// Assigns a course to every member of a real Department or Team at once,
+// instead of one person at a time — reuses the org's actual Department/Team
+// structure (see DepartmentComplianceCard/TeamComplianceCard below) rather
+// than a separate invented "group" concept.
+function BulkAssignRow({ courses, selectClass, onAssigned }) {
+  const toast = useToast();
+  const [targetType, setTargetType] = useState("department");
+  const [targetId, setTargetId] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const { data: departments } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments });
+  const { data: teams } = useQuery({ queryKey: ["teams", null], queryFn: () => fetchTeams(), enabled: targetType === "team" });
+  const options = targetType === "department" ? (departments ?? []).filter(d => !d.archived) : (teams ?? []).filter(t => !t.archived);
+  const bulkAssign = useMutation({
+    mutationFn: () => bulkAssignCybersachetCourse({
+      courseId,
+      departmentId: targetType === "department" ? targetId : undefined,
+      teamId: targetType === "team" ? targetId : undefined,
+      dueAt: dueDate ? new Date(dueDate).toISOString() : null
+    }),
+    onSuccess: count => { toast.success(`Assigned to ${count} member${count === 1 ? "" : "s"}.`); setTargetId(""); setCourseId(""); setDueDate(""); onAssigned(); },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to bulk-assign course")
+  });
+  return <div className="flex flex-wrap items-center gap-2 border-t border-white/10 light:border-slate-900/10 pt-3">
+      <span className="text-xs text-white/40 light:text-slate-400">Bulk assign to</span>
+      <select value={targetType} onChange={e => { setTargetType(e.target.value); setTargetId(""); }} className={selectClass}>
+        <option value="department">Department</option>
+        <option value="team">Team</option>
+      </select>
+      <select value={targetId} onChange={e => setTargetId(e.target.value)} className={selectClass}>
+        <option value="">{targetType === "department" ? "Choose department…" : "Choose team…"}</option>
+        {options.map(o => <option key={o.id} value={o.id}>{targetType === "team" ? `${o.departmentName} / ${o.name}` : o.name} ({o.memberCount})</option>)}
+      </select>
+      <select value={courseId} onChange={e => setCourseId(e.target.value)} className={selectClass}>
+        <option value="">Choose course…</option>
+        <optgroup label="CyberSachet">
+          {(courses ?? []).filter(c => (c.track ?? "security") === "security").map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </optgroup>
+        <optgroup label="Moonsav ITOps Academy">
+          {(courses ?? []).filter(c => c.track === "academy").map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </optgroup>
+      </select>
+      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} title="Due date (optional)" className={selectClass} />
+      <button onClick={() => bulkAssign.mutate()} disabled={!targetId || !courseId || bulkAssign.isPending} className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-400/20 disabled:opacity-50">
+        {bulkAssign.isPending ? "Assigning…" : "Assign to group"}
+      </button>
+    </div>;
+}
+
 function TrainingManagementPanel({ members, canManage }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -620,6 +669,8 @@ function TrainingManagementPanel({ members, canManage }) {
               {assign.isPending ? "Assigning…" : "Assign"}
             </button>
           </div>}
+
+        {canManage && <BulkAssignRow courses={courses} selectClass={selectClass} onAssigned={refetch} />}
 
         {isError ? <ErrorState message="Couldn't load training assignments — CyberSachet may not be licensed for your organization yet." onRetry={refetch} /> : isLoading ? <SkeletonRows count={2} /> : !assignments || assignments.length === 0 ? <p className="text-sm text-white/40 light:text-slate-400">No courses assigned yet.</p> : <div className="overflow-hidden rounded-xl border border-white/10 light:border-slate-900/10">
             <table className="w-full text-left text-sm">
