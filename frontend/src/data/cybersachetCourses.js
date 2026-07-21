@@ -523,6 +523,63 @@ const COURSES = [
       { id: "q3", questionType: "single", question: "Which command restarts a systemd-managed service?", choices: ["chmod restart nginx", "systemctl restart nginx", "apt restart nginx", "ps restart nginx"], correctIndex: 1 },
       { id: "q4", questionType: "single", question: "On Ubuntu, which command installs a new package?", choices: ["dnf install package", "systemctl install package", "apt install package", "chown install package"], correctIndex: 2 }
     ]
+  },
+  // Second Academy local-preview course — same real content as the seeded
+  // 'networking-fundamentals-for-it-operations' course in migration 0078.
+  {
+    id: "local-networking-fundamentals",
+    slug: "networking-fundamentals-for-it-operations",
+    title: "Networking Fundamentals for IT Operations",
+    description: "How data actually moves between machines — IP addresses and subnets, DNS, ports and protocols, and the command-line tools you reach for first when something can't connect.",
+    level: "beginner",
+    estimatedMinutes: 20,
+    category: "infrastructure",
+    track: "academy",
+    freeTier: true,
+    modules: [
+      { id: "m1", title: "How Networks Actually Move Data" },
+      { id: "m2", title: "Ports, Protocols & Troubleshooting" }
+    ],
+    lessons: [
+      {
+        id: "l1",
+        moduleId: "m1",
+        title: "IP addresses and subnets",
+        body: "Every device on a network gets an IP address — for IPv4, four numbers 0-255 separated by dots, like 192.168.1.42. A subnet mask (or the /24 shorthand, called CIDR notation) marks off how much of that address identifies the network versus the specific device: 192.168.1.0/24 means the first three numbers identify the network and the last one identifies the device, giving room for 254 usable devices on that network. Two devices can only talk directly without a router if they're on the same subnet — this is why \"what subnet is this on\" is one of the first questions to ask when a device can't reach another one. Private ranges like 192.168.x.x, 10.x.x.x, and 172.16-31.x.x are reserved for internal networks and never routed on the public internet directly, which is why NAT (network address translation) exists at your router's edge.",
+        keyTakeaway: "Two devices need to be on the same subnet to talk directly without a router — that's the first thing to check for a \"can't connect\" issue.",
+        check: { question: "Two devices are on different subnets. What do they need to communicate?", choices: ["Nothing extra — they can always talk directly", "A router to pass traffic between the subnets", "The same MAC address", "A public IP address each"], correctIndex: 1 }
+      },
+      {
+        id: "l2",
+        moduleId: "m1",
+        title: "DNS: how names become IP addresses",
+        body: "Nobody types an IP address to visit a website — DNS (Domain Name System) translates a human-readable name like example.com into the IP address a computer actually needs to connect. A DNS lookup walks a hierarchy: your device asks a resolver (often your ISP's or a public one like 1.1.1.1), which asks the root servers, which point to the right top-level domain server (.com, .org), which points to the domain's own authoritative nameserver for the final answer. Results are cached for a TTL (time to live) so this whole chain doesn't repeat on every request — which is also why a DNS change (like pointing a domain at a new server) can take time to be visible everywhere: it's waiting for old cached answers to expire.",
+        keyTakeaway: "A DNS change isn't instant everywhere — it takes effect as each resolver's cached answer expires according to its TTL.",
+        check: { question: "Why doesn't a DNS change show up everywhere instantly?", choices: ["DNS changes are always instant", "Resolvers cache the old answer until its TTL expires", "DNS only updates once a day by design", "It requires restarting every device on the internet"], correctIndex: 1 }
+      },
+      {
+        id: "l3",
+        moduleId: "m2",
+        title: "Ports and common protocols",
+        body: "An IP address gets you to the right machine; a port number gets you to the right service running on it — a single server can run a website on port 443 (HTTPS), email on port 25, and SSH on port 22 simultaneously, each isolated by port number. Some ports are so standard they're assumed by default: 80 for HTTP, 443 for HTTPS, 22 for SSH, 53 for DNS, 3389 for Windows Remote Desktop. TCP is the reliable, connection-based protocol most services use (it confirms delivery and retransmits lost data); UDP is faster but doesn't guarantee delivery, used where speed matters more than perfection, like video streaming or DNS lookups. A firewall's core job is deciding which ports are allowed in or out — \"the connection is refused\" almost always means a firewall or the service itself is blocking that port.",
+        keyTakeaway: "A port number routes traffic to the right service on a machine; a firewall's core job is deciding which ports are allowed through.",
+        check: { question: "What is the standard port for HTTPS traffic?", choices: ["21", "80", "443", "3389"], correctIndex: 2 }
+      },
+      {
+        id: "l4",
+        moduleId: "m2",
+        title: "Troubleshooting connectivity from the command line",
+        body: "When something can't connect, a fixed sequence of commands narrows down where the problem is. ping tests basic reachability — does a response come back at all, and how long does it take. traceroute (or tracert on Windows) shows every hop the traffic takes to get there, which pinpoints where along the path it's failing, not just that it is failing. netstat or the newer ss command lists active network connections and which ports are actively listening on the local machine — useful for confirming a service is actually running and bound to the port you expect. curl or telnet against a specific host and port tests whether that exact service is reachable, which is more precise than ping (which only tests the network layer, not whether a particular service is actually listening).",
+        keyTakeaway: "Work top-down: ping for reachability, traceroute for where it breaks, then test the exact port with curl/telnet.",
+        check: { question: "A ping succeeds but a specific service still won't connect. What's the next logical check?", choices: ["The problem must be DNS", "Test the exact host and port directly with curl or telnet", "Restart the entire network", "Ping is proof the service is fine, stop troubleshooting"], correctIndex: 1 }
+      }
+    ],
+    quiz: [
+      { id: "q1", questionType: "single", question: "What does a subnet mask (or /24 notation) actually define?", choices: ["The device's MAC address", "How much of an IP address identifies the network versus the device", "The DNS server to use", "The device's hostname"], correctIndex: 1 },
+      { id: "q2", questionType: "single", question: "What does DNS actually do?", choices: ["Encrypts network traffic", "Translates human-readable domain names into IP addresses", "Assigns IP addresses to devices", "Blocks unauthorized ports"], correctIndex: 1 },
+      { id: "q3", questionType: "single", question: "A server runs a website and SSH at the same time. How does incoming traffic get routed to the right one?", choices: ["By port number", "By MAC address", "By subnet mask", "It can't — one server can only run one service"], correctIndex: 0 },
+      { id: "q4", questionType: "single", question: "You can ping a server but a specific web app on it won't load. What's the most useful next step?", choices: ["Assume the whole network is down", "Test the exact port with curl or telnet", "Give up on the network layer entirely", "Change the server's IP address"], correctIndex: 1 }
+    ]
   }
 ];
 
