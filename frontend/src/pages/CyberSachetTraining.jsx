@@ -10,7 +10,7 @@ import { EmptyState, ErrorState } from "../components/EmptyState";
 import { Skeleton } from "../components/Skeleton";
 import { useToast } from "../components/Toast";
 import { AnimatedCounter } from "../components/AnimatedCounter";
-import { TrainingHero, ProgressRing, CompletionCelebration, LocalPreviewBanner, CourseIcon, CategoryIcon, BadgeChip, StreakFlame, ModuleProgressBar, Leaderboard } from "../components/CyberSachetTheme";
+import { TrainingHero, ProgressRing, CompletionCelebration, LocalPreviewBanner, CourseIcon, CategoryIcon, BadgeChip, StreakFlame, ModuleProgressBar, Leaderboard, xpLevel } from "../components/CyberSachetTheme";
 import { CyberSachetCertificate, CertificationPath, CertificateDownloadCard } from "../components/CyberSachetCertificate";
 import { AcademyMark } from "../components/AcademyBrand";
 import { TerminalPlayground } from "../components/TerminalPlayground";
@@ -792,6 +792,11 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
   const dashboardStats = local ? localStats : stats;
   const heroTitle = activeTrack === "academy" ? "Moonsav ITOps Academy" : "CyberSachet Training";
   const heroSubtitle = activeTrack === "academy" ? "Cloud, DevOps, and infrastructure courses — enroll, complete lessons, and pass the quiz." : local ? "Security awareness courses for your team — enroll, complete lessons, and pass the quiz." : canManageTraining ? "The full catalog — assign any course to a team member, or take one yourself." : "Your assigned courses, progress, and certification, in one place.";
+  // Track-scoped, from the same real enrollment map every course card
+  // already reads — never cross-counts a CyberSachet completion into the
+  // Academy ring or vice versa.
+  const trackCompletedCount = visibleCourses.filter(c => enrollmentByCourseId.get(c.id)?.completedAt).length;
+  const trackProgressPct = visibleCourses.length > 0 ? Math.round((trackCompletedCount / visibleCourses.length) * 100) : 0;
 
   return <div className="space-y-6">
       <Reveal y={12} className="flex flex-wrap items-center justify-between gap-3">
@@ -799,23 +804,32 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
       </Reveal>
 
       <Reveal y={12}>
-        <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
+        <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} progressPct={visibleCourses.length > 0 ? trackProgressPct : null} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
 
       {licenseError && <Reveal delay={0.05}><ErrorState title="Couldn't confirm your license status." description="This is a connection issue, not a licensing change — your organization's data is safe. Try again." onRetry={refetchLicense} /></Reveal>}
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
-      {dashboardStats && <Reveal delay={0.08}>
+      {dashboardStats && (() => {
+        const currentXp = dashboardStats.completedCourses * 250 + Math.round(dashboardStats.hoursTrained * 20) + (dashboardStats.avgScore ?? 0) * 2 + dashboardStats.streakDays * 15;
+        return <Reveal delay={0.08}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {/* XP is a display-only score computed live from real progress
                 (courses completed, hours trained, quiz average, streak) —
                 never a separately stored counter that could drift from
-                what actually happened. */}
+                what actually happened. Level is a deterministic function
+                of that same XP (see xpLevel), not a second counter. */}
             <div className="rounded-2xl border border-amber-400/20 light:border-amber-500/25 bg-amber-400/[0.05] light:bg-amber-50 p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/80 light:text-amber-700">XP</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-amber-300/80 light:text-amber-700">XP</p>
+                <span className="rounded-full bg-amber-400/15 light:bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-200 light:text-amber-800">{xpLevel(currentXp).label}</span>
+              </div>
               <p className="mt-1.5 text-xl font-semibold tabular-nums text-amber-200 light:text-amber-800">
-                <AnimatedCounter value={dashboardStats.completedCourses * 250 + Math.round(dashboardStats.hoursTrained * 20) + (dashboardStats.avgScore ?? 0) * 2 + dashboardStats.streakDays * 15} />
+                <AnimatedCounter value={currentXp} />
               </p>
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-amber-400/10 light:bg-amber-500/15">
+                <div className="h-full rounded-full bg-amber-400" style={{ width: `${xpLevel(currentXp).pct}%` }} />
+              </div>
             </div>
             <StatTile label="Avg. quiz score" value={dashboardStats.avgScore != null ? dashboardStats.avgScore : "—"} suffix={dashboardStats.avgScore != null ? "%" : ""} />
             {/* Not AnimatedCounter here — it always rounds to a whole
@@ -832,7 +846,8 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
               </div>
             </div>
           </div>
-        </Reveal>}
+        </Reveal>;
+      })()}
 
       {!local && leaderboard && leaderboard.length > 0 && <Reveal delay={0.1}>
           <SpotlightCard className="p-5" tint="white">

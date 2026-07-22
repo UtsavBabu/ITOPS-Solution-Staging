@@ -40,7 +40,24 @@ export function CourseIcon({ slug, size = 34 }) {
     </span>;
 }
 
-export function TrainingHero({ title, subtitle, stats, academy = false }) {
+// Real, deterministic function of the same XP already computed live from
+// progress (courses completed, hours trained, quiz average, streak) — a
+// label and "toward next level" fraction, never a separately stored value
+// that could drift from the XP it's derived from.
+const XP_LEVELS = [
+  { label: "Beginner", min: 0, max: 500 },
+  { label: "Intermediate", min: 500, max: 1500 },
+  { label: "Advanced", min: 1500, max: 3500 },
+  { label: "Expert", min: 3500, max: Infinity }
+];
+export function xpLevel(xp) {
+  const level = XP_LEVELS.find(l => xp < l.max) ?? XP_LEVELS[XP_LEVELS.length - 1];
+  const span = level.max - level.min;
+  const pct = span === Infinity || !isFinite(span) ? 100 : Math.min(100, Math.round(((xp - level.min) / span) * 100));
+  return { label: level.label, min: level.min, max: level.max, pct };
+}
+
+export function TrainingHero({ title, subtitle, stats, academy = false, progressPct = null }) {
   const { theme } = useTheme();
   const isLight = theme === "light";
   return <div className={`relative isolate overflow-hidden rounded-3xl border p-6 shadow-none md:p-8 ${academy ? "border-amber-400/15 light:border-amber-200 bg-gradient-to-br from-amber-950 via-neutral-950 to-indigo-950 light:from-white light:via-amber-50 light:to-indigo-50 light:shadow-[0_20px_60px_-30px_rgba(99,102,241,0.3)]" : "border-rose-400/15 light:border-sky-200 bg-gradient-to-br from-rose-950 via-neutral-950 to-violet-950 light:from-white light:via-sky-50 light:to-sky-100 light:shadow-[0_20px_60px_-30px_rgba(14,165,233,0.35)]"}`}>
@@ -71,12 +88,21 @@ export function TrainingHero({ title, subtitle, stats, academy = false }) {
             <p className="mt-1 max-w-md text-sm text-white/60 light:text-slate-500">{subtitle}</p>
           </div>
         </div>
-        {stats && <div className="flex items-center gap-5">
-            {stats.map(s => <div key={s.label} className="text-center">
-                <p className="text-xl font-semibold tabular-nums text-white light:text-slate-900">{s.value}</p>
-                <p className="text-[11px] text-white/45 light:text-slate-400">{s.label}</p>
-              </div>)}
-          </div>}
+        <div className="flex items-center gap-5">
+          {progressPct != null && <div className="flex items-center gap-3 rounded-2xl border border-white/10 light:border-slate-900/10 bg-white/[0.04] light:bg-white/70 px-4 py-2.5 backdrop-blur">
+              <ProgressRing pct={progressPct} size={48} tone={academy ? "amber" : "rose"} />
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-white/45 light:text-slate-500">Overall progress</p>
+                <p className="text-xs text-white/40 light:text-slate-400">Across everything unlocked</p>
+              </div>
+            </div>}
+          {stats && <div className="flex items-center gap-5">
+              {stats.map(s => <div key={s.label} className="text-center">
+                  <p className="text-xl font-semibold tabular-nums text-white light:text-slate-900">{s.value}</p>
+                  <p className="text-[11px] text-white/45 light:text-slate-400">{s.label}</p>
+                </div>)}
+            </div>}
+        </div>
       </div>
     </div>;
 }
@@ -86,7 +112,7 @@ export function ProgressRing({ pct, size = 44, tone = "rose" }) {
   const inView = useInView(rootRef, { once: true });
   const r = (size - 6) / 2;
   const circumference = 2 * Math.PI * r;
-  const hex = tone === "emerald" ? "#34d399" : "#fb7185";
+  const hex = tone === "emerald" ? "#34d399" : tone === "amber" ? "#fbbf24" : "#fb7185";
   return <div ref={rootRef} className="relative shrink-0" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" style={{ width: size, height: size }}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
