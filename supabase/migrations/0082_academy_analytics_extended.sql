@@ -4,6 +4,10 @@
 -- worth a look) and a platform-wide quiz score distribution. Both computed
 -- live from cybersachet_enrollments, nothing precomputed or cached.
 
+-- Postgres can't change a function's return shape via CREATE OR REPLACE
+-- (adding avg_days_to_complete here) — must drop first.
+drop function if exists admin_academy_course_stats();
+
 create or replace function admin_academy_course_stats()
 returns table (
   course_id uuid, title text, track text,

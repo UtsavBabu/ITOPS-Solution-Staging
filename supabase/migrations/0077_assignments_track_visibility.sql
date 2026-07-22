@@ -6,6 +6,12 @@
 -- one in the dropdown or the assignment table. Adds `track` to both
 -- RPCs' return shape; byte-faithful otherwise.
 
+-- Postgres can't change a function's return shape via CREATE OR REPLACE
+-- (adding `track` here) — both must be dropped first, same discipline as
+-- every other signature-shape change this project makes.
+drop function if exists list_org_cybersachet_assignments();
+drop function if exists admin_list_cybersachet_assignments(uuid);
+
 create or replace function list_org_cybersachet_assignments()
 returns table (
   user_id uuid, user_email text,
