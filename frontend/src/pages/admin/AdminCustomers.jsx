@@ -346,9 +346,9 @@ function CustomerDetailModal({
               </div>
             </div>
 
-            {(orgProducts ?? []).some(p => p.productKey === "cybersachet" && (p.status === "active" || p.status === "trial")) && (detail.plan === "STARTER" ? <div className="mt-6 rounded-xl border border-dashed border-white/15 light:border-slate-900/15 bg-white/[0.02] light:bg-slate-900/[0.02] p-4 text-sm text-white/50 light:text-slate-500">
-                CyberSachet is licensed for this organization, but they're on the Starter package — members only see the free preview
-                lesson until they upgrade to Professional or above.
+            {(orgProducts ?? []).some(p => (p.productKey === "cybersachet" || p.productKey === "academy") && (p.status === "active" || p.status === "trial")) && (detail.plan === "STARTER" ? <div className="mt-6 rounded-xl border border-dashed border-white/15 light:border-slate-900/15 bg-white/[0.02] light:bg-slate-900/[0.02] p-4 text-sm text-white/50 light:text-slate-500">
+                Training is licensed for this organization, but they're on the Starter package — members only see each product's free
+                preview courses until they upgrade to Professional or above.
               </div> : <CybersachetAssignmentsPanel organizationId={organizationId} members={detail.members} />)}
 
             <div className="mt-6">

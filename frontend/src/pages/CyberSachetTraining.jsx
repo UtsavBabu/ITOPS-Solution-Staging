@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchLearningPaths, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
+import { assignCybersachetCourseToMember, checkLessonAnswer, enrollInCourse, fetchAcademyLicense, fetchCourseLessons, fetchCourseModules, fetchCourseQuiz, fetchCybersachetCourses, fetchCybersachetLeaderboard, fetchCybersachetLicense, fetchLearningPaths, fetchMyCertificate, fetchMyCourseCertificate, fetchMyCybersachetAssignments, fetchMyCybersachetStats, fetchMyEnrollments, fetchMyLessonProgress, fetchMyPermissions, fetchOrganizationMembers, fetchPlanUsage, issueCourseCertificate, issueCybersachetCertificate, PLAN_ORDER, submitCourseQuiz } from "../api/endpoints";
 import { LearningPathCard } from "../components/LearningPathCard";
 import { CATEGORY_LABELS, getLocalCourses, getLocalEnrollments, getLocalLearningPaths, getLocalLessons, getLocalModules, getLocalQuiz, getLocalStats, localCheckLessonAnswer, localEnroll, localGetLessonProgress, localSubmitQuiz } from "../data/cybersachetCourses";
 import { Reveal, SpotlightCard } from "../components/Animated";
@@ -692,7 +692,10 @@ function LocalCertificatePreview({ eligible, stats, courseCount }) {
 
 export default function CyberSachetTraining({ defaultTrack = "security" }) {
   const { user, organization } = useAuth();
-  const { data: licensed, isLoading: licenseLoading, isError: licenseError, refetch: refetchLicense } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
+  // Academy and CyberSachet are independently licensable products — each
+  // route mount checks only its own track's real license, never the other
+  // track's flag.
+  const { data: licensed, isLoading: licenseLoading, isError: licenseError, refetch: refetchLicense } = useQuery({ queryKey: ["cybersachet-license", defaultTrack], queryFn: defaultTrack === "academy" ? fetchAcademyLicense : fetchCybersachetLicense, retry: false });
   const { data: usage, isLoading: usageLoading } = useQuery({ queryKey: ["plan-usage"], queryFn: fetchPlanUsage, staleTime: 60_000 });
   const orgPlan = usage?.plan ?? "STARTER";
   const orgPlanRank = PLAN_ORDER.indexOf(orgPlan);
@@ -807,7 +810,7 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
         <TrainingHero academy={activeTrack === "academy"} title={heroTitle} subtitle={heroSubtitle} progressPct={visibleCourses.length > 0 ? trackProgressPct : null} stats={visibleCourses ? [{ label: local || canManageTraining ? "Courses" : "Assigned", value: visibleCourses.length }, { label: "In progress", value: inProgressCount }, { label: "Completed", value: completedCount }] : null} />
       </Reveal>
 
-      {licenseError && <Reveal delay={0.05}><ErrorState title="Couldn't confirm your license status." description="This is a connection issue, not a licensing change — your organization's data is safe. Try again." onRetry={refetchLicense} /></Reveal>}
+      {licenseError && <Reveal delay={0.05}><ErrorState message="Couldn't confirm your license status — this is a connection issue, not a licensing change. Your organization's data is safe." onRetry={refetchLicense} /></Reveal>}
       {local && <Reveal delay={0.05}><LocalPreviewBanner /></Reveal>}
 
       {dashboardStats && (() => {

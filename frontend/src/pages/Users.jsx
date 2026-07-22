@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, bulkAssignCybersachetCourse, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, removeOrganizationMember, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
+import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, bulkAssignCybersachetCourse, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchAcademyLicense, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, removeOrganizationMember, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
@@ -854,7 +854,13 @@ export default function Users() {
   const canManageTeam = !!can && can("organization", "team", "manage");
   const canViewTraining = !!can && (can("organization", "training", "view") || can("organization", "training", "manage"));
   const canManageTraining = !!can && can("organization", "training", "manage");
+  // Academy and CyberSachet are independently licensable — the training
+  // panel and certificate center should appear if EITHER is active (the
+  // course picker inside already groups by product and only ever offers
+  // what's actually licensed).
   const { data: cybersachetLicensed } = useQuery({ queryKey: ["cybersachet-license"], queryFn: fetchCybersachetLicense, retry: false });
+  const { data: academyLicensed } = useQuery({ queryKey: ["academy-license"], queryFn: fetchAcademyLicense, retry: false });
+  const anyTrainingLicensed = cybersachetLicensed || academyLicensed;
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }) => updateMemberRole(userId, role),
     onSuccess: () => {
@@ -1031,8 +1037,8 @@ export default function Users() {
 
       {members && <TeamsPanel members={members} departments={departments ?? []} canManage={canManageTeam} />}
 
-      {cybersachetLicensed && canViewTraining && members && <TrainingManagementPanel members={members} canManage={canManageTraining} />}
+      {anyTrainingLicensed && canViewTraining && members && <TrainingManagementPanel members={members} canManage={canManageTraining} />}
 
-      {cybersachetLicensed && canViewTraining && <CertificateCenterPanel canManage={canManageTraining} />}
+      {anyTrainingLicensed && canViewTraining && <CertificateCenterPanel canManage={canManageTraining} />}
     </div>;
 }

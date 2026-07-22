@@ -786,6 +786,14 @@ export async function fetchCybersachetLicense() {
   if (error) throw new Error(error.message);
   return !!data;
 }
+// Academy and CyberSachet are independently licensable products (each its
+// own organization_products row) — a real, separate check, not the same
+// flag reused for both tracks.
+export async function fetchAcademyLicense() {
+  const { data, error } = await supabase.rpc("my_academy_license");
+  if (error) throw new Error(error.message);
+  return !!data;
+}
 
 export async function fetchLearningPaths() {
   const { data, error } = await supabase.rpc("list_learning_paths");
