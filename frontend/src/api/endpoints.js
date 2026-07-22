@@ -479,6 +479,10 @@ export async function updateMemberRole(userId, role) {
   const { error } = await supabase.rpc("update_organization_member_role", { p_user_id: userId, p_role: role });
   if (error) throw new Error(error.message);
 }
+export async function removeOrganizationMember(userId) {
+  const { error } = await supabase.rpc("remove_organization_member", { p_user_id: userId });
+  if (error) throw new Error(error.message);
+}
 // ADMIN/MEMBER/READ_ONLY predate the named organization roles migration
 // 0032 introduced (organization_administrator, it_manager, ...) and have
 // been fully retired since migration 0055 — zero live memberships use them

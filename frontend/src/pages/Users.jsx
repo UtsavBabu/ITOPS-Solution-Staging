@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, bulkAssignCybersachetCourse, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
+import { assignCybersachetCourseToMember, archiveDepartment, archiveTeam, assignDepartmentManager, assignMemberDepartment, assignMemberTeam, assignTeamLead, bulkAssignCybersachetCourse, createDepartment, createOrgInvite, createTeam, deleteDepartment, deleteTeam, fetchCybersachetCourses, fetchCybersachetLicense, fetchDepartments, fetchDepartmentTrainingReport, fetchMyPermissions, fetchOrgCybersachetAssignments, fetchOrganizationCertificates, fetchOrgInvites, fetchOrgRoles, fetchOrganizationMembers, fetchTeamTrainingReport, fetchTeams, removeOrganizationMember, renameDepartment, renameTeam, resetCybersachetProgress, restoreCertificate, restoreDepartment, restoreTeam, revokeCertificate, revokeOrgInvite, sendOrgInviteEmail, unassignCybersachetCourseFromMember, updateMemberRole } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { Reveal, SpotlightCard } from "../components/Animated";
 import { AnimatedCounter } from "../components/AnimatedCounter";
@@ -828,6 +828,7 @@ export default function Users() {
   const { user, organization } = useAuth();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const confirm = useConfirm();
   const {
     data: members,
     isLoading: membersLoading,
@@ -862,6 +863,17 @@ export default function Users() {
     },
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to update role")
   });
+  const removeMutation = useMutation({
+    mutationFn: userId => removeOrganizationMember(userId),
+    onSuccess: () => {
+      toast.success("Member removed.");
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
+    },
+    onError: err => toast.error(err instanceof Error ? err.message : "Failed to remove member")
+  });
+  const [memberSearch, setMemberSearch] = useState("");
   const { data: departments } = useQuery({ queryKey: ["departments"], queryFn: fetchDepartments, retry: false });
   const departmentMutation = useMutation({
     mutationFn: ({ userId, departmentId }) => assignMemberDepartment(userId, departmentId),
@@ -887,23 +899,56 @@ export default function Users() {
     onError: err => toast.error(err instanceof Error ? err.message : "Failed to update team")
   });
 
+  const q = memberSearch.trim().toLowerCase();
+  const filteredMembers = (members ?? []).filter(m => !q
+    || m.email.toLowerCase().includes(q)
+    || (roleLabel[m.role] ?? m.role ?? "").toLowerCase().includes(q)
+    || (m.departmentName ?? "").toLowerCase().includes(q)
+    || (m.teamName ?? "").toLowerCase().includes(q));
+  const activeDepartmentCount = (departments ?? []).filter(d => !d.archived).length;
+  const mfaCount = (members ?? []).filter(m => m.hasMfa).length;
+
   return <div className="space-y-6">
       <Reveal y={12}>
         <h1 className="text-2xl font-medium tracking-tight text-white light:text-slate-900">Users</h1>
         <p className="text-sm text-white/50 light:text-slate-500">Who's in {organization?.name ?? "your organization"}, what they can do, how they're grouped, who you've invited, and what training they're assigned. Billing and plan usage moved to <a href="/team" className="underline hover:text-white/70 light:hover:text-slate-600">Team &amp; Plan</a>.</p>
       </Reveal>
 
+      {members && members.length > 0 && <Reveal delay={0.04} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-white p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Members</p>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums text-white light:text-slate-900"><AnimatedCounter value={members.length} /></p>
+          </div>
+          <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-white p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Departments</p>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums text-white light:text-slate-900"><AnimatedCounter value={activeDepartmentCount} /></p>
+          </div>
+          <div className="rounded-2xl border border-emerald-400/20 light:border-emerald-500/25 bg-emerald-400/[0.05] light:bg-emerald-50 p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-300/80 light:text-emerald-700">MFA enabled</p>
+            <p className="mt-1.5 text-xl font-semibold tabular-nums text-emerald-200 light:text-emerald-800"><AnimatedCounter value={mfaCount} />/{members.length}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 light:border-slate-900/10 bg-white/[0.02] light:bg-white p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 light:text-slate-400">Your role</p>
+            <p className="mt-1.5 truncate text-sm font-medium text-white light:text-slate-900">{roleLabel[members.find(m => m.userId === user?.id)?.role] ?? "—"}</p>
+          </div>
+        </Reveal>}
+
       {/* Members */}
       <SpotlightCard className="overflow-hidden" delay={0.02}>
-        <div className="border-b border-white/10 light:border-slate-900/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 light:border-slate-900/10 px-4 py-3">
           <h2 className="text-sm font-medium text-white light:text-slate-900">Team Members</h2>
+          {members && members.length > 0 && <div className="relative">
+              <input value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Search name, role, department, team…" className="w-64 rounded-lg border border-white/15 light:border-slate-900/15 bg-black/40 light:bg-white px-3 py-1.5 text-xs text-white light:text-slate-900 placeholder:text-white/30 focus:outline-none focus:border-cyan-400/40" />
+            </div>}
         </div>
-        {membersError ? <ErrorState message="Couldn't load team members." onRetry={() => refetchMembers()} /> : membersLoading ? <SkeletonRows count={2} /> : !members || members.length === 0 ? <EmptyState title="No members found." /> : <>
+        {membersError ? <ErrorState message="Couldn't load team members." onRetry={() => refetchMembers()} /> : membersLoading ? <SkeletonRows count={2} /> : !members || members.length === 0 ? <EmptyState title="No members found." /> : filteredMembers.length === 0 ? <EmptyState title="No members match your search." description="Try a different name, role, department, or team." /> : <>
             {/* 6 columns is real width even scrolled within its own
                 container — a card list below md reads better than
                 horizontal-scrolling a table on a phone. */}
             <div className="divide-y divide-white/10 light:divide-slate-900/8 md:hidden">
-              {members.map((member, i) => <motion.div key={member.userId} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05, ease: EASE }} className="p-4">
+              {filteredMembers.map((member, i) => {
+              const isSelf = member.userId === user?.id;
+              return <motion.div key={member.userId} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05, ease: EASE }} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <p className="min-w-0 truncate font-medium text-white light:text-slate-900">{member.email}</p>
                     {member.hasMfa ? <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:bg-emerald-100 light:text-emerald-700">✓ MFA</span> : <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/40 light:bg-slate-900/[0.05] light:text-slate-400">No MFA</span>}
@@ -911,7 +956,7 @@ export default function Users() {
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Role</p>
-                      <div className="mt-1"><MemberRoleControl member={member} isSelf={member.userId === user?.id} canManage={canManageTeam} orgRoles={orgRoles} roleLabel={roleLabel} mutation={roleMutation} /></div>
+                      <div className="mt-1"><MemberRoleControl member={member} isSelf={isSelf} canManage={canManageTeam} orgRoles={orgRoles} roleLabel={roleLabel} mutation={roleMutation} /></div>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wide text-white/35 light:text-slate-400">Joined</p>
@@ -926,7 +971,9 @@ export default function Users() {
                       <div className="mt-1"><TeamControl member={member} canManage={canManageTeam} teams={teams ?? []} mutation={teamMutation} /></div>
                     </div>
                   </div>
-                </motion.div>)}
+                  {canManageTeam && !isSelf && <button onClick={async () => { if (await confirm({ title: `Remove ${member.email}?`, description: "They lose access to this organization immediately. Their training history and certificates are kept.", confirmLabel: "Remove", danger: true })) removeMutation.mutate(member.userId); }} className="mt-3 text-xs text-red-300 light:text-red-600 hover:underline">Remove from organization</button>}
+                </motion.div>;
+            })}
             </div>
             <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
@@ -938,10 +985,13 @@ export default function Users() {
                   <th className="px-4 py-2">Team</th>
                   <th className="px-4 py-2">MFA</th>
                   <th className="px-4 py-2">Joined</th>
+                  {canManageTeam && <th />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10 light:divide-slate-900/8">
-                {members.map((member, i) => <motion.tr key={member.userId} initial={{
+                {filteredMembers.map((member, i) => {
+              const isSelf = member.userId === user?.id;
+              return <motion.tr key={member.userId} initial={{
               opacity: 0
             }} animate={{
               opacity: 1
@@ -952,7 +1002,7 @@ export default function Users() {
             }}>
                     <td className="px-4 py-3 font-medium text-white light:text-slate-900">{member.email}</td>
                     <td className="px-4 py-3">
-                      <MemberRoleControl member={member} isSelf={member.userId === user?.id} canManage={canManageTeam} orgRoles={orgRoles} roleLabel={roleLabel} mutation={roleMutation} />
+                      <MemberRoleControl member={member} isSelf={isSelf} canManage={canManageTeam} orgRoles={orgRoles} roleLabel={roleLabel} mutation={roleMutation} />
                     </td>
                     <td className="px-4 py-3">
                       <DepartmentControl member={member} canManage={canManageTeam} departments={departments ?? []} mutation={departmentMutation} />
@@ -964,7 +1014,11 @@ export default function Users() {
                       {member.hasMfa ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300 light:bg-emerald-100 light:text-emerald-700">✓ Enabled</span> : <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/40 light:bg-slate-900/[0.05] light:text-slate-400">Off</span>}
                     </td>
                     <td className="px-4 py-3 text-white/50 light:text-slate-500">{new Date(member.joinedAt).toLocaleDateString()}</td>
-                  </motion.tr>)}
+                    {canManageTeam && <td className="px-4 py-3 text-right">
+                        {!isSelf && <button onClick={async () => { if (await confirm({ title: `Remove ${member.email}?`, description: "They lose access to this organization immediately. Their training history and certificates are kept.", confirmLabel: "Remove", danger: true })) removeMutation.mutate(member.userId); }} className="text-xs text-red-300 light:text-red-600 hover:underline">Remove</button>}
+                      </td>}
+                  </motion.tr>;
+            })}
               </tbody>
             </table>
             </div>
