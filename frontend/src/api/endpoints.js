@@ -1,5 +1,7 @@
 import { supabase } from "./supabaseClient";
 import { mapAlertChannel, mapAsset, mapCheckResult, mapContentAnalysis, mapContentItem, mapIncident, mapMonitor } from "./mappers";
+export { PLAN_ORDER, isPlanAllowed } from "../lib/planTiers";
+import { PLAN_ORDER } from "../lib/planTiers";
 export async function fetchContentItems(pageSlug, sectionKey) {
   let query = supabase.from("content_items").select("*").eq("page_slug", pageSlug).order("sort_order", {
     ascending: true
@@ -26,7 +28,6 @@ export async function fetchPlanCatalog() {
     maxHosts: row.max_hosts ?? 1
   })).sort((a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan));
 }
-export const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
 async function currentOrganizationId() {
   const {
     data: {

@@ -8,8 +8,8 @@ import { AdminStatCard } from "../../components/AdminStatCard";
 import { Reveal, SpotlightCard } from "../../components/Animated";
 import { SkeletonStatGrid, SkeletonRows } from "../../components/Skeleton";
 import { EmptyState, ErrorState } from "../../components/EmptyState";
+import { PLAN_ORDER } from "../../lib/planTiers";
 const EASE = [0.16, 1, 0.3, 1];
-const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
 const PLAN_COLOR = {
   STARTER: "bg-white/25 light:bg-slate-900/25",
   PROFESSIONAL: "bg-cyan-400/70",

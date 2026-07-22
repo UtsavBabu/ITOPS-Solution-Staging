@@ -1540,7 +1540,7 @@ export async function localCheckLessonAnswer(courseId, lessonId, choiceIndex, us
 // submit_quiz() RPC: single compares an index, multiple compares the
 // chosen indexes as a set (order doesn't matter), ordering compares the
 // submitted sequence exactly (order is the whole point).
-function gradeAnswer(question, given) {
+export function gradeAnswer(question, given) {
   if (question.questionType === "multiple") {
     const a = [...(given ?? [])].sort((x, y) => x - y);
     const b = [...question.correctIndexes].sort((x, y) => x - y);

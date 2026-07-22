@@ -1,5 +1,5 @@
 import { SpotlightCard } from "./Animated";
-import { PLAN_ORDER } from "../api/endpoints";
+import { isPlanAllowed } from "../lib/planTiers";
 
 function StepIcon({ status }) {
   if (status === "done") return <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-400 text-xs font-semibold text-black" aria-hidden>✓</span>;
@@ -12,7 +12,7 @@ function StepIcon({ status }) {
 // enrollment, and certificate; this is purely a visual/navigational grouping
 // on top of data list_learning_paths() already computes from real
 // enrollments, not a separate progress system.
-export function LearningPathCard({ path, orgPlanRank, onOpenCourse }) {
+export function LearningPathCard({ path, orgPlan, onOpenCourse }) {
   if (!path.courses?.length) return null;
   const firstIncompleteIndex = path.courses.findIndex(c => !c.completed);
   return <SpotlightCard className="p-5" tint="violet">
@@ -22,7 +22,7 @@ export function LearningPathCard({ path, orgPlanRank, onOpenCourse }) {
       <div className="mt-4 space-y-1">
         {path.courses.map((c, i) => {
           const status = c.completed ? "done" : i === firstIncompleteIndex ? "current" : i < firstIncompleteIndex ? "done" : "upcoming";
-          const allowed = PLAN_ORDER.indexOf(c.minPlan) <= orgPlanRank;
+          const allowed = isPlanAllowed(c.minPlan, orgPlan);
           return <div key={c.courseId} className="flex items-center gap-3">
               <div className="flex flex-col items-center self-stretch">
                 <StepIcon status={status} />

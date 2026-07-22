@@ -21,6 +21,7 @@ import { LabCard } from "../components/LabCard";
 import { InterviewQuestions } from "../components/InterviewQuestions";
 import { Flashcards } from "../components/Flashcards";
 import { buildCheatSheetText, downloadTextFile } from "../lib/cheatSheet";
+import { isPlanAllowed } from "../lib/planTiers";
 import { useAuth } from "../context/AuthContext";
 
 const LEVEL_TONE = {
@@ -703,7 +704,7 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
   // Local preview courses (data/cybersachetCourses.js) predate min_plan and
   // only carry the old freeTier boolean — fall back to it the same way the
   // live-fetch mappers do, so a free local course doesn't regress to locked.
-  const courseAllowedByPlan = c => PLAN_ORDER.indexOf(c.minPlan ?? (c.freeTier ? "STARTER" : "PROFESSIONAL")) <= orgPlanRank;
+  const courseAllowedByPlan = c => isPlanAllowed(c.minPlan ?? (c.freeTier ? "STARTER" : "PROFESSIONAL"), orgPlan);
   // A failed license check is not the same as "not licensed" — falling back
   // to `local` here would silently demote a real, paying, licensed org to
   // local-preview mode (fake device-local progress) on a transient network
@@ -860,7 +861,7 @@ export default function CyberSachetTraining({ defaultTrack = "security" }) {
         </Reveal>}
 
       {trackLearningPaths.length > 0 && <Reveal delay={0.1} className="space-y-4">
-          {trackLearningPaths.map(path => <LearningPathCard key={path.id} path={path} orgPlanRank={orgPlanRank} onOpenCourse={c => { const full = courseById.get(c.courseId); if (full) setOpenCourse(full); }} />)}
+          {trackLearningPaths.map(path => <LearningPathCard key={path.id} path={path} orgPlan={orgPlan} onOpenCourse={c => { const full = courseById.get(c.courseId); if (full) setOpenCourse(full); }} />)}
         </Reveal>}
 
       <CategoryFilterChips categories={categories} active={activeCategory} onChange={setActiveCategory} />
