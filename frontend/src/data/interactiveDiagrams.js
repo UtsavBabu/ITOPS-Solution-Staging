@@ -147,5 +147,36 @@ export const DIAGRAM_DEMOS = {
           bestPractice: "Tag resources by team/project so Cost Analysis can actually attribute spend to the right owner.",
           commonMistake: "Setting up Cost Management after a surprise bill instead of before one." } }
     ]
+  },
+  "IaaS, PaaS, and SaaS": {
+    layout: "chain",
+    caption: "Click a service model — more managed, less control, in that order",
+    nodes: [
+      { id: "iaas", icon: "▣", label: "IaaS", summary: "Raw compute, storage, and networking.",
+        detail: { purpose: "Gives you the building blocks — a VM, a disk, a network — and you install and manage the OS and everything above it yourself.",
+          bestPractice: "Choose IaaS when you need OS-level control or are running software that doesn't fit a managed runtime." } },
+      { id: "paas", icon: "▤", label: "PaaS", summary: "You deploy code, the platform manages the runtime.",
+        detail: { purpose: "The provider manages the OS and runtime for you — you deploy your application code and the platform handles scaling and patching underneath it.",
+          bestPractice: "The default choice for a standard web app or API — less to manage than IaaS, without losing the ability to deploy your own code." } },
+      { id: "saas", icon: "▥", label: "SaaS", summary: "A finished application you just use.",
+        detail: { purpose: "Nothing to provision or patch at all — you're a user of the application, not an operator of any part of its infrastructure.",
+          commonMistake: "Assuming \"the cloud handles security\" for a SaaS product removes your own responsibility — you still own how you configure access, sharing, and permissions within it." } }
+    ]
+  },
+  "Compute and storage basics": {
+    layout: "grid",
+    caption: "Click a building block to see what it's actually for",
+    nodes: [
+      { id: "vm", icon: "▣", label: "Virtual Machine", summary: "A server you SSH into, like AWS EC2 or Azure VM.",
+        detail: { purpose: "Behaves like a regular server — full OS access, you install and manage everything on it yourself." } },
+      { id: "container", icon: "▥", label: "Container", summary: "Runs an app without managing a full OS, like AWS Fargate or Cloud Run.",
+        detail: { purpose: "Packages an application to run without you managing a full OS underneath it — lighter weight and faster to start than a VM." } },
+      { id: "object", icon: "▤", label: "Object storage", summary: "Files over HTTP, like AWS S3.",
+        detail: { purpose: "Holds files accessed over HTTP — ideal for backups, media, and static website assets, not something you mount like a drive." } },
+      { id: "block", icon: "▦", label: "Block storage", summary: "An attached drive, like an EBS volume.",
+        detail: { purpose: "Behaves like a hard drive attached to a specific VM — the standard choice for a VM's own operating system disk or database files." } },
+      { id: "managed-db", icon: "◆", label: "Managed database", summary: "A real database engine you don't administer, like AWS RDS.",
+        detail: { purpose: "Runs an actual database engine (Postgres, MySQL) without you administering the underlying server, patching, or backups yourself." } }
+    ]
   }
 };
