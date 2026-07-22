@@ -81,6 +81,15 @@ const NAV_GROUPS = [{
     icon: <AcademyMark size={13} />
     // Same license gate as CyberSachet above — one real per-org training
     // license unlocks both distinctly-branded catalogs.
+  }, {
+    to: "/academy-admin",
+    label: "Manage Academy",
+    icon: "⚙",
+    // Gated on real training visibility (Training Manager, org admin,
+    // auditor) — a regular learner never sees this, same boundary the
+    // page's own RPCs (org_academy_summary/org_academy_course_stats)
+    // enforce server-side.
+    module: "training"
   }]
 }, {
   label: "Settings",

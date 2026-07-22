@@ -322,6 +322,34 @@ export async function fetchDepartments() {
     archived: row.archived
   }));
 }
+export async function fetchOrgAcademySummary() {
+  const { data, error } = await supabase.rpc("org_academy_summary");
+  if (error) throw new Error(error.message);
+  const row = data?.[0];
+  if (!row) return { memberCount: 0, activeCourseCount: 0, groupCount: 0, avgScore: null, recentMembers: [] };
+  return {
+    memberCount: Number(row.member_count),
+    activeCourseCount: Number(row.active_course_count),
+    groupCount: Number(row.group_count),
+    avgScore: row.avg_score,
+    recentMembers: (row.recent_members ?? []).map(m => ({ userId: m.userId, email: m.email, joinedAt: m.joinedAt }))
+  };
+}
+export async function fetchOrgAcademyCourseStats() {
+  const { data, error } = await supabase.rpc("org_academy_course_stats");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(row => ({
+    courseId: row.course_id,
+    title: row.title,
+    category: row.category,
+    level: row.level,
+    minPlan: row.min_plan,
+    assignedCount: Number(row.assigned_count),
+    completedCount: Number(row.completed_count),
+    completionPct: row.completion_pct,
+    avgScore: row.avg_score
+  }));
+}
 export async function fetchDepartmentTrainingReport() {
   const { data, error } = await supabase.rpc("department_training_report");
   if (error) throw new Error(error.message);
